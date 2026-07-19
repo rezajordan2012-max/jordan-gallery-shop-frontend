@@ -1,13 +1,16 @@
-
 import React, { useState, useEffect, useMemo } from "react";
 import {
   ShoppingBag, X, Plus, Minus, Trash2, LayoutDashboard,
-  Store, Pencil, Check, Menu, Sparkles, User, LogOut
+  Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock
 } from "lucide-react";
 
 // آدرس بک‌اندی که راه‌اندازی کردی را اینجا جایگزین کن
 // (بعد از دیپلوی سرور در پوشه‌ی backend، مثلاً: "https://jordan-gallery-shop-backend.onrender.com")
 const API_BASE_URL = "https://jordan-gallery-shop-backend.onrender.com";
+
+// فقط کاربری با همین ایمیل اجازه‌ی دسترسی به پنل مدیریت را دارد.
+// تشخیص نهایی مدیر بودن باید سمت سرور (بک‌اند) هم بررسی شود؛ این فقط لایه‌ی نمایش در فرانت‌اند است.
+const ADMIN_EMAIL = "rezajordan2012@gmail.com";
 
 const FONTS = `
   @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap');
@@ -79,6 +82,10 @@ const CATEGORY_CARD_CLASS = {
 
 function fmtPrice(n) {
   return new Intl.NumberFormat("fa-IR").format(n) + " تومان";
+}
+
+function isAdminUser(user) {
+  return !!user && typeof user.email === "string" && user.email.toLowerCase() === ADMIN_EMAIL;
 }
 
 function CategoryIcon({ category, size = 34 }) {
@@ -235,6 +242,8 @@ export default function MaisonStore() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
+  const isAdmin = isAdminUser(user);
+
   useEffect(() => {
     (async () => {
       try {
@@ -261,6 +270,13 @@ export default function MaisonStore() {
       }
     })();
   }, []);
+
+  // اگر کاربر خارج شد یا کاربر دیگری وارد شد، در صورتی که در پنل مدیریت بود، به فروشگاه برگردد.
+  useEffect(() => {
+    if (view === "admin" && !isAdmin) {
+      setView("store");
+    }
+  }, [isAdmin, view]);
 
   async function persist(next) {
     setProducts(next);
@@ -294,6 +310,19 @@ export default function MaisonStore() {
     });
   }
 
+  // درخواست ورود به پنل مدیریت: اگر کاربر لاگین نیست، فرم ورود باز می‌شود؛
+  // اگر لاگین است ولی مدیر نیست، وارد پنل نمی‌شود.
+  function requestAdminView() {
+    if (!user) {
+      setAuthMode("login");
+      setAuthOpen(true);
+      return;
+    }
+    if (isAdminUser(user)) {
+      setView("admin");
+    }
+  }
+
   async function handleAuthSubmit(e) {
     e.preventDefault();
     setAuthError("");
@@ -325,6 +354,7 @@ export default function MaisonStore() {
   function handleLogout() {
     setToken(null);
     setUser(null);
+    setView("store");
   }
 
   async function handleCheckout() {
@@ -413,13 +443,15 @@ export default function MaisonStore() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setView(view === "admin" ? "store" : "admin")}
-              className="btn-ghost hidden sm:flex items-center gap-2 px-3 py-2 rounded text-xs"
-            >
-              <LayoutDashboard size={15} />
-              {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setView(view === "admin" ? "store" : "admin")}
+                className="btn-ghost hidden sm:flex items-center gap-2 px-3 py-2 rounded text-xs"
+              >
+                <LayoutDashboard size={15} />
+                {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
+              </button>
+            )}
             <button onClick={() => setCartOpen(true)} className="relative" aria-label="سبد خرید">
               <ShoppingBag size={22} color="#F3EDE4" />
               {cartCount > 0 && (
@@ -458,9 +490,11 @@ export default function MaisonStore() {
                 {c === "all" ? "همه محصولات" : CATEGORY_LABEL[c]}
               </button>
             ))}
-            <button onClick={() => { setView(view === "admin" ? "store" : "admin"); setMenuOpen(false); }} className="text-right py-1 text-gold">
-              {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
-            </button>
+            {isAdmin && (
+              <button onClick={() => { setView(view === "admin" ? "store" : "admin"); setMenuOpen(false); }} className="text-right py-1 text-gold">
+                {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
+              </button>
+            )}
             <button
               onClick={() => { user ? handleLogout() : setAuthOpen(true); setMenuOpen(false); }}
               className="text-right py-1"
@@ -471,7 +505,9 @@ export default function MaisonStore() {
         )}
       </header>
 
-      {view === "store" ? (
+      {view === "admin" && isAdmin ? (
+        <AdminPanel products={products} onSave={persist} storageError={storageError} />
+      ) : (
         <>
           {/* Hero */}
           <section className="px-4 sm:px-8 py-10 sm:py-16 flex flex-col sm:flex-row items-center gap-8 sm:gap-4 max-w-6xl mx-auto">
@@ -558,9 +594,25 @@ export default function MaisonStore() {
             )}
           </section>
         </>
-      ) : (
-        <AdminPanel products={products} onSave={persist} storageError={storageError} />
       )}
+
+      {/* دکمه‌ی ورود به پنل مدیریت — فقط برای مدیر سایت قابل مشاهده است.
+          اگر کاربر لاگین نیست، اول فرم ورود باز می‌شود. */}
+      <button
+        onClick={requestAdminView}
+        title="ورود مدیر"
+        className="fixed z-20 flex items-center justify-center rounded-full"
+        style={{
+          bottom: 20,
+          left: 20,
+          width: 42,
+          height: 42,
+          background: "rgba(36,26,41,0.85)",
+          border: "1px solid rgba(216,191,158,0.25)",
+        }}
+      >
+        <Lock size={16} color="#D4AF7A" />
+      </button>
 
       {/* Cart Drawer */}
       {cartOpen && (
