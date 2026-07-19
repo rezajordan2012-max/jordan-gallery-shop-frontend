@@ -245,8 +245,16 @@ export default function MaisonStore() {
           setProducts(SEED_PRODUCTS);
         }
       } catch (e) {
-        setProducts(SEED_PRODUCTS);
-        setStorageError(true);
+        // کلید هنوز وجود ندارد (اولین بازدید) — این طبیعی است، پس داده‌های
+        // اولیه را ذخیره می‌کنیم؛ فقط اگر همین ذخیره‌سازی هم شکست بخورد،
+        // خطای واقعی را نشان می‌دهیم.
+        try {
+          await window.storage.set("catalog:products", JSON.stringify(SEED_PRODUCTS), true);
+          setProducts(SEED_PRODUCTS);
+        } catch (e2) {
+          setProducts(SEED_PRODUCTS);
+          setStorageError(true);
+        }
       } finally {
         setLoading(false);
       }
