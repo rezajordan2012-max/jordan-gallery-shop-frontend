@@ -124,14 +124,21 @@ function parseVariantsText(text) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line, i) => {
-      const [label, hex] = line.split(",").map((s) => s && s.trim());
-      return { id: `v${i}-${Date.now()}`, label: label || line, hex: hex || "" };
+      const [label, hex, image] = line.split(",").map((s) => s && s.trim());
+      return { id: `v${i}-${Date.now()}`, label: label || line, hex: hex || "", image: image || "" };
     });
 }
 
 function variantsToText(variants) {
   if (!variants || variants.length === 0) return "";
-  return variants.map((v) => (v.hex ? `${v.label}, ${v.hex}` : v.label)).join("\n");
+  return variants
+    .map((v) => {
+      const parts = [v.label];
+      if (v.hex || v.image) parts.push(v.hex || "");
+      if (v.image) parts.push(v.image);
+      return parts.join(", ");
+    })
+    .join("\n");
 }
 
 const SEED_PRODUCTS = [
@@ -147,12 +154,12 @@ const SEED_PRODUCTS = [
     price: 620000,
     description: "بافت مخملی و ماندگاری بالا، با طیف گسترده‌ی رنگ — رنگ و شماره را انتخاب کن.",
     variants: [
-      { id: "v1", label: "شماره ۱ - قرمز کلاسیک", hex: "#B0202E" },
-      { id: "v2", label: "شماره ۲ - صورتی ملایم", hex: "#D98CA0" },
-      { id: "v3", label: "شماره ۳ - نارنجی مرجانی", hex: "#E06B4E" },
-      { id: "v4", label: "شماره ۴ - بژ خاکی", hex: "#B98567" },
-      { id: "v5", label: "شماره ۵ - قرمز آجری", hex: "#8C3A2B" },
-      { id: "v6", label: "شماره ۶ - زرشکی تیره", hex: "#5C1A2E" },
+      { id: "v1", label: "شماره ۱ - قرمز کلاسیک", hex: "#B0202E", image: "" },
+      { id: "v2", label: "شماره ۲ - صورتی ملایم", hex: "#D98CA0", image: "" },
+      { id: "v3", label: "شماره ۳ - نارنجی مرجانی", hex: "#E06B4E", image: "" },
+      { id: "v4", label: "شماره ۴ - بژ خاکی", hex: "#B98567", image: "" },
+      { id: "v5", label: "شماره ۵ - قرمز آجری", hex: "#8C3A2B", image: "" },
+      { id: "v6", label: "شماره ۶ - زرشکی تیره", hex: "#5C1A2E", image: "" },
     ],
   },
   { id: "p5", name: "سشوار حرفه‌ای یون‌دار", brand: "ولوره", category: "electronics", price: 3200000, description: "قدرت ۲۲۰۰ وات، فناوری یونیزه برای کاهش وز مو." },
@@ -164,10 +171,22 @@ function ProductCard({ product, onAdd }) {
   const [variantId, setVariantId] = useState("");
   const selectedVariant = hasVariants ? product.variants.find((v) => v.id === variantId) : null;
 
+  const displayImage = (selectedVariant && selectedVariant.image) || product.image || "";
+
   return (
     <div className={`${CATEGORY_CARD_CLASS[product.category]} rounded-lg border border-hair overflow-hidden flex flex-col`}>
-      <div className="flex items-center justify-center py-8" style={{ background: "rgba(0,0,0,0.15)" }}>
-        <CategoryIcon category={product.category} size={54} />
+      <div className="flex items-center justify-center" style={{ background: "rgba(0,0,0,0.15)", height: 220, overflow: "hidden" }}>
+        {displayImage ? (
+          <img
+            src={displayImage}
+            alt={product.name}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }}
+          />
+        ) : null}
+        <div style={{ display: displayImage ? "none" : "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+          <CategoryIcon category={product.category} size={54} />
+        </div>
       </div>
       <div className="p-4 flex flex-col gap-1 flex-1">
         <span className="text-gold" style={{ fontSize: 11 }}>{product.brand}</span>
@@ -176,17 +195,25 @@ function ProductCard({ product, onAdd }) {
 
         {hasVariants && (
           <div className="flex items-center gap-2 mt-1">
-            {selectedVariant && selectedVariant.hex && (
-              <span
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: "50%",
-                  background: selectedVariant.hex,
-                  border: "1px solid rgba(255,255,255,0.4)",
-                  flexShrink: 0,
-                }}
+            {selectedVariant && selectedVariant.image ? (
+              <img
+                src={selectedVariant.image}
+                alt={selectedVariant.label}
+                style={{ width: 20, height: 20, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(255,255,255,0.4)", flexShrink: 0 }}
               />
+            ) : (
+              selectedVariant && selectedVariant.hex && (
+                <span
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: "50%",
+                    background: selectedVariant.hex,
+                    border: "1px solid rgba(255,255,255,0.4)",
+                    flexShrink: 0,
+                  }}
+                />
+              )
             )}
             <select
               value={variantId}
@@ -231,9 +258,17 @@ export default function MaisonStore() {
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState(false);
 
-  // احراز هویت و پرداخت (توکن فقط در حافظه‌ی نشست نگه داشته می‌شود، با رفرش صفحه پاک می‌شود)
-  const [token, setToken] = useState(null);
-  const [user, setUser] = useState(null);
+  // احراز هویت و پرداخت — توکن در localStorage نگه داشته می‌شود تا با رفرش صفحه
+  // یا برگشت به تب مرورگر، ورود کاربر حفظ شود و فقط با زدن دکمه‌ی خروج پاک شود.
+  const [token, setToken] = useState(() => {
+    try { return localStorage.getItem("maison_auth_token") || null; } catch (e) { return null; }
+  });
+  const [user, setUser] = useState(() => {
+    try {
+      const raw = localStorage.getItem("maison_auth_user");
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  });
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [authForm, setAuthForm] = useState({ email: "", password: "", fullName: "" });
@@ -244,31 +279,41 @@ export default function MaisonStore() {
 
   const isAdmin = isAdminUser(user);
 
+  // هر بار که توکن یا کاربر تغییر کند، در localStorage هم به‌روزرسانی می‌شود.
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await window.storage.get("catalog:products", true);
-        if (res && res.value) {
-          setProducts(JSON.parse(res.value));
-        } else {
-          await window.storage.set("catalog:products", JSON.stringify(SEED_PRODUCTS), true);
-          setProducts(SEED_PRODUCTS);
-        }
-      } catch (e) {
-        // کلید هنوز وجود ندارد (اولین بازدید) — این طبیعی است، پس داده‌های
-        // اولیه را ذخیره می‌کنیم؛ فقط اگر همین ذخیره‌سازی هم شکست بخورد،
-        // خطای واقعی را نشان می‌دهیم.
-        try {
-          await window.storage.set("catalog:products", JSON.stringify(SEED_PRODUCTS), true);
-          setProducts(SEED_PRODUCTS);
-        } catch (e2) {
-          setProducts(SEED_PRODUCTS);
-          setStorageError(true);
-        }
-      } finally {
-        setLoading(false);
-      }
-    })();
+    try {
+      if (token) localStorage.setItem("maison_auth_token", token);
+      else localStorage.removeItem("maison_auth_token");
+    } catch (e) {}
+  }, [token]);
+
+  useEffect(() => {
+    try {
+      if (user) localStorage.setItem("maison_auth_user", JSON.stringify(user));
+      else localStorage.removeItem("maison_auth_user");
+    } catch (e) {}
+  }, [user]);
+
+  const loadProducts = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/products`);
+      if (!res.ok) throw new Error("bad response");
+      const data = await res.json();
+      setProducts(Array.isArray(data) ? data : SEED_PRODUCTS);
+      setStorageError(false);
+    } catch (e) {
+      // اگر اتصال به سرور برقرار نشد، محصولات نمونه نمایش داده می‌شوند
+      // ولی هشدار داده می‌شود که این‌ها موقتی‌اند و از سرور نیامده‌اند.
+      setProducts(SEED_PRODUCTS);
+      setStorageError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
   }, []);
 
   // اگر کاربر خارج شد یا کاربر دیگری وارد شد، در صورتی که در پنل مدیریت بود، به فروشگاه برگردد.
@@ -278,13 +323,38 @@ export default function MaisonStore() {
     }
   }, [isAdmin, view]);
 
-  async function persist(next) {
-    setProducts(next);
-    try {
-      await window.storage.set("catalog:products", JSON.stringify(next), true);
-    } catch (e) {
-      setStorageError(true);
-    }
+  async function addProduct(payload) {
+    const res = await fetch(`${API_BASE_URL}/api/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "افزودن محصول ناموفق بود");
+    await loadProducts();
+    return data;
+  }
+
+  async function updateProduct(id, payload) {
+    const res = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "ذخیره‌ی تغییرات ناموفق بود");
+    await loadProducts();
+    return data;
+  }
+
+  async function deleteProduct(id) {
+    const res = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حذف محصول ناموفق بود");
+    await loadProducts();
   }
 
   function addToCart(product, variantId) {
@@ -506,7 +576,13 @@ export default function MaisonStore() {
       </header>
 
       {view === "admin" && isAdmin ? (
-        <AdminPanel products={products} onSave={persist} storageError={storageError} />
+        <AdminPanel
+          products={products}
+          onAdd={addProduct}
+          onUpdate={updateProduct}
+          onRemove={deleteProduct}
+          storageError={storageError}
+        />
       ) : (
         <>
           {/* Hero */}
@@ -633,8 +709,14 @@ export default function MaisonStore() {
               <div className="flex-1 overflow-y-auto flex flex-col gap-4">
                 {cartItems.map((item) => (
                   <div key={item.cartKey} className="flex items-center gap-3 border-b border-hair pb-3">
-                    <div className="flex items-center justify-center rounded" style={{ width: 44, height: 44, background: "rgba(255,255,255,0.05)" }}>
-                      {item.variant && item.variant.hex ? (
+                    <div className="flex items-center justify-center rounded overflow-hidden" style={{ width: 44, height: 44, background: "rgba(255,255,255,0.05)" }}>
+                      {(item.variant && item.variant.image) || item.image ? (
+                        <img
+                          src={(item.variant && item.variant.image) || item.image}
+                          alt={item.name}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      ) : item.variant && item.variant.hex ? (
                         <span style={{ width: 20, height: 20, borderRadius: "50%", background: item.variant.hex, border: "1px solid rgba(255,255,255,0.4)" }} />
                       ) : (
                         <CategoryIcon category={item.category} size={22} />
@@ -744,20 +826,23 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", brand: "", category: "perfume", price: "", description: "", variantsText: "" };
+  return { id: null, name: "", brand: "", category: "perfume", price: "", description: "", image: "", variantsText: "" };
 }
 
-function AdminPanel({ products, onSave, storageError }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, storageError }) {
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
 
   function startEdit(p) {
     setEditingId(p.id);
+    setFormError("");
     setForm({ ...p, price: String(p.price), variantsText: variantsToText(p.variants) });
   }
   function cancelEdit() {
     setEditingId(null);
+    setFormError("");
     setForm(emptyForm());
   }
 
@@ -765,24 +850,31 @@ function AdminPanel({ products, onSave, storageError }) {
     e.preventDefault();
     if (!form.name || !form.price) return;
     setSaving(true);
+    setFormError("");
     const priceNum = Number(form.price);
     const variants = parseVariantsText(form.variantsText);
-    const { variantsText, ...rest } = form;
+    const { variantsText, id, ...rest } = form;
     const payload = { ...rest, price: priceNum, ...(variants.length > 0 ? { variants } : { variants: undefined }) };
-    let next;
-    if (editingId) {
-      next = products.map((p) => (p.id === editingId ? { ...payload, id: editingId } : p));
-    } else {
-      const id = "p" + Date.now();
-      next = [...products, { ...payload, id }];
+    try {
+      if (editingId) {
+        await onUpdate(editingId, payload);
+      } else {
+        await onAdd(payload);
+      }
+      cancelEdit();
+    } catch (err) {
+      setFormError(err.message || "ذخیره‌سازی ناموفق بود");
+    } finally {
+      setSaving(false);
     }
-    await onSave(next);
-    setSaving(false);
-    cancelEdit();
   }
 
   async function remove(id) {
-    await onSave(products.filter((p) => p.id !== id));
+    try {
+      await onRemove(id);
+    } catch (err) {
+      setFormError(err.message || "حذف محصول ناموفق بود");
+    }
   }
 
   return (
@@ -792,11 +884,16 @@ function AdminPanel({ products, onSave, storageError }) {
         <h2 className="font-display" style={{ fontSize: 20 }}>پنل مدیریت محصولات</h2>
       </div>
       <p className="text-muted mb-6" style={{ fontSize: 12 }}>
-        داده‌های این پنل به‌صورت مشترک ذخیره می‌شوند و برای همه‌ی بازدیدکنندگان این صفحه قابل مشاهده‌اند.
+        محصولات روی سرور فروشگاه ذخیره می‌شوند و برای همه‌ی مشتریان قابل مشاهده‌اند.
       </p>
       {storageError && (
         <p className="mb-4 rounded p-3" style={{ fontSize: 12, background: "rgba(180,80,80,0.15)", color: "#E3A9A9" }}>
-          اتصال به حافظه‌ی ذخیره‌سازی برقرار نشد؛ تغییرات فقط در همین نشست نمایش داده می‌شوند.
+          اتصال به سرور فروشگاه برقرار نشد؛ محصولات نمونه نمایش داده شده‌اند و تغییرات ذخیره نمی‌شوند. دوباره صفحه را باز کن.
+        </p>
+      )}
+      {formError && (
+        <p className="mb-4 rounded p-3" style={{ fontSize: 12, background: "rgba(180,80,80,0.15)", color: "#E3A9A9" }}>
+          {formError}
         </p>
       )}
 
@@ -842,17 +939,41 @@ function AdminPanel({ products, onSave, storageError }) {
         />
         <div className="sm:col-span-2 flex flex-col gap-1">
           <label className="text-muted" style={{ fontSize: 12 }}>
-            طیف رنگی / شماره‌ها (اختیاری — برای محصولاتی مثل رژلب که مشتری باید رنگ انتخاب کند)
+            آدرس تصویر اصلی محصول (لینک عکس)
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              placeholder="https://example.com/image.jpg"
+              value={form.image}
+              onChange={(e) => setForm({ ...form, image: e.target.value })}
+              className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
+              style={{ color: "#F3EDE4" }}
+              dir="ltr"
+            />
+            {form.image && (
+              <img
+                src={form.image}
+                alt="پیش‌نمایش"
+                style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(216,191,158,0.25)" }}
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+            )}
+          </div>
+        </div>
+        <div className="sm:col-span-2 flex flex-col gap-1">
+          <label className="text-muted" style={{ fontSize: 12 }}>
+            طیف رنگی / شماره‌ها (اختیاری — برای محصولاتی مثل رژلب و سایه و رژگونه که مشتری باید رنگ انتخاب کند)
           </label>
           <textarea
-            placeholder={"هر خط یک رنگ، به‌صورت: نام رنگ, کدهگز (اختیاری)\nمثال:\nشماره ۱ - قرمز کلاسیک, #B0202E\nشماره ۲ - صورتی ملایم, #D98CA0"}
+            placeholder={"هر خط یک رنگ، به‌صورت: نام رنگ, کدهگز (اختیاری), لینک عکس آن رنگ (اختیاری)\nمثال:\nشماره ۱ - قرمز کلاسیک, #B0202E, https://example.com/red.jpg\nشماره ۲ - صورتی ملایم, #D98CA0, https://example.com/pink.jpg"}
             value={form.variantsText}
             onChange={(e) => setForm({ ...form, variantsText: e.target.value })}
             className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
             style={{ color: "#F3EDE4", minHeight: 110, fontFamily: "monospace", fontSize: 12 }}
+            dir="ltr"
           />
           <p className="text-muted" style={{ fontSize: 11 }}>
-            می‌توانی صدها خط رنگ را یک‌جا کپی/پیست کنی — هر خط یک شماره و نام رنگ می‌شود. کدهگز اختیاری است ولی برای نمایش دایره‌ی رنگ لازم است.
+            می‌توانی صدها خط رنگ را یک‌جا کپی/پیست کنی — هر خط یک شماره، نام رنگ، کدهگز و (در صورت تمایل) لینک عکس دقیق همان رنگ می‌شود. اگر لینک عکس بدهی، همان عکس به‌جای دایره‌ی رنگ نمایش داده می‌شود.
           </p>
         </div>
         <div className="sm:col-span-2 flex gap-2">
@@ -871,7 +992,19 @@ function AdminPanel({ products, onSave, storageError }) {
       <div className="flex flex-col gap-2">
         {products.map((p) => (
           <div key={p.id} className="bg-panel border border-hair rounded-lg p-3 flex items-center gap-3">
-            <CategoryIcon category={p.category} size={26} />
+            <div className="flex items-center justify-center rounded overflow-hidden" style={{ width: 40, height: 40, background: "rgba(255,255,255,0.05)", flexShrink: 0 }}>
+              {p.image ? (
+                <img
+                  src={p.image}
+                  alt={p.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }}
+                />
+              ) : null}
+              <div style={{ display: p.image ? "none" : "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+                <CategoryIcon category={p.category} size={22} />
+              </div>
+            </div>
             <div className="flex-1">
               <p style={{ fontSize: 14 }}>{p.name} <span className="text-muted" style={{ fontSize: 11 }}>— {p.brand}</span></p>
               <p className="text-muted" style={{ fontSize: 11 }}>
