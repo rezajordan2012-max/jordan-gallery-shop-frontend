@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   ShoppingBag, X, Plus, Minus, Trash2, LayoutDashboard,
-  Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock
+  Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock, Upload
 } from "lucide-react";
 
 // آدرس بک‌اندی که راه‌اندازی کردی را اینجا جایگزین کن
@@ -357,6 +357,17 @@ export default function MaisonStore() {
     await loadProducts();
   }
 
+  async function uploadImage(imageBase64) {
+    const res = await fetch(`${API_BASE_URL}/api/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ imageBase64 }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "آپلود تصویر ناموفق بود");
+    return data.url;
+  }
+
   function addToCart(product, variantId) {
     if (product.variants && product.variants.length > 0 && !variantId) {
       return; // باید رنگ/شماره انتخاب شود
@@ -581,6 +592,7 @@ export default function MaisonStore() {
           onAdd={addProduct}
           onUpdate={updateProduct}
           onRemove={deleteProduct}
+          onUploadImage={uploadImage}
           storageError={storageError}
         />
       ) : (
@@ -829,11 +841,38 @@ function emptyForm() {
   return { id: null, name: "", brand: "", category: "perfume", price: "", description: "", image: "", variantsText: "" };
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, storageError }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError }) {
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  async function handleImageFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = ""; // برای اینکه بشود دوباره همان فایل را انتخاب کرد
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setFormError("فایل انتخاب‌شده تصویر نیست");
+      return;
+    }
+    setFormError("");
+    setUploading(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const url = await onUploadImage(base64);
+      setForm((f) => ({ ...f, image: url }));
+    } catch (err) {
+      setFormError(err.message || "آپلود تصویر ناموفق بود");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function startEdit(p) {
     setEditingId(p.id);
@@ -939,15 +978,29 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, storageError }) {
         />
         <div className="sm:col-span-2 flex flex-col gap-1">
           <label className="text-muted" style={{ fontSize: 12 }}>
-            آدرس تصویر اصلی محصول (لینک عکس)
+            تصویر اصلی محصول
           </label>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <label
+              className="btn-ghost rounded px-3 py-2 text-xs flex items-center gap-2"
+              style={{ cursor: uploading ? "default" : "pointer", opacity: uploading ? 0.6 : 1 }}
+            >
+              <Upload size={14} />
+              {uploading ? "در حال آپلود..." : "انتخاب از گالری"}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageFile}
+                disabled={uploading}
+                style={{ display: "none" }}
+              />
+            </label>
             <input
-              placeholder="https://example.com/image.jpg"
+              placeholder="یا لینک عکس را اینجا بچسبان: https://example.com/image.jpg"
               value={form.image}
               onChange={(e) => setForm({ ...form, image: e.target.value })}
               className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
-              style={{ color: "#F3EDE4" }}
+              style={{ color: "#F3EDE4", minWidth: 200 }}
               dir="ltr"
             />
             {form.image && (
