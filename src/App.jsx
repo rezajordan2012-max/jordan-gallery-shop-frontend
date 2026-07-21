@@ -13,37 +13,72 @@ const API_BASE_URL = "https://jordan-gallery-shop-backend.onrender.com";
 const ADMIN_EMAIL = "rezajordan2012@gmail.com";
 
 const FONTS = `
-  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap');
 
   .maison-root {
     font-family: 'Vazirmatn', sans-serif;
-    background: #1B1420;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(212,175,122,0.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(148,90,150,0.14), transparent 55%),
+      #17111C;
     color: #F3EDE4;
+    -webkit-font-smoothing: antialiased;
   }
-  .font-latin { font-family: 'Cormorant Garamond', serif; letter-spacing: 0.18em; }
-  .font-display { font-family: 'Vazirmatn', sans-serif; font-weight: 800; }
+  .font-latin { font-family: 'Cormorant Garamond', serif; letter-spacing: 0.2em; }
+  .font-display { font-family: 'Vazirmatn', sans-serif; font-weight: 800; letter-spacing: -0.01em; }
 
-  .bg-panel { background: #241A29; }
-  .bg-panel-2 { background: #2C2032; }
-  .border-hair { border-color: rgba(216, 191, 158, 0.16); }
-  .text-gold { color: #C9A876; }
+  ::selection { background: rgba(212,175,122,0.35); color: #1B1420; }
+
+  .bg-panel { background: #211823; }
+  .bg-panel-2 { background: #2A1F2E; }
+  .border-hair { border-color: rgba(216, 191, 158, 0.14); }
+  .text-gold { color: #DCB77E; }
   .text-muted { color: #A99BB0; }
   .bg-gold { background: #B08D57; }
   .bg-gold-grad { background: linear-gradient(135deg, #D4AF7A, #9C7A45); }
-  .btn-gold {
-    background: linear-gradient(135deg, #D4AF7A, #A9824C);
-    color: #1B1420;
-  }
-  .btn-gold:hover { filter: brightness(1.08); }
-  .btn-ghost {
-    border: 1px solid rgba(216, 191, 158, 0.35);
-    color: #F3EDE4;
-  }
-  .btn-ghost:hover { border-color: #D4AF7A; color: #D4AF7A; }
 
-  .card-perfume { background: linear-gradient(160deg, #3B2440, #241A29); }
-  .card-beauty { background: linear-gradient(160deg, #402637, #241A29); }
-  .card-electronics { background: linear-gradient(160deg, #24303F, #1B1420); }
+  .btn-gold {
+    background: linear-gradient(135deg, #E4C08C, #B98A4C);
+    color: #1B1420;
+    box-shadow: 0 6px 20px -6px rgba(212,175,122,0.45);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  }
+  .btn-gold:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 10px 24px -6px rgba(212,175,122,0.55); }
+  .btn-gold:active { transform: translateY(0); }
+
+  .btn-ghost {
+    border: 1px solid rgba(216, 191, 158, 0.3);
+    color: #F3EDE4;
+    background: rgba(255,255,255,0.02);
+    transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+  }
+  .btn-ghost:hover { border-color: #DCB77E; color: #DCB77E; background: rgba(220,183,126,0.06); }
+
+  .card-perfume { background: linear-gradient(160deg, #3B2440, #211823); }
+  .card-beauty { background: linear-gradient(160deg, #402637, #211823); }
+  .card-hygiene { background: linear-gradient(160deg, #2E3A34, #17111C); }
+  .card-electronics { background: linear-gradient(160deg, #24303F, #17111C); }
+
+  .product-card {
+    transition: transform 0.28s cubic-bezier(.2,.8,.2,1), box-shadow 0.28s ease, border-color 0.28s ease;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 12px 24px -18px rgba(0,0,0,0.6);
+  }
+  .product-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(220,183,126,0.4);
+    box-shadow: 0 18px 34px -16px rgba(0,0,0,0.65), 0 0 0 1px rgba(220,183,126,0.12);
+  }
+  .product-card img { transition: transform 0.5s ease; }
+  .product-card:hover img { transform: scale(1.045); }
+
+  .category-card {
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+  }
+  .category-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(220,183,126,0.45);
+    box-shadow: 0 16px 30px -18px rgba(0,0,0,0.6);
+  }
 
   .glint {
     position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
@@ -61,24 +96,70 @@ const FONTS = `
   }
   .float-slow { animation: floatSlow 6s ease-in-out infinite; }
 
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in-up { animation: fadeInUp 0.5s ease both; }
+
   .cart-drawer { transition: transform 0.35s cubic-bezier(.2,.8,.2,1); }
 
+  .nav-link { position: relative; padding-bottom: 4px; transition: color 0.18s ease; }
+  .nav-link::after {
+    content: ""; position: absolute; right: 0; bottom: 0; height: 1px; width: 0;
+    background: #DCB77E; transition: width 0.25s ease;
+  }
+  .nav-link.active::after, .nav-link:hover::after { width: 100%; }
+
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: rgba(220,183,126,0.55) !important;
+    box-shadow: 0 0 0 3px rgba(220,183,126,0.12);
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .glint, .float-slow { animation: none; }
+    .glint, .float-slow, .fade-in-up { animation: none; }
+    .product-card, .product-card img, .category-card { transition: none; }
   }
 `;
 
-const CATEGORY_LABEL = {
-  perfume: "عطر و ادکلن",
-  beauty: "آرایشی و بهداشتی",
-  electronics: "لوازم برقی شخصی",
+const CATEGORIES = {
+  perfume: {
+    label: "عطر و ادکلن",
+    subcategories: { women: "زنانه", men: "مردانه", unisex: "دو نفره (یونیسکس)" },
+  },
+  makeup: {
+    label: "آرایشی",
+    subcategories: { face: "صورت", eye: "چشم", lip: "لب", accessory: "اکسسوری" },
+  },
+  hygiene: {
+    label: "بهداشتی",
+    subcategories: { hair: "سر", body: "بدن" },
+  },
+  electronics: {
+    label: "لوازم برقی شخصی",
+    subcategories: { hair: "مو", body: "بدن", face: "صورت" },
+  },
 };
+
+const CATEGORY_LABEL = Object.fromEntries(
+  Object.entries(CATEGORIES).map(([k, v]) => [k, v.label])
+);
+
+const CATEGORY_ORDER = Object.keys(CATEGORIES);
 
 const CATEGORY_CARD_CLASS = {
   perfume: "card-perfume",
-  beauty: "card-beauty",
+  makeup: "card-beauty",
+  hygiene: "card-hygiene",
   electronics: "card-electronics",
 };
+
+function subcategoryLabel(category, subcategory) {
+  const cat = CATEGORIES[category];
+  if (!cat || !cat.subcategories || !subcategory) return "";
+  return cat.subcategories[subcategory] || "";
+}
 
 function fmtPrice(n) {
   return new Intl.NumberFormat("fa-IR").format(n) + " تومان";
@@ -99,12 +180,20 @@ function CategoryIcon({ category, size = 34 }) {
       </svg>
     );
   }
-  if (category === "beauty") {
+  if (category === "makeup") {
     return (
       <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
         <circle cx="24" cy="20" r="10" stroke={stroke} strokeWidth="1.6" />
         <path d="M24 30v12M18 42h12" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
         <circle cx="24" cy="20" r="4" stroke={stroke} strokeWidth="1.2" opacity="0.6" />
+      </svg>
+    );
+  }
+  if (category === "hygiene") {
+    return (
+      <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+        <path d="M24 6c8 10 12 16.5 12 22a12 12 0 1 1-24 0c0-5.5 4-12 12-22Z" stroke={stroke} strokeWidth="1.6" />
+        <path d="M18 30a6 6 0 0 0 6 6" stroke={stroke} strokeWidth="1.2" opacity="0.6" />
       </svg>
     );
   }
@@ -142,17 +231,19 @@ function variantsToText(variants) {
 }
 
 const SEED_PRODUCTS = [
-  { id: "p1", name: "بلور شب", brand: "خانه میسان", category: "perfume", price: 2450000, description: "رایحه‌ای شرقی و گرم با نت‌های عود و وانیل، مناسب شب." },
-  { id: "p2", name: "باغ سپید", brand: "خانه میسان", category: "perfume", price: 1980000, description: "ترکیبی تازه از یاس و مرکبات برای روزهای بهاری." },
-  { id: "p3", name: "سرم درخشش طلایی", brand: "اطلس", category: "beauty", price: 890000, description: "سرم آبرسان با عصاره طلا، مناسب پوست‌های خشک و بی‌روح." },
-  { id: "p4", name: "پالت آرایش صدف", brand: "اطلس", category: "beauty", price: 1250000, description: "پالت سایه و رژ با پیگمنت بالا و بافت مخملی." },
+  { id: "p1", name: "بلور شب", brand: "خانه میسان", category: "perfume", subcategory: "women", price: 2450000, description: "رایحه‌ای شرقی و گرم با نت‌های عود و وانیل، مناسب شب.", image: "" },
+  { id: "p2", name: "باغ سپید", brand: "خانه میسان", category: "perfume", subcategory: "unisex", price: 1980000, description: "ترکیبی تازه از یاس و مرکبات برای روزهای بهاری.", image: "" },
+  { id: "p3", name: "سرم درخشش طلایی", brand: "اطلس", category: "makeup", subcategory: "face", price: 890000, description: "سرم آبرسان با عصاره طلا، مناسب پوست‌های خشک و بی‌روح.", image: "" },
+  { id: "p4", name: "پالت سایه صدف", brand: "اطلس", category: "makeup", subcategory: "eye", price: 1250000, description: "پالت سایه با پیگمنت بالا و بافت مخملی.", image: "" },
   {
     id: "p7",
     name: "رژ لب مخملی",
     brand: "اطلس",
-    category: "beauty",
+    category: "makeup",
+    subcategory: "lip",
     price: 620000,
     description: "بافت مخملی و ماندگاری بالا، با طیف گسترده‌ی رنگ — رنگ و شماره را انتخاب کن.",
+    image: "",
     variants: [
       { id: "v1", label: "شماره ۱ - قرمز کلاسیک", hex: "#B0202E", image: "" },
       { id: "v2", label: "شماره ۲ - صورتی ملایم", hex: "#D98CA0", image: "" },
@@ -162,8 +253,12 @@ const SEED_PRODUCTS = [
       { id: "v6", label: "شماره ۶ - زرشکی تیره", hex: "#5C1A2E", image: "" },
     ],
   },
-  { id: "p5", name: "سشوار حرفه‌ای یون‌دار", brand: "ولوره", category: "electronics", price: 3200000, description: "قدرت ۲۲۰۰ وات، فناوری یونیزه برای کاهش وز مو." },
-  { id: "p6", name: "اپیلاتور بی‌سیم", brand: "ولوره", category: "electronics", price: 2100000, description: "طراحی مینیمال، شارژ سریع و کاربرد ملایم روی پوست." },
+  { id: "p8", name: "کیف لوازم آرایش", brand: "اطلس", category: "makeup", subcategory: "accessory", price: 540000, description: "کیف مخملی جادار برای نگهداری از لوازم آرایشی.", image: "" },
+  { id: "p9", name: "شامپو ترمیم‌کننده", brand: "ولوره", category: "hygiene", subcategory: "hair", price: 380000, description: "شامپو بدون سولفات، مناسب موهای آسیب‌دیده.", image: "" },
+  { id: "p10", name: "لوسیون آبرسان بدن", brand: "ولوره", category: "hygiene", subcategory: "body", price: 420000, description: "لوسیون سبک و سریع‌جذب برای آبرسانی روزانه‌ی پوست.", image: "" },
+  { id: "p5", name: "سشوار حرفه‌ای یون‌دار", brand: "ولوره", category: "electronics", subcategory: "hair", price: 3200000, description: "قدرت ۲۲۰۰ وات، فناوری یونیزه برای کاهش وز مو.", image: "" },
+  { id: "p6", name: "اپیلاتور بی‌سیم", brand: "ولوره", category: "electronics", subcategory: "body", price: 2100000, description: "طراحی مینیمال، شارژ سریع و کاربرد ملایم روی پوست.", image: "" },
+  { id: "p11", name: "دستگاه پاکسازی صورت", brand: "ولوره", category: "electronics", subcategory: "face", price: 1650000, description: "برس سونیک برای پاکسازی عمیق منافذ پوست صورت.", image: "" },
 ];
 
 function ProductCard({ product, onAdd }) {
@@ -174,7 +269,7 @@ function ProductCard({ product, onAdd }) {
   const displayImage = (selectedVariant && selectedVariant.image) || product.image || "";
 
   return (
-    <div className={`${CATEGORY_CARD_CLASS[product.category]} rounded-lg border border-hair overflow-hidden flex flex-col`}>
+    <div className={`${CATEGORY_CARD_CLASS[product.category]} product-card rounded-xl border border-hair overflow-hidden flex flex-col`}>
       <div className="flex items-center justify-center" style={{ background: "rgba(0,0,0,0.15)", height: 220, overflow: "hidden" }}>
         {displayImage ? (
           <img
@@ -189,7 +284,14 @@ function ProductCard({ product, onAdd }) {
         </div>
       </div>
       <div className="p-4 flex flex-col gap-1 flex-1">
-        <span className="text-gold" style={{ fontSize: 11 }}>{product.brand}</span>
+        <div className="flex items-center justify-between">
+          <span className="text-gold" style={{ fontSize: 11 }}>{product.brand}</span>
+          {product.subcategory && (
+            <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(216,191,158,0.25)", borderRadius: 999, padding: "2px 8px" }}>
+              {subcategoryLabel(product.category, product.subcategory)}
+            </span>
+          )}
+        </div>
         <h3 className="font-display" style={{ fontSize: 16 }}>{product.name}</h3>
         <p className="text-muted" style={{ fontSize: 12, minHeight: 32 }}>{product.description}</p>
 
@@ -253,6 +355,8 @@ export default function MaisonStore() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [activeSubcategory, setActiveSubcategory] = useState("all");
+  const [activeBrand, setActiveBrand] = useState("all");
   const [cart, setCart] = useState({}); // id -> qty
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -490,8 +594,28 @@ export default function MaisonStore() {
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cartItems.reduce((s, i) => s + i.qty * i.price, 0);
 
-  const filteredProducts =
-    activeCategory === "all" ? products : products.filter((p) => p.category === activeCategory);
+  const brandsInCategory = useMemo(() => {
+    const scoped = activeCategory === "all" ? products : products.filter((p) => p.category === activeCategory);
+    return Array.from(new Set(scoped.map((p) => p.brand).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fa"));
+  }, [products, activeCategory]);
+
+  const filteredProducts = products.filter((p) => {
+    if (activeCategory !== "all" && p.category !== activeCategory) return false;
+    if (activeCategory !== "all" && activeSubcategory !== "all" && (p.subcategory || "") !== activeSubcategory) return false;
+    if (activeBrand !== "all" && p.brand !== activeBrand) return false;
+    return true;
+  });
+
+  function selectCategory(c) {
+    setActiveCategory(c);
+    setActiveSubcategory("all");
+    setActiveBrand("all");
+    setView("store");
+  }
+
+  const activeSubcategories = activeCategory !== "all" && CATEGORIES[activeCategory]?.subcategories
+    ? CATEGORIES[activeCategory].subcategories
+    : null;
 
   return (
     <div dir="rtl" lang="fa" className="maison-root min-h-screen">
@@ -511,12 +635,11 @@ export default function MaisonStore() {
           </div>
 
           <nav className="hidden sm:flex items-center gap-6 text-sm text-muted">
-            {["all", "perfume", "beauty", "electronics"].map((c) => (
+            {["all", ...CATEGORY_ORDER].map((c) => (
               <button
                 key={c}
-                onClick={() => { setActiveCategory(c); setView("store"); }}
-                style={{ color: activeCategory === c && view === "store" ? "#D4AF7A" : undefined }}
-                className="hover:text-gold"
+                onClick={() => selectCategory(c)}
+                className={`nav-link hover:text-gold ${activeCategory === c && view === "store" ? "active text-gold" : ""}`}
               >
                 {c === "all" ? "همه محصولات" : CATEGORY_LABEL[c]}
               </button>
@@ -562,10 +685,10 @@ export default function MaisonStore() {
 
         {menuOpen && (
           <div className="sm:hidden flex flex-col gap-1 px-4 pb-3 text-sm text-muted">
-            {["all", "perfume", "beauty", "electronics"].map((c) => (
+            {["all", ...CATEGORY_ORDER].map((c) => (
               <button
                 key={c}
-                onClick={() => { setActiveCategory(c); setView("store"); setMenuOpen(false); }}
+                onClick={() => { selectCategory(c); setMenuOpen(false); }}
                 className="text-right py-1"
               >
                 {c === "all" ? "همه محصولات" : CATEGORY_LABEL[c]}
@@ -642,12 +765,12 @@ export default function MaisonStore() {
           </section>
 
           {/* Category strip */}
-          <section className="px-4 sm:px-8 max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
-            {["perfume", "beauty", "electronics"].map((c) => (
+          <section className="px-4 sm:px-8 max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+            {CATEGORY_ORDER.map((c) => (
               <button
                 key={c}
-                onClick={() => setActiveCategory(c)}
-                className={`${CATEGORY_CARD_CLASS[c]} rounded-lg p-5 flex items-center gap-4 border border-hair text-right`}
+                onClick={() => selectCategory(c)}
+                className={`${CATEGORY_CARD_CLASS[c]} category-card rounded-xl p-5 flex items-center gap-4 border border-hair text-right`}
               >
                 <CategoryIcon category={c} />
                 <div>
@@ -662,12 +785,51 @@ export default function MaisonStore() {
 
           {/* Catalog */}
           <section id="catalog" className="px-4 sm:px-8 max-w-6xl mx-auto pb-20">
-            <div className="flex items-center gap-2 mb-6">
+            <div className="flex items-center gap-2 mb-4">
               <Sparkles size={16} color="#D4AF7A" />
               <h2 className="font-display" style={{ fontSize: 20 }}>
                 {activeCategory === "all" ? "محصولات منتخب" : CATEGORY_LABEL[activeCategory]}
               </h2>
             </div>
+
+            {activeSubcategories && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                <button
+                  onClick={() => setActiveSubcategory("all")}
+                  className="btn-ghost rounded-full px-3 py-1.5 text-xs"
+                  style={activeSubcategory === "all" ? { borderColor: "#DCB77E", color: "#DCB77E" } : undefined}
+                >
+                  همه
+                </button>
+                {Object.entries(activeSubcategories).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setActiveSubcategory(key)}
+                    className="btn-ghost rounded-full px-3 py-1.5 text-xs"
+                    style={activeSubcategory === key ? { borderColor: "#DCB77E", color: "#DCB77E" } : undefined}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {brandsInCategory.length > 1 && (
+              <div className="flex items-center gap-2 mb-6">
+                <span className="text-muted" style={{ fontSize: 12 }}>برند:</span>
+                <select
+                  value={activeBrand}
+                  onChange={(e) => setActiveBrand(e.target.value)}
+                  className="bg-panel-2 border border-hair rounded-full px-3 py-1.5 text-xs"
+                  style={{ color: "#F3EDE4" }}
+                >
+                  <option value="all">همه‌ی برندها</option>
+                  {brandsInCategory.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {loading ? (
               <p className="text-muted">در حال بارگذاری محصولات...</p>
@@ -838,7 +1000,7 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", brand: "", category: "perfume", price: "", description: "", image: "", variantsText: "" };
+  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", price: "", description: "", image: "", variantsText: "" };
 }
 
 function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError }) {
@@ -953,14 +1115,27 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         />
         <select
           value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value })}
+          onChange={(e) => setForm({ ...form, category: e.target.value, subcategory: "" })}
           className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
           style={{ color: "#F3EDE4" }}
         >
-          {Object.entries(CATEGORY_LABEL).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
+          {CATEGORY_ORDER.map((k) => (
+            <option key={k} value={k}>{CATEGORY_LABEL[k]}</option>
           ))}
         </select>
+        {CATEGORIES[form.category]?.subcategories && (
+          <select
+            value={form.subcategory}
+            onChange={(e) => setForm({ ...form, subcategory: e.target.value })}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#F3EDE4" }}
+          >
+            <option value="">زیرشاخه را انتخاب کن</option>
+            {Object.entries(CATEGORIES[form.category].subcategories).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        )}
         <input
           placeholder="قیمت (تومان)"
           type="number"
@@ -1061,7 +1236,8 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             <div className="flex-1">
               <p style={{ fontSize: 14 }}>{p.name} <span className="text-muted" style={{ fontSize: 11 }}>— {p.brand}</span></p>
               <p className="text-muted" style={{ fontSize: 11 }}>
-                {CATEGORY_LABEL[p.category]} · {fmtPrice(p.price)}
+                {CATEGORY_LABEL[p.category]}
+                {p.subcategory && ` (${subcategoryLabel(p.category, p.subcategory)})`} · {fmtPrice(p.price)}
                 {p.variants && p.variants.length > 0 && (
                   <span className="text-gold"> · {p.variants.length} طیف رنگ</span>
                 )}
