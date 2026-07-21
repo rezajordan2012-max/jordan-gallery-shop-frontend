@@ -464,6 +464,7 @@ export default function MaisonStore() {
   const [view, setView] = useState("store"); // store | admin
   const [menuOpen, setMenuOpen] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
+  const [menuNav, setMenuNav] = useState(null); // null | { category } | { category, subcategory }
   const [cartOpen, setCartOpen] = useState(false);
   const [cartBump, setCartBump] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
@@ -751,6 +752,45 @@ export default function MaisonStore() {
     setActiveType("all");
   }
 
+  function closeMenu() {
+    setMenuOpen(false);
+    setMenuNav(null);
+  }
+
+  // زدن روی یک دسته‌ی اصلی توی منوی کشویی: اگر زیرشاخه دارد وارد آن می‌شویم، وگرنه مستقیم فیلتر و بسته می‌شود.
+  function onMenuCategoryClick(c) {
+    if (c === "all" || !CATEGORIES[c]?.subcategories) {
+      selectCategory(c);
+      closeMenu();
+      return;
+    }
+    setMenuNav({ category: c });
+  }
+
+  // زدن روی یک زیرشاخه توی منو: اگر خودش انواع دارد (مثل صورت/چشم/لب/ابزار) وارد آن می‌شویم، وگرنه فیلتر و بسته می‌شود.
+  function onMenuSubcategoryClick(category, subKey) {
+    if (subKey === "all") {
+      selectCategory(category);
+      closeMenu();
+      return;
+    }
+    if (subcategoryTypes(category, subKey)) {
+      setMenuNav({ category, subcategory: subKey });
+      return;
+    }
+    selectCategory(category);
+    selectSubcategory(subKey);
+    closeMenu();
+  }
+
+  // زدن روی یک نوع دقیق محصول (سطح سوم): فیلتر نهایی اعمال و منو بسته می‌شود.
+  function onMenuTypeClick(category, subKey, typeKey) {
+    selectCategory(category);
+    selectSubcategory(subKey);
+    if (typeKey !== "all") setActiveType(typeKey);
+    closeMenu();
+  }
+
   const activeSubcategories = activeCategory !== "all" && CATEGORIES[activeCategory]?.subcategories
     ? CATEGORIES[activeCategory].subcategories
     : null;
@@ -779,7 +819,7 @@ export default function MaisonStore() {
       <header className="sticky z-30 bg-panel border-b border-hair" style={{ top: 28, backdropFilter: "blur(6px)" }}>
         <div className="flex items-center justify-between px-4 py-3 sm:px-8">
           <div className="flex items-center gap-3">
-            <button className="sm:hidden" onClick={() => setMenuOpen((v) => !v)} aria-label="منو">
+            <button className="sm:hidden" onClick={() => { setMenuOpen((v) => !v); setMenuNav(null); }} aria-label="منو">
               <Menu size={22} color="#F3EDE4" />
             </button>
             <div className="flex flex-col leading-none">
@@ -839,32 +879,87 @@ export default function MaisonStore() {
 
         {menuOpen && (
           <div className="sm:hidden flex flex-col gap-1 px-4 pb-3 text-sm text-muted">
-            {["all", ...CATEGORY_ORDER].map((c) => (
-              <button
-                key={c}
-                onClick={() => { selectCategory(c); setMenuOpen(false); }}
-                className="text-right py-1"
-              >
-                {c === "all" ? "همه محصولات" : CATEGORY_LABEL[c]}
-              </button>
-            ))}
-            <button
-              onClick={() => setBrandMenuOpen(true)}
-              className="text-right py-1 text-gold"
-            >
-              انتخاب بر اساس برند
-            </button>
-            {isAdmin && (
-              <button onClick={() => { setView(view === "admin" ? "store" : "admin"); setMenuOpen(false); }} className="text-right py-1 text-gold">
-                {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
-              </button>
+            {menuNav === null && (
+              <>
+                <button onClick={() => onMenuCategoryClick("all")} className="text-right py-1">
+                  همه محصولات
+                </button>
+                {CATEGORY_ORDER.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => onMenuCategoryClick(c)}
+                    className="text-right py-1 flex items-center justify-between"
+                  >
+                    <span>{CATEGORY_LABEL[c]}</span>
+                    {CATEGORIES[c]?.subcategories && <span className="text-gold">‹</span>}
+                  </button>
+                ))}
+                <button
+                  onClick={() => { setBrandMenuOpen(true); setMenuOpen(false); }}
+                  className="text-right py-1 text-gold"
+                >
+                  انتخاب بر اساس برند
+                </button>
+                {isAdmin && (
+                  <button onClick={() => { setView(view === "admin" ? "store" : "admin"); closeMenu(); }} className="text-right py-1 text-gold">
+                    {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
+                  </button>
+                )}
+                <button
+                  onClick={() => { user ? handleLogout() : setAuthOpen(true); closeMenu(); }}
+                  className="text-right py-1"
+                >
+                  {user ? `خروج (${user.email})` : "ورود / ثبت‌نام"}
+                </button>
+              </>
             )}
-            <button
-              onClick={() => { user ? handleLogout() : setAuthOpen(true); setMenuOpen(false); }}
-              className="text-right py-1"
-            >
-              {user ? `خروج (${user.email})` : "ورود / ثبت‌نام"}
-            </button>
+
+            {menuNav && !menuNav.subcategory && (
+              <>
+                <button onClick={() => setMenuNav(null)} className="text-right py-1 text-gold flex items-center gap-1">
+                  <span>›</span> بازگشت
+                </button>
+                <p className="font-display" style={{ fontSize: 15, color: "#F3EDE4", margin: "4px 0" }}>
+                  {CATEGORY_LABEL[menuNav.category]}
+                </p>
+                <button onClick={() => onMenuSubcategoryClick(menuNav.category, "all")} className="text-right py-1">
+                  همه‌ی {CATEGORY_LABEL[menuNav.category]}
+                </button>
+                {Object.keys(CATEGORIES[menuNav.category].subcategories).map((subKey) => (
+                  <button
+                    key={subKey}
+                    onClick={() => onMenuSubcategoryClick(menuNav.category, subKey)}
+                    className="text-right py-1 flex items-center justify-between"
+                  >
+                    <span>{subcategoryLabel(menuNav.category, subKey)}</span>
+                    {subcategoryTypes(menuNav.category, subKey) && <span className="text-gold">‹</span>}
+                  </button>
+                ))}
+              </>
+            )}
+
+            {menuNav && menuNav.subcategory && (
+              <>
+                <button onClick={() => setMenuNav({ category: menuNav.category })} className="text-right py-1 text-gold flex items-center gap-1">
+                  <span>›</span> بازگشت
+                </button>
+                <p className="font-display" style={{ fontSize: 15, color: "#F3EDE4", margin: "4px 0" }}>
+                  {subcategoryLabel(menuNav.category, menuNav.subcategory)}
+                </p>
+                <button onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, "all")} className="text-right py-1">
+                  همه‌ی {subcategoryLabel(menuNav.category, menuNav.subcategory)}
+                </button>
+                {Object.entries(subcategoryTypes(menuNav.category, menuNav.subcategory)).map(([typeKey, label]) => (
+                  <button
+                    key={typeKey}
+                    onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey)}
+                    className="text-right py-1"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         )}
       </header>
