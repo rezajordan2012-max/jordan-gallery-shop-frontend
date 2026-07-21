@@ -175,7 +175,50 @@ const CATEGORIES = {
   },
   makeup: {
     label: "آرایشی",
-    subcategories: { face: "صورت", eye: "چشم", lip: "لب", accessory: "اکسسوری" },
+    subcategories: {
+      face: {
+        label: "صورت",
+        types: {
+          primer: "پرایمر",
+          concealer: "کانسیلر",
+          foundation: "کرم پودر",
+          highlighter: "هایلایتر",
+          powder: "پودر",
+          contour: "کانتور و برنزر",
+          settingSpray: "اسپری تثبیت‌کننده",
+        },
+      },
+      eye: {
+        label: "چشم",
+        types: {
+          eyebrow: "ابرو",
+          eyeshadow: "سایه چشم",
+          glitter: "اکلیل",
+          mascara: "ریمل",
+          eyeliner: "خط چشم",
+        },
+      },
+      lip: {
+        label: "لب",
+        types: {
+          lipstick: "رژ لب",
+          gloss: "برق لب",
+          liner: "خط لب",
+          liquidLipstick: "رژ لب مایع",
+          tint: "رنگ لب",
+          lipCare: "مراقبت از لب",
+          lipSet: "ست لب",
+        },
+      },
+      accessory: {
+        label: "ابزارهای زیبایی",
+        types: {
+          brushes: "برس‌ها",
+          spongeTools: "اسفنج و ابزار",
+          lashes: "مژه‌ها",
+        },
+      },
+    },
   },
   hygiene: {
     label: "بهداشتی",
@@ -200,10 +243,30 @@ const CATEGORY_CARD_CLASS = {
   electronics: "card-electronics",
 };
 
+// زیرشاخه‌ها یا به‌صورت ساده (رشته) هستند یا تودرتو (شیء با label و types) — این کمک‌تابع‌ها هر دو حالت را پشتیبانی می‌کنند.
+function isNestedSubcategory(sub) {
+  return sub && typeof sub === "object";
+}
+
 function subcategoryLabel(category, subcategory) {
   const cat = CATEGORIES[category];
   if (!cat || !cat.subcategories || !subcategory) return "";
-  return cat.subcategories[subcategory] || "";
+  const sub = cat.subcategories[subcategory];
+  if (!sub) return "";
+  return isNestedSubcategory(sub) ? sub.label : sub;
+}
+
+function subcategoryTypes(category, subcategory) {
+  const cat = CATEGORIES[category];
+  if (!cat || !cat.subcategories || !subcategory) return null;
+  const sub = cat.subcategories[subcategory];
+  return isNestedSubcategory(sub) && sub.types ? sub.types : null;
+}
+
+function typeLabel(category, subcategory, type) {
+  const types = subcategoryTypes(category, subcategory);
+  if (!types || !type) return "";
+  return types[type] || "";
 }
 
 function fmtPrice(n) {
@@ -278,14 +341,15 @@ function variantsToText(variants) {
 const SEED_PRODUCTS = [
   { id: "p1", name: "بلور شب", brand: "خانه میسان", category: "perfume", subcategory: "women", price: 2450000, description: "رایحه‌ای شرقی و گرم با نت‌های عود و وانیل، مناسب شب.", image: "" },
   { id: "p2", name: "باغ سپید", brand: "خانه میسان", category: "perfume", subcategory: "unisex", price: 1980000, description: "ترکیبی تازه از یاس و مرکبات برای روزهای بهاری.", image: "" },
-  { id: "p3", name: "سرم درخشش طلایی", brand: "اطلس", category: "makeup", subcategory: "face", price: 890000, description: "سرم آبرسان با عصاره طلا، مناسب پوست‌های خشک و بی‌روح.", image: "" },
-  { id: "p4", name: "پالت سایه صدف", brand: "اطلس", category: "makeup", subcategory: "eye", price: 1250000, description: "پالت سایه با پیگمنت بالا و بافت مخملی.", image: "" },
+  { id: "p3", name: "کانسیلر پوششی", brand: "اطلس", category: "makeup", subcategory: "face", type: "concealer", price: 890000, description: "کانسیلر با پوشش بالا، مناسب پوست‌های خشک و بی‌روح.", image: "" },
+  { id: "p4", name: "پالت سایه صدف", brand: "اطلس", category: "makeup", subcategory: "eye", type: "eyeshadow", price: 1250000, description: "پالت سایه با پیگمنت بالا و بافت مخملی.", image: "" },
   {
     id: "p7",
     name: "رژ لب مخملی",
     brand: "اطلس",
     category: "makeup",
     subcategory: "lip",
+    type: "lipstick",
     price: 620000,
     description: "بافت مخملی و ماندگاری بالا، با طیف گسترده‌ی رنگ — رنگ و شماره را انتخاب کن.",
     image: "",
@@ -298,7 +362,7 @@ const SEED_PRODUCTS = [
       { id: "v6", label: "شماره ۶ - زرشکی تیره", hex: "#5C1A2E", image: "" },
     ],
   },
-  { id: "p8", name: "کیف لوازم آرایش", brand: "اطلس", category: "makeup", subcategory: "accessory", price: 540000, description: "کیف مخملی جادار برای نگهداری از لوازم آرایشی.", image: "" },
+  { id: "p8", name: "ست براش حرفه‌ای", brand: "اطلس", category: "makeup", subcategory: "accessory", type: "brushes", price: 540000, description: "ست براش‌های آرایشی با موی مصنوعی نرم.", image: "" },
   { id: "p9", name: "شامپو ترمیم‌کننده", brand: "ولوره", category: "hygiene", subcategory: "hair", price: 380000, description: "شامپو بدون سولفات، مناسب موهای آسیب‌دیده.", image: "" },
   { id: "p10", name: "لوسیون آبرسان بدن", brand: "ولوره", category: "hygiene", subcategory: "body", price: 420000, description: "لوسیون سبک و سریع‌جذب برای آبرسانی روزانه‌ی پوست.", image: "" },
   { id: "p5", name: "سشوار حرفه‌ای یون‌دار", brand: "ولوره", category: "electronics", subcategory: "hair", price: 3200000, description: "قدرت ۲۲۰۰ وات، فناوری یونیزه برای کاهش وز مو.", image: "" },
@@ -334,6 +398,7 @@ function ProductCard({ product, onAdd }) {
           {product.subcategory && (
             <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(216,191,158,0.25)", borderRadius: 999, padding: "2px 8px" }}>
               {subcategoryLabel(product.category, product.subcategory)}
+              {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
             </span>
           )}
         </div>
@@ -398,10 +463,12 @@ function ProductCard({ product, onAdd }) {
 export default function MaisonStore() {
   const [view, setView] = useState("store"); // store | admin
   const [menuOpen, setMenuOpen] = useState(false);
+  const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartBump, setCartBump] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeSubcategory, setActiveSubcategory] = useState("all");
+  const [activeType, setActiveType] = useState("all");
   const [activeBrand, setActiveBrand] = useState("all");
   const [cart, setCart] = useState({}); // id -> qty
   const [products, setProducts] = useState([]);
@@ -643,6 +710,21 @@ export default function MaisonStore() {
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cartItems.reduce((s, i) => s + i.qty * i.price, 0);
 
+  const allBrands = useMemo(() => {
+    return Array.from(new Set(products.map((p) => p.brand).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fa"));
+  }, [products]);
+
+  function selectBrand(brand) {
+    setActiveCategory("all");
+    setActiveSubcategory("all");
+    setActiveType("all");
+    setActiveBrand(brand);
+    setView("store");
+    setBrandMenuOpen(false);
+    setMenuOpen(false);
+    setTimeout(() => document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" }), 50);
+  }
+
   const brandsInCategory = useMemo(() => {
     const scoped = activeCategory === "all" ? products : products.filter((p) => p.category === activeCategory);
     return Array.from(new Set(scoped.map((p) => p.brand).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fa"));
@@ -651,6 +733,7 @@ export default function MaisonStore() {
   const filteredProducts = products.filter((p) => {
     if (activeCategory !== "all" && p.category !== activeCategory) return false;
     if (activeCategory !== "all" && activeSubcategory !== "all" && (p.subcategory || "") !== activeSubcategory) return false;
+    if (activeSubcategory !== "all" && activeType !== "all" && (p.type || "") !== activeType) return false;
     if (activeBrand !== "all" && p.brand !== activeBrand) return false;
     return true;
   });
@@ -658,13 +741,21 @@ export default function MaisonStore() {
   function selectCategory(c) {
     setActiveCategory(c);
     setActiveSubcategory("all");
+    setActiveType("all");
     setActiveBrand("all");
     setView("store");
+  }
+
+  function selectSubcategory(key) {
+    setActiveSubcategory(key);
+    setActiveType("all");
   }
 
   const activeSubcategories = activeCategory !== "all" && CATEGORIES[activeCategory]?.subcategories
     ? CATEGORIES[activeCategory].subcategories
     : null;
+
+  const activeTypes = activeSubcategory !== "all" ? subcategoryTypes(activeCategory, activeSubcategory) : null;
 
   return (
     <div dir="rtl" lang="fa" className="maison-root min-h-screen">
@@ -692,8 +783,8 @@ export default function MaisonStore() {
               <Menu size={22} color="#F3EDE4" />
             </button>
             <div className="flex flex-col leading-none">
-              <span className="font-latin text-gold" style={{ fontSize: 13 }}>MAISON</span>
-              <span className="font-display" style={{ fontSize: 20 }}>میسان</span>
+              <span className="font-latin text-gold" style={{ fontSize: 13 }}>JORDAN</span>
+              <span className="font-display" style={{ fontSize: 20 }}>گالری جردن</span>
             </div>
           </div>
 
@@ -757,6 +848,12 @@ export default function MaisonStore() {
                 {c === "all" ? "همه محصولات" : CATEGORY_LABEL[c]}
               </button>
             ))}
+            <button
+              onClick={() => setBrandMenuOpen(true)}
+              className="text-right py-1 text-gold"
+            >
+              انتخاب بر اساس برند
+            </button>
             {isAdmin && (
               <button onClick={() => { setView(view === "admin" ? "store" : "admin"); setMenuOpen(false); }} className="text-right py-1 text-gold">
                 {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
@@ -771,6 +868,34 @@ export default function MaisonStore() {
           </div>
         )}
       </header>
+
+      {/* پنل انتخاب بر اساس برند — از منوی کشویی باز می‌شود */}
+      {brandMenuOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setBrandMenuOpen(false)}>
+          <div className="bg-panel-2 rounded-lg p-6 w-full border border-hair" style={{ maxWidth: 380, maxHeight: "70vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display" style={{ fontSize: 17 }}>انتخاب بر اساس برند</h3>
+              <button onClick={() => setBrandMenuOpen(false)}><X size={18} color="#F3EDE4" /></button>
+            </div>
+            {allBrands.length === 0 ? (
+              <p className="text-muted" style={{ fontSize: 13 }}>هنوز برندی ثبت نشده است.</p>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {allBrands.map((b) => (
+                  <button
+                    key={b}
+                    onClick={() => selectBrand(b)}
+                    className="text-right py-2 px-2 rounded hover:bg-panel"
+                    style={{ fontSize: 14 }}
+                  >
+                    {b}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {view === "admin" && isAdmin ? (
         <AdminPanel
@@ -861,18 +986,40 @@ export default function MaisonStore() {
             {activeSubcategories && (
               <div className="flex flex-wrap gap-2 mb-4">
                 <button
-                  onClick={() => setActiveSubcategory("all")}
+                  onClick={() => selectSubcategory("all")}
                   className="btn-ghost rounded-full px-3 py-1.5 text-xs"
                   style={activeSubcategory === "all" ? { borderColor: "#DCB77E", color: "#DCB77E" } : undefined}
                 >
                   همه
                 </button>
-                {Object.entries(activeSubcategories).map(([key, label]) => (
+                {Object.keys(activeSubcategories).map((key) => (
                   <button
                     key={key}
-                    onClick={() => setActiveSubcategory(key)}
+                    onClick={() => selectSubcategory(key)}
                     className="btn-ghost rounded-full px-3 py-1.5 text-xs"
                     style={activeSubcategory === key ? { borderColor: "#DCB77E", color: "#DCB77E" } : undefined}
+                  >
+                    {subcategoryLabel(activeCategory, key)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeTypes && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                <button
+                  onClick={() => setActiveType("all")}
+                  className="btn-ghost rounded-full px-3 py-1 text-xs"
+                  style={activeType === "all" ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
+                >
+                  همه‌ی انواع
+                </button>
+                {Object.entries(activeTypes).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setActiveType(key)}
+                    className="btn-ghost rounded-full px-3 py-1 text-xs"
+                    style={activeType === key ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
                   >
                     {label}
                   </button>
@@ -1072,14 +1219,14 @@ export default function MaisonStore() {
       )}
 
       <footer className="border-t border-hair px-4 sm:px-8 py-8 text-center text-muted" style={{ fontSize: 12 }}>
-        © میسان — فروشگاه آنلاین عطر، آرایشی-بهداشتی و لوازم برقی شخصی
+        © گالری آرایشی، بهداشتی و ادکلن جردن — فروشگاه آنلاین عطر، آرایشی-بهداشتی و لوازم برقی شخصی
       </footer>
     </div>
   );
 }
 
 function emptyForm() {
-  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", price: "", description: "", image: "", variantsText: "" };
+  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", price: "", description: "", image: "", variantsText: "" };
 }
 
 function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError }) {
@@ -1194,7 +1341,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         />
         <select
           value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value, subcategory: "" })}
+          onChange={(e) => setForm({ ...form, category: e.target.value, subcategory: "", type: "" })}
           className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
           style={{ color: "#F3EDE4" }}
         >
@@ -1205,12 +1352,25 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         {CATEGORIES[form.category]?.subcategories && (
           <select
             value={form.subcategory}
-            onChange={(e) => setForm({ ...form, subcategory: e.target.value })}
+            onChange={(e) => setForm({ ...form, subcategory: e.target.value, type: "" })}
             className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
             style={{ color: "#F3EDE4" }}
           >
             <option value="">زیرشاخه را انتخاب کن</option>
-            {Object.entries(CATEGORIES[form.category].subcategories).map(([k, v]) => (
+            {Object.keys(CATEGORIES[form.category].subcategories).map((k) => (
+              <option key={k} value={k}>{subcategoryLabel(form.category, k)}</option>
+            ))}
+          </select>
+        )}
+        {subcategoryTypes(form.category, form.subcategory) && (
+          <select
+            value={form.type}
+            onChange={(e) => setForm({ ...form, type: e.target.value })}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#F3EDE4" }}
+          >
+            <option value="">نوع محصول را انتخاب کن</option>
+            {Object.entries(subcategoryTypes(form.category, form.subcategory)).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
             ))}
           </select>
@@ -1316,7 +1476,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               <p style={{ fontSize: 14 }}>{p.name} <span className="text-muted" style={{ fontSize: 11 }}>— {p.brand}</span></p>
               <p className="text-muted" style={{ fontSize: 11 }}>
                 {CATEGORY_LABEL[p.category]}
-                {p.subcategory && ` (${subcategoryLabel(p.category, p.subcategory)})`} · {fmtPrice(p.price)}
+                {p.subcategory && ` (${subcategoryLabel(p.category, p.subcategory)}${p.type ? " - " + typeLabel(p.category, p.subcategory, p.type) : ""})`} · {fmtPrice(p.price)}
                 {p.variants && p.variants.length > 0 && (
                   <span className="text-gold"> · {p.variants.length} طیف رنگ</span>
                 )}
