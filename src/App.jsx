@@ -182,6 +182,7 @@ const CATEGORIES = {
           primer: "پرایمر",
           concealer: "کانسیلر",
           foundation: "کرم پودر",
+          blush: "رژگونه",
           highlighter: "هایلایتر",
           powder: "پودر",
           contour: "کانتور و برنزر",
