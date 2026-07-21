@@ -117,9 +117,54 @@ const FONTS = `
     box-shadow: 0 0 0 3px rgba(220,183,126,0.12);
   }
 
+  /* نوار اعلان متحرک بالای صفحه */
+  .marquee-track {
+    display: inline-flex;
+    white-space: nowrap;
+    animation: marqueeScroll 22s linear infinite;
+  }
+  @keyframes marqueeScroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* پرش سبد خرید هنگام افزودن محصول */
+  @keyframes cartBump {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.28); }
+    55% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+  }
+  .cart-bump { animation: cartBump 0.45s cubic-bezier(.3,1.6,.5,1); }
+
+  /* اسکلتون درخشان هنگام بارگذاری محصولات */
+  .skeleton {
+    background: linear-gradient(100deg, #241a29 30%, #33253a 50%, #241a29 70%);
+    background-size: 200% 100%;
+    animation: skeletonShine 1.4s ease-in-out infinite;
+  }
+  @keyframes skeletonShine {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ذرات درخشان شناور در هدر */
+  @keyframes sparkleFloat {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.7; }
+    50% { transform: translateY(-14px) scale(1.25); opacity: 1; }
+  }
+  .sparkle { animation: sparkleFloat 3.2s ease-in-out infinite; }
+
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220,183,126,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(220,183,126,0); }
+  }
+  .pulse-glow { animation: pulseGlow 2.2s ease-in-out infinite; }
+
   @media (prefers-reduced-motion: reduce) {
     .glint, .float-slow, .fade-in-up { animation: none; }
     .product-card, .product-card img, .category-card { transition: none; }
+    .marquee-track, .cart-bump, .skeleton, .sparkle, .pulse-glow { animation: none; }
   }
 `;
 
@@ -354,6 +399,7 @@ export default function MaisonStore() {
   const [view, setView] = useState("store"); // store | admin
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [cartBump, setCartBump] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeSubcategory, setActiveSubcategory] = useState("all");
   const [activeBrand, setActiveBrand] = useState("all");
@@ -479,6 +525,9 @@ export default function MaisonStore() {
     const key = variantId ? `${product.id}::${variantId}` : product.id;
     setCart((c) => ({ ...c, [key]: (c[key] || 0) + 1 }));
     setCartOpen(true);
+    setCartBump(true);
+    window.clearTimeout(addToCart._t);
+    addToCart._t = window.setTimeout(() => setCartBump(false), 450);
   }
   function changeQty(key, delta) {
     setCart((c) => {
@@ -621,8 +670,22 @@ export default function MaisonStore() {
     <div dir="rtl" lang="fa" className="maison-root min-h-screen">
       <style>{FONTS}</style>
 
+      {/* Announcement marquee */}
+      <div className="sticky top-0 z-40 overflow-hidden" style={{ background: "linear-gradient(90deg, #B98A4C, #E4C08C, #B98A4C)" }}>
+        <div className="marquee-track py-1.5" style={{ color: "#1B1420", fontSize: 12, fontWeight: 600 }}>
+          {Array.from({ length: 2 }).map((_, i) => (
+            <span key={i} className="flex items-center gap-10 px-6">
+              <span>✦ ارسال سریع به سراسر ایران</span>
+              <span>✦ ضمانت اصالت کالا</span>
+              <span>✦ پرداخت امن با درگاه زرین‌پال</span>
+              <span>✦ پشتیبانی آنلاین محصولات</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-panel border-b border-hair" style={{ backdropFilter: "blur(6px)" }}>
+      <header className="sticky z-30 bg-panel border-b border-hair" style={{ top: 28, backdropFilter: "blur(6px)" }}>
         <div className="flex items-center justify-between px-4 py-3 sm:px-8">
           <div className="flex items-center gap-3">
             <button className="sm:hidden" onClick={() => setMenuOpen((v) => !v)} aria-label="منو">
@@ -656,7 +719,7 @@ export default function MaisonStore() {
                 {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
               </button>
             )}
-            <button onClick={() => setCartOpen(true)} className="relative" aria-label="سبد خرید">
+            <button onClick={() => setCartOpen(true)} className={`relative ${cartBump ? "cart-bump" : ""}`} aria-label="سبد خرید">
               <ShoppingBag size={22} color="#F3EDE4" />
               {cartCount > 0 && (
                 <span
@@ -733,7 +796,7 @@ export default function MaisonStore() {
               </p>
               <button
                 onClick={() => document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" })}
-                className="btn-gold rounded px-6 py-3 mt-6 text-sm font-medium"
+                className="btn-gold pulse-glow rounded px-6 py-3 mt-6 text-sm font-medium"
               >
                 مشاهده محصولات
               </button>
@@ -760,6 +823,9 @@ export default function MaisonStore() {
                 <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 14 }}>
                   <div className="glint" />
                 </div>
+                <span className="sparkle" style={{ position: "absolute", top: 6, right: -6, width: 6, height: 6, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)" }} />
+                <span className="sparkle" style={{ position: "absolute", top: "45%", left: -12, width: 5, height: 5, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)", animationDelay: "0.8s" }} />
+                <span className="sparkle" style={{ position: "absolute", bottom: 14, right: 10, width: 4, height: 4, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 6px 2px rgba(243,217,168,0.8)", animationDelay: "1.6s" }} />
               </div>
             </div>
           </section>
@@ -832,13 +898,26 @@ export default function MaisonStore() {
             )}
 
             {loading ? (
-              <p className="text-muted">در حال بارگذاری محصولات...</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border border-hair overflow-hidden">
+                    <div className="skeleton" style={{ height: 220 }} />
+                    <div className="p-4 flex flex-col gap-2">
+                      <div className="skeleton" style={{ height: 10, width: "40%", borderRadius: 4 }} />
+                      <div className="skeleton" style={{ height: 14, width: "70%", borderRadius: 4 }} />
+                      <div className="skeleton" style={{ height: 10, width: "90%", borderRadius: 4 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredProducts.length === 0 ? (
               <p className="text-muted">محصولی در این دسته ثبت نشده است.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filteredProducts.map((p) => (
-                  <ProductCard key={p.id} product={p} onAdd={addToCart} />
+                {filteredProducts.map((p, i) => (
+                  <div key={p.id} className="fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 0.06}s` }}>
+                    <ProductCard product={p} onAdd={addToCart} />
+                  </div>
                 ))}
               </div>
             )}
