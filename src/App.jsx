@@ -250,7 +250,24 @@ const CATEGORIES = {
   hygiene: {
     label: "بهداشتی",
     subcategories: {
-      hairCare: "مراقبت از موی سر و ابرو و مژه",
+      hairCare: {
+        label: "مراقبت از موی سر و ابرو و مژه",
+        types: {
+          shampoo: "شامپو موی سر",
+          conditionerShampoo: "شامپو نرم‌کننده موی سر",
+          dryShampoo: "شامپو خشک",
+          hairMaskRinse: "ماسک مو با آبکشی",
+          hairMaskNoRinse: "ماسک مو بدون آبکشی",
+          twoPhaseSpray: "اسپری احیاکننده دوفاز",
+          arganSerum: "انواع سرم آرگان و غیره",
+          antiDandruffSerum: "سرم ضد شوره و خارش موی سر",
+          antiHairLossTonic: "سرم و تونیک ضد ریزش موی سر",
+          antiHairLossPill: "قرص ضد ریزش موی سر",
+          hairCocktail: "کوکتل تقویت موی سر",
+          eyebrowSerum: "سرم تقویت ابرو",
+          eyelashSerum: "سرم تقویت مژه",
+        },
+      },
       faceSkin: "مراقبت از پوست صورت",
       bodySkin: "مراقبت از پوست بدن",
       oral: "مراقبت از دهان و دندان",
