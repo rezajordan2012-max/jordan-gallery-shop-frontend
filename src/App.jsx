@@ -8,6 +8,7 @@ import {
 // (بعد از دیپلوی سرور در پوشه‌ی backend، مثلاً: "https://jordan-gallery-shop-backend.onrender.com")
 const API_BASE_URL = "https://jordan-gallery-shop-backend.onrender.com";
 
+
 // فقط کاربری با همین ایمیل اجازه‌ی دسترسی به پنل مدیریت را دارد.
 // تشخیص نهایی مدیر بودن باید سمت سرور (بک‌اند) هم بررسی شود؛ این فقط لایه‌ی نمایش در فرانت‌اند است.
 const ADMIN_EMAIL = "rezajordan2012@gmail.com";
@@ -96,6 +97,30 @@ const FONTS = `
   }
   .float-slow { animation: floatSlow 6s ease-in-out infinite; }
 
+  @keyframes rayRotate {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+  .ray-burst {
+    position: absolute; top: 50%; left: 50%; width: 340px; height: 340px;
+    background: repeating-conic-gradient(from 0deg, rgba(228,192,140,0.16) 0deg 4deg, transparent 4deg 18deg);
+    border-radius: 50%;
+    animation: rayRotate 34s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes haloBreathe {
+    0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 0.85; transform: translate(-50%, -50%) scale(1.08); }
+  }
+  .hero-halo {
+    position: absolute; top: 50%; left: 50%; width: 260px; height: 260px;
+    background: radial-gradient(circle, rgba(228,192,140,0.35), rgba(148,90,150,0.16) 55%, transparent 75%);
+    filter: blur(6px);
+    border-radius: 50%;
+    animation: haloBreathe 5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
   @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: translateY(0); }
@@ -165,6 +190,7 @@ const FONTS = `
     .glint, .float-slow, .fade-in-up { animation: none; }
     .product-card, .product-card img, .category-card { transition: none; }
     .marquee-track, .cart-bump, .skeleton, .sparkle, .pulse-glow { animation: none; }
+    .ray-burst, .hero-halo { animation: none; }
   }
 `;
 
@@ -476,6 +502,7 @@ export default function MaisonStore() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState(false);
+  const [heroImage, setHeroImage] = useState(null);
 
   // احراز هویت و پرداخت — توکن در localStorage نگه داشته می‌شود تا با رفرش صفحه
   // یا برگشت به تب مرورگر، ورود کاربر حفظ شود و فقط با زدن دکمه‌ی خروج پاک شود.
@@ -531,8 +558,20 @@ export default function MaisonStore() {
     }
   };
 
+  const loadSettings = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/settings`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.heroImage) setHeroImage(data.heroImage);
+    } catch (e) {
+      // اگر سرور در دسترس نبود، همان تصویر پیش‌فرض نمایش داده می‌شود.
+    }
+  };
+
   useEffect(() => {
     loadProducts();
+    loadSettings();
   }, []);
 
   // اگر کاربر خارج شد یا کاربر دیگری وارد شد، در صورتی که در پنل مدیریت بود، به فروشگاه برگردد.
@@ -585,6 +624,17 @@ export default function MaisonStore() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "آپلود تصویر ناموفق بود");
     return data.url;
+  }
+
+  async function updateHeroImage(url) {
+    const res = await fetch(`${API_BASE_URL}/api/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ heroImage: url }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "ذخیره‌ی تصویر ناموفق بود");
+    setHeroImage(url);
   }
 
   function addToCart(product, variantId) {
@@ -1001,6 +1051,8 @@ export default function MaisonStore() {
           onRemove={deleteProduct}
           onUploadImage={uploadImage}
           storageError={storageError}
+          heroImage={heroImage}
+          onUpdateHeroImage={updateHeroImage}
         />
       ) : (
         <>
@@ -1024,29 +1076,84 @@ export default function MaisonStore() {
             </div>
 
             <div className="flex-1 order-1 sm:order-2 flex justify-center">
-              <div className="float-slow" style={{ position: "relative", width: 150, height: 200 }}>
-                <svg width="150" height="200" viewBox="0 0 150 200" fill="none">
-                  <rect x="55" y="10" width="40" height="24" rx="4" fill="#B08D57" />
-                  <rect x="62" y="0" width="26" height="14" rx="3" fill="#D4AF7A" />
-                  <rect x="30" y="34" width="90" height="150" rx="14" fill="url(#bottleGrad)" stroke="#9C7A45" strokeWidth="1.5" />
-                  <rect x="30" y="90" width="90" height="94" rx="14" fill="url(#liquidGrad)" opacity="0.85" />
-                  <defs>
-                    <linearGradient id="bottleGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0" stopColor="#3B2440" />
-                      <stop offset="1" stopColor="#241A29" />
-                    </linearGradient>
-                    <linearGradient id="liquidGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0" stopColor="#D4AF7A" />
-                      <stop offset="1" stopColor="#8A6A3E" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 14 }}>
+              <div className="float-slow" style={{ position: "relative", width: 220, height: 260, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div className="ray-burst" />
+                <div className="hero-halo" />
+                {heroImage ? (
+                  <img
+                    src={heroImage}
+                    alt="عطر جردن"
+                    style={{
+                      position: "relative",
+                      zIndex: 1,
+                      width: 190,
+                      height: 227,
+                      objectFit: "contain",
+                      filter: "drop-shadow(0 18px 30px rgba(0,0,0,0.55))",
+                    }}
+                  />
+                ) : (
+                  <svg width="168" height="230" viewBox="0 0 168 230" fill="none" style={{ position: "relative", zIndex: 1 }}>
+                    <defs>
+                      <linearGradient id="capGrad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stopColor="#F0D19E" />
+                        <stop offset="0.5" stopColor="#C79A5B" />
+                        <stop offset="1" stopColor="#8F6A38" />
+                      </linearGradient>
+                      <linearGradient id="bottleGrad2" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stopColor="#40284A" />
+                        <stop offset="0.6" stopColor="#241A29" />
+                        <stop offset="1" stopColor="#180F1C" />
+                      </linearGradient>
+                      <linearGradient id="facetShine" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0" stopColor="#ffffff" stopOpacity="0" />
+                        <stop offset="0.5" stopColor="#ffffff" stopOpacity="0.14" />
+                        <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+                      </linearGradient>
+                      <linearGradient id="plateGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stopColor="#E7C489" />
+                        <stop offset="1" stopColor="#A9824C" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* پایه */}
+                    <ellipse cx="84" cy="222" rx="30" ry="5" fill="#000" opacity="0.35" />
+
+                    {/* بدنه‌ی چندوجهی (فست‌کات) شیشه */}
+                    <polygon
+                      points="84,60 118,78 128,140 118,205 50,205 40,140 50,78"
+                      fill="url(#bottleGrad2)"
+                      stroke="#8F6A38"
+                      strokeWidth="1.4"
+                    />
+                    <polygon points="84,60 118,78 128,140 84,140" fill="url(#facetShine)" opacity="0.6" />
+                    <line x1="84" y1="60" x2="84" y2="205" stroke="#5A3F63" strokeWidth="1" opacity="0.5" />
+                    <line x1="118" y1="78" x2="118" y2="205" stroke="#5A3F63" strokeWidth="0.8" opacity="0.35" />
+                    <line x1="50" y1="78" x2="50" y2="205" stroke="#5A3F63" strokeWidth="0.8" opacity="0.35" />
+
+                    {/* پلاک طلایی برچسب (بدون آرم مشخص) */}
+                    <rect x="62" y="118" width="44" height="52" rx="3" fill="url(#plateGrad)" stroke="#6E4F28" strokeWidth="1" />
+                    <path
+                      d="M84 130 L89 141 L100 143 L92 151 L94 162 L84 156 L74 162 L76 151 L68 143 L79 141 Z"
+                      fill="none"
+                      stroke="#6E4F28"
+                      strokeWidth="1.1"
+                      opacity="0.75"
+                    />
+
+                    {/* درپوش مخروطی */}
+                    <polygon points="84,4 100,42 68,42" fill="url(#capGrad)" stroke="#7A5A30" strokeWidth="1.2" />
+                    <rect x="70" y="42" width="28" height="16" rx="2" fill="url(#capGrad)" stroke="#7A5A30" strokeWidth="1" />
+                    <rect x="66" y="56" width="36" height="8" rx="2" fill="#B8935B" stroke="#7A5A30" strokeWidth="1" />
+                  </svg>
+                )}
+
+                <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 14, zIndex: 2 }}>
                   <div className="glint" />
                 </div>
-                <span className="sparkle" style={{ position: "absolute", top: 6, right: -6, width: 6, height: 6, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)" }} />
-                <span className="sparkle" style={{ position: "absolute", top: "45%", left: -12, width: 5, height: 5, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)", animationDelay: "0.8s" }} />
-                <span className="sparkle" style={{ position: "absolute", bottom: 14, right: 10, width: 4, height: 4, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 6px 2px rgba(243,217,168,0.8)", animationDelay: "1.6s" }} />
+                <span className="sparkle" style={{ position: "absolute", top: 18, right: 22, width: 6, height: 6, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)", zIndex: 2 }} />
+                <span className="sparkle" style={{ position: "absolute", top: "48%", left: 6, width: 5, height: 5, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)", animationDelay: "0.8s", zIndex: 2 }} />
+                <span className="sparkle" style={{ position: "absolute", bottom: 30, right: 30, width: 4, height: 4, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 6px 2px rgba(243,217,168,0.8)", animationDelay: "1.6s", zIndex: 2 }} />
               </div>
             </div>
           </section>
@@ -1325,7 +1432,12 @@ function emptyForm() {
   return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", price: "", description: "", image: "", variantsText: "" };
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroImage, onUpdateHeroImage }) {
+  const [heroUrlDraft, setHeroUrlDraft] = useState(heroImage || "");
+  const [heroUploading, setHeroUploading] = useState(false);
+  const [heroSaving, setHeroSaving] = useState(false);
+  const [heroError, setHeroError] = useState("");
+  const [heroSaved, setHeroSaved] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -1355,6 +1467,48 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       setFormError(err.message || "آپلود تصویر ناموفق بود");
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleHeroFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setHeroError("فایل انتخاب‌شده تصویر نیست");
+      return;
+    }
+    setHeroError("");
+    setHeroSaved(false);
+    setHeroUploading(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const url = await onUploadImage(base64);
+      setHeroUrlDraft(url);
+    } catch (err) {
+      setHeroError(err.message || "آپلود تصویر ناموفق بود");
+    } finally {
+      setHeroUploading(false);
+    }
+  }
+
+  async function saveHeroImage() {
+    if (!heroUrlDraft) return;
+    setHeroError("");
+    setHeroSaved(false);
+    setHeroSaving(true);
+    try {
+      await onUpdateHeroImage(heroUrlDraft);
+      setHeroSaved(true);
+    } catch (err) {
+      setHeroError(err.message || "ذخیره‌سازی ناموفق بود");
+    } finally {
+      setHeroSaving(false);
     }
   }
 
@@ -1419,6 +1573,50 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           {formError}
         </p>
       )}
+
+      {/* تنظیمات تصویر Hero صفحه‌ی اصلی */}
+      <div className="bg-panel border border-hair rounded-lg p-4 mb-8">
+        <h3 className="font-display mb-1" style={{ fontSize: 15 }}>تصویر صفحه‌ی اصلی (Hero)</h3>
+        <p className="text-muted mb-3" style={{ fontSize: 11 }}>
+          این عکس همان تصویری است که بالای صفحه‌ی اصلی سایت، کنار متن معرفی، نمایش داده می‌شود.
+        </p>
+        <div className="flex items-center gap-3 flex-wrap mb-2">
+          <label
+            className="btn-ghost rounded px-3 py-2 text-xs flex items-center gap-2"
+            style={{ cursor: heroUploading ? "default" : "pointer", opacity: heroUploading ? 0.6 : 1 }}
+          >
+            <Upload size={14} />
+            {heroUploading ? "در حال آپلود..." : "انتخاب از گالری"}
+            <input type="file" accept="image/*" onChange={handleHeroFile} disabled={heroUploading} style={{ display: "none" }} />
+          </label>
+          <input
+            placeholder="یا لینک عکس را اینجا بچسبان"
+            value={heroUrlDraft}
+            onChange={(e) => { setHeroUrlDraft(e.target.value); setHeroSaved(false); }}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
+            style={{ color: "#F3EDE4", minWidth: 200 }}
+            dir="ltr"
+          />
+          {heroUrlDraft && (
+            <img
+              src={heroUrlDraft}
+              alt="پیش‌نمایش"
+              style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(216,191,158,0.25)" }}
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+          )}
+        </div>
+        <button
+          onClick={saveHeroImage}
+          disabled={heroSaving || !heroUrlDraft}
+          type="button"
+          className="btn-gold rounded px-4 py-2 text-sm"
+        >
+          {heroSaving ? "در حال ذخیره..." : "ذخیره‌ی تصویر صفحه‌ی اصلی"}
+        </button>
+        {heroSaved && <span className="text-gold" style={{ fontSize: 12, marginRight: 10 }}>ذخیره شد ✓</span>}
+        {heroError && <p style={{ fontSize: 12, color: "#E3A9A9", marginTop: 6 }}>{heroError}</p>}
+      </div>
 
       <form onSubmit={submit} className="bg-panel border border-hair rounded-lg p-4 mb-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <input
