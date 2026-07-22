@@ -249,7 +249,14 @@ const CATEGORIES = {
   },
   hygiene: {
     label: "بهداشتی",
-    subcategories: { hair: "سر", body: "بدن" },
+    subcategories: {
+      hairCare: "مراقبت از موی سر و ابرو و مژه",
+      faceSkin: "مراقبت از پوست صورت",
+      bodySkin: "مراقبت از پوست بدن",
+      oral: "مراقبت از دهان و دندان",
+      feminine: "بهداشت شخصی بانوان",
+      masculine: "مراقبت شخصی آقایان",
+    },
   },
   electronics: {
     label: "لوازم برقی شخصی",
@@ -390,8 +397,8 @@ const SEED_PRODUCTS = [
     ],
   },
   { id: "p8", name: "ست براش حرفه‌ای", brand: "اطلس", category: "makeup", subcategory: "accessory", type: "brushes", price: 540000, description: "ست براش‌های آرایشی با موی مصنوعی نرم.", image: "" },
-  { id: "p9", name: "شامپو ترمیم‌کننده", brand: "ولوره", category: "hygiene", subcategory: "hair", price: 380000, description: "شامپو بدون سولفات، مناسب موهای آسیب‌دیده.", image: "" },
-  { id: "p10", name: "لوسیون آبرسان بدن", brand: "ولوره", category: "hygiene", subcategory: "body", price: 420000, description: "لوسیون سبک و سریع‌جذب برای آبرسانی روزانه‌ی پوست.", image: "" },
+  { id: "p9", name: "شامپو ترمیم‌کننده", brand: "ولوره", category: "hygiene", subcategory: "hairCare", price: 380000, description: "شامپو بدون سولفات، مناسب موهای آسیب‌دیده.", image: "" },
+  { id: "p10", name: "لوسیون آبرسان بدن", brand: "ولوره", category: "hygiene", subcategory: "bodySkin", price: 420000, description: "لوسیون سبک و سریع‌جذب برای آبرسانی روزانه‌ی پوست.", image: "" },
   { id: "p5", name: "سشوار حرفه‌ای یون‌دار", brand: "ولوره", category: "electronics", subcategory: "hair", price: 3200000, description: "قدرت ۲۲۰۰ وات، فناوری یونیزه برای کاهش وز مو.", image: "" },
   { id: "p6", name: "اپیلاتور بی‌سیم", brand: "ولوره", category: "electronics", subcategory: "body", price: 2100000, description: "طراحی مینیمال، شارژ سریع و کاربرد ملایم روی پوست.", image: "" },
   { id: "p11", name: "دستگاه پاکسازی صورت", brand: "ولوره", category: "electronics", subcategory: "face", price: 1650000, description: "برس سونیک برای پاکسازی عمیق منافذ پوست صورت.", image: "" },
@@ -1076,84 +1083,37 @@ export default function MaisonStore() {
             </div>
 
             <div className="flex-1 order-1 sm:order-2 flex justify-center">
-              <div className="float-slow" style={{ position: "relative", width: 220, height: 260, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div className="ray-burst" />
-                <div className="hero-halo" />
+              <div className="float-slow" style={{ position: "relative", width: 150, height: 200 }}>
                 {heroImage ? (
                   <img
                     src={heroImage}
                     alt="عطر جردن"
-                    style={{
-                      position: "relative",
-                      zIndex: 1,
-                      width: 190,
-                      height: 227,
-                      objectFit: "contain",
-                      filter: "drop-shadow(0 18px 30px rgba(0,0,0,0.55))",
-                    }}
+                    style={{ width: 150, height: 200, objectFit: "contain", filter: "drop-shadow(0 14px 24px rgba(0,0,0,0.5))" }}
                   />
                 ) : (
-                  <svg width="168" height="230" viewBox="0 0 168 230" fill="none" style={{ position: "relative", zIndex: 1 }}>
+                  <svg width="150" height="200" viewBox="0 0 150 200" fill="none">
+                    <rect x="55" y="10" width="40" height="24" rx="4" fill="#B08D57" />
+                    <rect x="62" y="0" width="26" height="14" rx="3" fill="#D4AF7A" />
+                    <rect x="30" y="34" width="90" height="150" rx="14" fill="url(#bottleGrad)" stroke="#9C7A45" strokeWidth="1.5" />
+                    <rect x="30" y="90" width="90" height="94" rx="14" fill="url(#liquidGrad)" opacity="0.85" />
                     <defs>
-                      <linearGradient id="capGrad" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0" stopColor="#F0D19E" />
-                        <stop offset="0.5" stopColor="#C79A5B" />
-                        <stop offset="1" stopColor="#8F6A38" />
+                      <linearGradient id="bottleGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stopColor="#3B2440" />
+                        <stop offset="1" stopColor="#241A29" />
                       </linearGradient>
-                      <linearGradient id="bottleGrad2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0" stopColor="#40284A" />
-                        <stop offset="0.6" stopColor="#241A29" />
-                        <stop offset="1" stopColor="#180F1C" />
-                      </linearGradient>
-                      <linearGradient id="facetShine" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0" stopColor="#ffffff" stopOpacity="0" />
-                        <stop offset="0.5" stopColor="#ffffff" stopOpacity="0.14" />
-                        <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
-                      </linearGradient>
-                      <linearGradient id="plateGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0" stopColor="#E7C489" />
-                        <stop offset="1" stopColor="#A9824C" />
+                      <linearGradient id="liquidGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stopColor="#D4AF7A" />
+                        <stop offset="1" stopColor="#8A6A3E" />
                       </linearGradient>
                     </defs>
-
-                    {/* پایه */}
-                    <ellipse cx="84" cy="222" rx="30" ry="5" fill="#000" opacity="0.35" />
-
-                    {/* بدنه‌ی چندوجهی (فست‌کات) شیشه */}
-                    <polygon
-                      points="84,60 118,78 128,140 118,205 50,205 40,140 50,78"
-                      fill="url(#bottleGrad2)"
-                      stroke="#8F6A38"
-                      strokeWidth="1.4"
-                    />
-                    <polygon points="84,60 118,78 128,140 84,140" fill="url(#facetShine)" opacity="0.6" />
-                    <line x1="84" y1="60" x2="84" y2="205" stroke="#5A3F63" strokeWidth="1" opacity="0.5" />
-                    <line x1="118" y1="78" x2="118" y2="205" stroke="#5A3F63" strokeWidth="0.8" opacity="0.35" />
-                    <line x1="50" y1="78" x2="50" y2="205" stroke="#5A3F63" strokeWidth="0.8" opacity="0.35" />
-
-                    {/* پلاک طلایی برچسب (بدون آرم مشخص) */}
-                    <rect x="62" y="118" width="44" height="52" rx="3" fill="url(#plateGrad)" stroke="#6E4F28" strokeWidth="1" />
-                    <path
-                      d="M84 130 L89 141 L100 143 L92 151 L94 162 L84 156 L74 162 L76 151 L68 143 L79 141 Z"
-                      fill="none"
-                      stroke="#6E4F28"
-                      strokeWidth="1.1"
-                      opacity="0.75"
-                    />
-
-                    {/* درپوش مخروطی */}
-                    <polygon points="84,4 100,42 68,42" fill="url(#capGrad)" stroke="#7A5A30" strokeWidth="1.2" />
-                    <rect x="70" y="42" width="28" height="16" rx="2" fill="url(#capGrad)" stroke="#7A5A30" strokeWidth="1" />
-                    <rect x="66" y="56" width="36" height="8" rx="2" fill="#B8935B" stroke="#7A5A30" strokeWidth="1" />
                   </svg>
                 )}
-
-                <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 14, zIndex: 2 }}>
+                <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 14 }}>
                   <div className="glint" />
                 </div>
-                <span className="sparkle" style={{ position: "absolute", top: 18, right: 22, width: 6, height: 6, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)", zIndex: 2 }} />
-                <span className="sparkle" style={{ position: "absolute", top: "48%", left: 6, width: 5, height: 5, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)", animationDelay: "0.8s", zIndex: 2 }} />
-                <span className="sparkle" style={{ position: "absolute", bottom: 30, right: 30, width: 4, height: 4, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 6px 2px rgba(243,217,168,0.8)", animationDelay: "1.6s", zIndex: 2 }} />
+                <span className="sparkle" style={{ position: "absolute", top: 6, right: -6, width: 6, height: 6, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)" }} />
+                <span className="sparkle" style={{ position: "absolute", top: "45%", left: -12, width: 5, height: 5, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)", animationDelay: "0.8s" }} />
+                <span className="sparkle" style={{ position: "absolute", bottom: 14, right: 10, width: 4, height: 4, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 6px 2px rgba(243,217,168,0.8)", animationDelay: "1.6s" }} />
               </div>
             </div>
           </section>
