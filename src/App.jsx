@@ -194,17 +194,41 @@ const FONTS = `
   }
 `;
 
+// گروه‌های فیلتر ادکلن — روی همه‌ی زیرشاخه‌های ادکلن یکسان اعمال می‌شود
+const PERFUME_FACETS = [
+  {
+    group: "دسته بویایی",
+    options: { bitter: "تلخ", sharp: "تند", sweet: "شیرین", sour: "ترش" },
+  },
+  {
+    group: "نوع",
+    options: {
+      parfum: "پرفیوم",
+      eauDeParfum: "ادو پرفیوم",
+      eauDeToilette: "ادو تویلت",
+      eauDeCologne: "ادو کلن",
+      eauFraiche: "او فرش",
+      extraitDeParfum: "اکستریت د پرفیوم",
+    },
+  },
+  {
+    group: "طبع",
+    options: { cool: "خنک", warm: "گرم", moderate: "معتدل" },
+  },
+];
+
 const CATEGORIES = {
   perfume: {
     label: "ادکلن",
     subcategories: {
-      menPerfume: "عطر مردانه",
-      womenPerfume: "عطر زنانه",
-      sample: "سمپل",
-      tester: "تستر",
-      miniature: "مینیاتوری",
-      giftSet: "گیفت ست",
-      decant: "دکانت (دست‌ریز)",
+      menPerfume: { label: "ادکلن مردانه", types: PERFUME_FACETS },
+      womenPerfume: { label: "ادکلن زنانه", types: PERFUME_FACETS },
+      unisexPerfume: { label: "ادکلن یونیسکس", types: PERFUME_FACETS },
+      sample: { label: "سمپل", types: PERFUME_FACETS },
+      tester: { label: "تستر", types: PERFUME_FACETS },
+      miniature: { label: "مینیاتوری", types: PERFUME_FACETS },
+      giftSet: { label: "گیفت ست", types: PERFUME_FACETS },
+      decant: { label: "دکانت (دست‌ریز)", types: PERFUME_FACETS },
       menSpray: "اسپری خوشبو‌کننده مردانه",
       womenSpray: "اسپری خوشبو‌کننده زنانه",
       menBodySplash: "بادی اسپلش مردانه",
@@ -326,10 +350,23 @@ function subcategoryTypes(category, subcategory) {
   return isNestedSubcategory(sub) && sub.types ? sub.types : null;
 }
 
+// انواع دقیق یا به‌صورت یک لیست ساده (شیء) هستند، یا به‌صورت چند گروه موازی (آرایه‌ای از { group, options }) — مثل ادکلن.
+function isGroupedTypes(types) {
+  return Array.isArray(types);
+}
+
+function flattenTypes(types) {
+  if (!types) return {};
+  if (isGroupedTypes(types)) {
+    return Object.assign({}, ...types.map((g) => g.options));
+  }
+  return types;
+}
+
 function typeLabel(category, subcategory, type) {
   const types = subcategoryTypes(category, subcategory);
   if (!types || !type) return "";
-  return types[type] || "";
+  return flattenTypes(types)[type] || "";
 }
 
 function fmtPrice(n) {
@@ -1036,15 +1073,33 @@ export default function MaisonStore() {
                 <button onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, "all")} className="text-right py-1">
                   همه‌ی {subcategoryLabel(menuNav.category, menuNav.subcategory)}
                 </button>
-                {Object.entries(subcategoryTypes(menuNav.category, menuNav.subcategory)).map(([typeKey, label]) => (
-                  <button
-                    key={typeKey}
-                    onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey)}
-                    className="text-right py-1"
-                  >
-                    {label}
-                  </button>
-                ))}
+                {isGroupedTypes(subcategoryTypes(menuNav.category, menuNav.subcategory)) ? (
+                  subcategoryTypes(menuNav.category, menuNav.subcategory).map((g) => (
+                    <div key={g.group}>
+                      <p className="text-gold" style={{ fontSize: 12, margin: "6px 0 2px" }}>{g.group}</p>
+                      {Object.entries(g.options).map(([typeKey, label]) => (
+                        <button
+                          key={typeKey}
+                          onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey)}
+                          className="text-right py-1"
+                          style={{ paddingRight: 8 }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  ))
+                ) : (
+                  Object.entries(subcategoryTypes(menuNav.category, menuNav.subcategory)).map(([typeKey, label]) => (
+                    <button
+                      key={typeKey}
+                      onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey)}
+                      className="text-right py-1"
+                    >
+                      {label}
+                    </button>
+                  ))
+                )}
               </>
             )}
           </div>
@@ -1198,24 +1253,48 @@ export default function MaisonStore() {
             )}
 
             {activeTypes && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                <button
-                  onClick={() => setActiveType("all")}
-                  className="btn-ghost rounded-full px-3 py-1 text-xs"
-                  style={activeType === "all" ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
-                >
-                  همه‌ی انواع
-                </button>
-                {Object.entries(activeTypes).map(([key, label]) => (
+              <div className="mb-4">
+                <div className="flex flex-wrap gap-2 mb-2">
                   <button
-                    key={key}
-                    onClick={() => setActiveType(key)}
+                    onClick={() => setActiveType("all")}
                     className="btn-ghost rounded-full px-3 py-1 text-xs"
-                    style={activeType === key ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
+                    style={activeType === "all" ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
                   >
-                    {label}
+                    همه‌ی انواع
                   </button>
-                ))}
+                </div>
+                {isGroupedTypes(activeTypes) ? (
+                  activeTypes.map((g) => (
+                    <div key={g.group} className="mb-2">
+                      <p className="text-muted" style={{ fontSize: 11, marginBottom: 4 }}>{g.group}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(g.options).map(([key, label]) => (
+                          <button
+                            key={key}
+                            onClick={() => setActiveType(key)}
+                            className="btn-ghost rounded-full px-3 py-1 text-xs"
+                            style={activeType === key ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(activeTypes).map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={() => setActiveType(key)}
+                        className="btn-ghost rounded-full px-3 py-1 text-xs"
+                        style={activeType === key ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1653,9 +1732,19 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             style={{ color: "#F3EDE4" }}
           >
             <option value="">نوع محصول را انتخاب کن</option>
-            {Object.entries(subcategoryTypes(form.category, form.subcategory)).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
+            {isGroupedTypes(subcategoryTypes(form.category, form.subcategory)) ? (
+              subcategoryTypes(form.category, form.subcategory).map((g) => (
+                <optgroup key={g.group} label={g.group}>
+                  {Object.entries(g.options).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </optgroup>
+              ))
+            ) : (
+              Object.entries(subcategoryTypes(form.category, form.subcategory)).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))
+            )}
           </select>
         )}
         <input
