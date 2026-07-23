@@ -196,8 +196,20 @@ const FONTS = `
 
 const CATEGORIES = {
   perfume: {
-    label: "عطر و ادکلن",
-    subcategories: { women: "زنانه", men: "مردانه", unisex: "دو نفره (یونیسکس)" },
+    label: "ادکلن",
+    subcategories: {
+      menPerfume: "عطر مردانه",
+      womenPerfume: "عطر زنانه",
+      sample: "سمپل",
+      tester: "تستر",
+      miniature: "مینیاتوری",
+      giftSet: "گیفت ست",
+      decant: "دکانت (دست‌ریز)",
+      menSpray: "اسپری خوشبو‌کننده مردانه",
+      womenSpray: "اسپری خوشبو‌کننده زنانه",
+      menBodySplash: "بادی اسپلش مردانه",
+      womenBodySplash: "بادی اسپلش زنانه",
+    },
   },
   makeup: {
     label: "آرایشی",
@@ -390,8 +402,8 @@ function variantsToText(variants) {
 }
 
 const SEED_PRODUCTS = [
-  { id: "p1", name: "بلور شب", brand: "خانه میسان", category: "perfume", subcategory: "women", price: 2450000, description: "رایحه‌ای شرقی و گرم با نت‌های عود و وانیل، مناسب شب.", image: "" },
-  { id: "p2", name: "باغ سپید", brand: "خانه میسان", category: "perfume", subcategory: "unisex", price: 1980000, description: "ترکیبی تازه از یاس و مرکبات برای روزهای بهاری.", image: "" },
+  { id: "p1", name: "بلور شب", brand: "خانه میسان", category: "perfume", subcategory: "womenPerfume", price: 2450000, description: "رایحه‌ای شرقی و گرم با نت‌های عود و وانیل، مناسب شب.", image: "" },
+  { id: "p2", name: "باغ سپید", brand: "خانه میسان", category: "perfume", subcategory: "menPerfume", price: 1980000, description: "ترکیبی تازه از یاس و مرکبات برای روزهای بهاری.", image: "" },
   { id: "p3", name: "کانسیلر پوششی", brand: "اطلس", category: "makeup", subcategory: "face", type: "concealer", price: 890000, description: "کانسیلر با پوشش بالا، مناسب پوست‌های خشک و بی‌روح.", image: "" },
   { id: "p4", name: "پالت سایه صدف", brand: "اطلس", category: "makeup", subcategory: "eye", type: "eyeshadow", price: 1250000, description: "پالت سایه با پیگمنت بالا و بافت مخملی.", image: "" },
   {
