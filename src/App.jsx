@@ -1075,30 +1075,35 @@ export default function MaisonStore() {
                 </button>
                 {isGroupedTypes(subcategoryTypes(menuNav.category, menuNav.subcategory)) ? (
                   subcategoryTypes(menuNav.category, menuNav.subcategory).map((g) => (
-                    <div key={g.group}>
-                      <p className="text-gold" style={{ fontSize: 12, margin: "6px 0 2px" }}>{g.group}</p>
-                      {Object.entries(g.options).map(([typeKey, label]) => (
-                        <button
-                          key={typeKey}
-                          onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey)}
-                          className="text-right py-1"
-                          style={{ paddingRight: 8 }}
-                        >
-                          {label}
-                        </button>
-                      ))}
+                    <div key={g.group} className="mb-2">
+                      <p className="text-gold" style={{ fontSize: 12, margin: "6px 0 4px" }}>{g.group}</p>
+                      <div className="flex flex-col gap-1.5">
+                        {Object.entries(g.options).map(([typeKey, label]) => (
+                          <button
+                            key={typeKey}
+                            onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey)}
+                            className="btn-ghost text-right rounded-lg px-3 py-1.5"
+                            style={{ fontSize: 13 }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   ))
                 ) : (
-                  Object.entries(subcategoryTypes(menuNav.category, menuNav.subcategory)).map(([typeKey, label]) => (
-                    <button
-                      key={typeKey}
-                      onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey)}
-                      className="text-right py-1"
-                    >
-                      {label}
-                    </button>
-                  ))
+                  <div className="flex flex-col gap-1.5">
+                    {Object.entries(subcategoryTypes(menuNav.category, menuNav.subcategory)).map(([typeKey, label]) => (
+                      <button
+                        key={typeKey}
+                        onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey)}
+                        className="btn-ghost text-right rounded-lg px-3 py-1.5"
+                        style={{ fontSize: 13 }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </>
             )}
