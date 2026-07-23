@@ -219,7 +219,7 @@ const PERFUME_FACETS = [
 
 const CATEGORIES = {
   perfume: {
-    label: "ادکلن",
+    label: "ادکلن، اسپری و بادی اسپلش",
     subcategories: {
       menPerfume: { label: "ادکلن مردانه", types: PERFUME_FACETS },
       womenPerfume: { label: "ادکلن زنانه", types: PERFUME_FACETS },
@@ -304,7 +304,27 @@ const CATEGORIES = {
           eyelashSerum: "سرم تقویت مژه",
         },
       },
-      faceSkin: "مراقبت از پوست صورت",
+      faceSkin: {
+        label: "مراقبت از پوست صورت",
+        types: {
+          antiWrinkleFace: "ضدچروک صورت",
+          antiWrinkleEye: "ضدچروک دورچشم",
+          antiSpotFace: "ضدلک صورت",
+          antiSpotEye: "ضدلک دورچشم",
+          poreMinimizer: "جمع‌کننده منافذ پوست",
+          exfoliatorFace: "لایه‌بردار صورت",
+          repairFace: "ترمیم‌کننده صورت",
+          hydratingFace: "آبرسان صورت",
+          moisturizerFace: "مرطوب‌کننده صورت",
+          sunscreen: "ضدآفتاب",
+          faceWash: "فیس واش",
+          oilCleanser: "پاک‌کننده روغنی",
+          scrub: "اسکراب",
+          micellarWater: "میسلار",
+          toner: "تونر",
+          lipBalm: "بالم لب",
+        },
+      },
       bodySkin: "مراقبت از پوست بدن",
       oral: "مراقبت از دهان و دندان",
       feminine: "بهداشت شخصی بانوان",
@@ -565,6 +585,7 @@ export default function MaisonStore() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [menuNav, setMenuNav] = useState(null); // null | { category } | { category, subcategory }
+  const [categoryPageOpen, setCategoryPageOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartBump, setCartBump] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
@@ -845,6 +866,7 @@ export default function MaisonStore() {
     setActiveType("all");
     setActiveBrand(brand);
     setView("store");
+    setCategoryPageOpen(false);
     setBrandMenuOpen(false);
     setMenuOpen(false);
     setTimeout(() => document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -869,6 +891,15 @@ export default function MaisonStore() {
     setActiveType("all");
     setActiveBrand("all");
     setView("store");
+    setCategoryPageOpen(c !== "all");
+  }
+
+  function backToStore() {
+    setActiveCategory("all");
+    setActiveSubcategory("all");
+    setActiveType("all");
+    setActiveBrand("all");
+    setCategoryPageOpen(false);
   }
 
   function selectSubcategory(key) {
@@ -1152,6 +1183,8 @@ export default function MaisonStore() {
         />
       ) : (
         <>
+          {!categoryPageOpen && (
+          <>
           {/* Hero */}
           <section className="px-4 sm:px-8 py-10 sm:py-16 flex flex-col sm:flex-row items-center gap-8 sm:gap-4 max-w-6xl mx-auto">
             <div className="flex-1 order-2 sm:order-1 text-center sm:text-right">
@@ -1225,6 +1258,22 @@ export default function MaisonStore() {
               </button>
             ))}
           </section>
+          </>
+          )}
+
+          {categoryPageOpen && (
+            <div className="px-4 sm:px-8 max-w-6xl mx-auto pt-6 pb-2">
+              <button onClick={backToStore} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-3">
+                <span>›</span> بازگشت به فروشگاه
+              </button>
+              <h1 className="font-display" style={{ fontSize: 22 }}>
+                {CATEGORY_LABEL[activeCategory]}
+                {activeSubcategory !== "all" && (
+                  <span className="text-gold"> / {subcategoryLabel(activeCategory, activeSubcategory)}</span>
+                )}
+              </h1>
+            </div>
+          )}
 
           {/* Catalog */}
           <section id="catalog" className="px-4 sm:px-8 max-w-6xl mx-auto pb-20">
