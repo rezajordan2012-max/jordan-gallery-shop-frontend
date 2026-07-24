@@ -194,13 +194,16 @@ const FONTS = `
   }
 `;
 
-// گروه‌های فیلتر ادکلن — روی همه‌ی زیرشاخه‌های ادکلن یکسان اعمال می‌شود
+// گروه‌های فیلتر ادکلن — روی همه‌ی زیرشاخه‌های ادکلن یکسان اعمال می‌شود.
+// هر گروه یک کلید پایدار (key) دارد تا بشود از هر گروه هم‌زمان و مستقل یک گزینه انتخاب کرد.
 const PERFUME_FACETS = [
   {
+    key: "scentFamily",
     group: "دسته بویایی",
     options: { bitter: "تلخ", sharp: "تند", sweet: "شیرین", sour: "ترش" },
   },
   {
+    key: "concentration",
     group: "نوع",
     options: {
       parfum: "پرفیوم",
@@ -212,8 +215,26 @@ const PERFUME_FACETS = [
     },
   },
   {
+    key: "temperament",
     group: "طبع",
     options: { cool: "خنک", warm: "گرم", moderate: "معتدل" },
+  },
+  {
+    key: "fragranceNote",
+    group: "رایحه",
+    options: {
+      woody: "چوبی",
+      floral: "گلی",
+      citrusy1: "مرکباتی",
+      citrusy2: "سیتروسی",
+      aldehydic: "آلدهیدی",
+      tobacco: "تنباکویی",
+      oud: "عودی",
+      vanilla: "وانیلی",
+      spicy: "ادویه‌ای",
+      greenMossy: "سبز و خزه‌ای",
+      aquatic: "آکوآتیک",
+    },
   },
 ];
 
@@ -407,6 +428,17 @@ function typeLabel(category, subcategory, type) {
   return flattenTypes(types)[type] || "";
 }
 
+// برای زیرشاخه‌هایی مثل ادکلن که چند گروه فیلتر مستقل دارند (دسته بویایی/نوع/طبع/رایحه)،
+// این تابع برچسب‌های انتخاب‌شده‌ی هر گروه را برای نمایش روی کارت محصول به هم می‌چسباند.
+function facetsSummary(category, subcategory, facets) {
+  const types = subcategoryTypes(category, subcategory);
+  if (!types || !isGroupedTypes(types) || !facets) return "";
+  return types
+    .map((g) => (facets[g.key] ? g.options[facets[g.key]] : null))
+    .filter(Boolean)
+    .join(" · ");
+}
+
 function fmtPrice(n) {
   return new Intl.NumberFormat("fa-IR").format(n) + " تومان";
 }
@@ -537,6 +569,7 @@ function ProductCard({ product, onAdd }) {
             <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(216,191,158,0.25)", borderRadius: 999, padding: "2px 8px" }}>
               {subcategoryLabel(product.category, product.subcategory)}
               {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
+              {product.facets && facetsSummary(product.category, product.subcategory, product.facets) && ` · ${facetsSummary(product.category, product.subcategory, product.facets)}`}
             </span>
           )}
         </div>
@@ -609,6 +642,7 @@ export default function MaisonStore() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeSubcategory, setActiveSubcategory] = useState("all");
   const [activeType, setActiveType] = useState("all");
+  const [activeFacets, setActiveFacets] = useState({}); // { [facetKey]: optionKey } — برای گروه‌های موازی مثل ادکلن
   const [activeBrand, setActiveBrand] = useState("all");
   const [cart, setCart] = useState({}); // id -> qty
   const [products, setProducts] = useState([]);
@@ -899,6 +933,11 @@ export default function MaisonStore() {
     if (activeCategory !== "all" && p.category !== activeCategory) return false;
     if (activeCategory !== "all" && activeSubcategory !== "all" && (p.subcategory || "") !== activeSubcategory) return false;
     if (activeSubcategory !== "all" && activeType !== "all" && (p.type || "") !== activeType) return false;
+    if (activeSubcategory !== "all" && Object.keys(activeFacets).length > 0) {
+      for (const [facetKey, wanted] of Object.entries(activeFacets)) {
+        if ((p.facets && p.facets[facetKey]) !== wanted) return false;
+      }
+    }
     if (activeBrand !== "all" && p.brand !== activeBrand) return false;
     return true;
   });
@@ -907,6 +946,7 @@ export default function MaisonStore() {
     setActiveCategory(c);
     setActiveSubcategory("all");
     setActiveType("all");
+    setActiveFacets({});
     setActiveBrand("all");
     setView("store");
     setCategoryPageOpen(c !== "all");
@@ -916,6 +956,7 @@ export default function MaisonStore() {
     setActiveCategory("all");
     setActiveSubcategory("all");
     setActiveType("all");
+    setActiveFacets({});
     setActiveBrand("all");
     setCategoryPageOpen(false);
   }
@@ -923,6 +964,16 @@ export default function MaisonStore() {
   function selectSubcategory(key) {
     setActiveSubcategory(key);
     setActiveType("all");
+    setActiveFacets({});
+  }
+
+  function toggleFacet(key, value) {
+    setActiveFacets((prev) => {
+      const next = { ...prev };
+      if (next[key] === value) delete next[key]; // زدن دوباره‌ی همون گزینه، انتخابش را پاک می‌کند
+      else next[key] = value;
+      return next;
+    });
   }
 
   function closeMenu() {
@@ -947,10 +998,13 @@ export default function MaisonStore() {
       closeMenu();
       return;
     }
-    if (subcategoryTypes(category, subKey)) {
+    const types = subcategoryTypes(category, subKey);
+    if (types && !isGroupedTypes(types)) {
       setMenuNav({ category, subcategory: subKey });
       return;
     }
+    // اگر گروه‌های موازی دارد (مثل ادکلن) یا اصلاً نوعی ندارد، مستقیم به صفحه‌ی اختصاصی همان زیرشاخه می‌رویم
+    // تا مشتری از همان‌جا بتواند هم‌زمان از چند گروه (طبع، رایحه، نوع و ...) انتخاب کند.
     selectCategory(category);
     selectSubcategory(subKey);
     closeMenu();
@@ -1326,46 +1380,59 @@ export default function MaisonStore() {
 
             {activeTypes && (
               <div className="mb-4">
-                <div className="flex flex-wrap gap-2 mb-2">
-                  <button
-                    onClick={() => setActiveType("all")}
-                    className="btn-ghost rounded-full px-3 py-1 text-xs"
-                    style={activeType === "all" ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
-                  >
-                    همه‌ی انواع
-                  </button>
-                </div>
                 {isGroupedTypes(activeTypes) ? (
-                  activeTypes.map((g) => (
-                    <div key={g.group} className="mb-2">
-                      <p className="text-muted" style={{ fontSize: 11, marginBottom: 4 }}>{g.group}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {Object.entries(g.options).map(([key, label]) => (
-                          <button
-                            key={key}
-                            onClick={() => setActiveType(key)}
-                            className="btn-ghost rounded-full px-3 py-1 text-xs"
-                            style={activeType === key ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(activeTypes).map(([key, label]) => (
+                  <>
+                    {Object.keys(activeFacets).length > 0 && (
                       <button
-                        key={key}
-                        onClick={() => setActiveType(key)}
-                        className="btn-ghost rounded-full px-3 py-1 text-xs"
-                        style={activeType === key ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
+                        onClick={() => setActiveFacets({})}
+                        className="btn-ghost rounded-full px-3 py-1 text-xs mb-2"
+                        style={{ borderColor: "#DCB77E", color: "#DCB77E" }}
                       >
-                        {label}
+                        پاک کردن همه‌ی فیلترها ✕
                       </button>
+                    )}
+                    {activeTypes.map((g) => (
+                      <div key={g.key} className="mb-2">
+                        <p className="text-muted" style={{ fontSize: 11, marginBottom: 4 }}>{g.group}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(g.options).map(([key, label]) => (
+                            <button
+                              key={key}
+                              onClick={() => toggleFacet(g.key, key)}
+                              className="btn-ghost rounded-full px-3 py-1 text-xs"
+                              style={activeFacets[g.key] === key ? { borderColor: "#DCB77E", color: "#DCB77E", background: "rgba(220,183,126,0.12)" } : { opacity: 0.85 }}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     ))}
-                  </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      <button
+                        onClick={() => setActiveType("all")}
+                        className="btn-ghost rounded-full px-3 py-1 text-xs"
+                        style={activeType === "all" ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
+                      >
+                        همه‌ی انواع
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(activeTypes).map(([key, label]) => (
+                        <button
+                          key={key}
+                          onClick={() => setActiveType(key)}
+                          className="btn-ghost rounded-full px-3 py-1 text-xs"
+                          style={activeType === key ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -1569,7 +1636,7 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", price: "", description: "", image: "", variantsText: "" };
+  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", description: "", image: "", variantsText: "" };
 }
 
 function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroImage, onUpdateHeroImage }) {
@@ -1655,7 +1722,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   function startEdit(p) {
     setEditingId(p.id);
     setFormError("");
-    setForm({ ...p, price: String(p.price), variantsText: variantsToText(p.variants) });
+    setForm({ ...p, price: String(p.price), variantsText: variantsToText(p.variants), facets: p.facets || {} });
   }
   function cancelEdit() {
     setEditingId(null);
@@ -1797,27 +1864,38 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           </select>
         )}
         {subcategoryTypes(form.category, form.subcategory) && (
-          <select
-            value={form.type}
-            onChange={(e) => setForm({ ...form, type: e.target.value })}
-            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-            style={{ color: "#F3EDE4" }}
-          >
-            <option value="">نوع محصول را انتخاب کن</option>
-            {isGroupedTypes(subcategoryTypes(form.category, form.subcategory)) ? (
-              subcategoryTypes(form.category, form.subcategory).map((g) => (
-                <optgroup key={g.group} label={g.group}>
-                  {Object.entries(g.options).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
-                  ))}
-                </optgroup>
-              ))
-            ) : (
-              Object.entries(subcategoryTypes(form.category, form.subcategory)).map(([k, v]) => (
+          isGroupedTypes(subcategoryTypes(form.category, form.subcategory)) ? (
+            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {subcategoryTypes(form.category, form.subcategory).map((g) => (
+                <div key={g.key} className="flex flex-col gap-1">
+                  <label className="text-muted" style={{ fontSize: 11 }}>{g.group}</label>
+                  <select
+                    value={(form.facets && form.facets[g.key]) || ""}
+                    onChange={(e) => setForm({ ...form, facets: { ...form.facets, [g.key]: e.target.value } })}
+                    className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+                    style={{ color: "#F3EDE4" }}
+                  >
+                    <option value="">— انتخاب نشده —</option>
+                    {Object.entries(g.options).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <select
+              value={form.type}
+              onChange={(e) => setForm({ ...form, type: e.target.value })}
+              className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+              style={{ color: "#F3EDE4" }}
+            >
+              <option value="">نوع محصول را انتخاب کن</option>
+              {Object.entries(subcategoryTypes(form.category, form.subcategory)).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
-              ))
-            )}
-          </select>
+              ))}
+            </select>
+          )
         )}
         <input
           placeholder="قیمت (تومان)"
@@ -1920,7 +1998,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               <p style={{ fontSize: 14 }}>{p.name} <span className="text-muted" style={{ fontSize: 11 }}>— {p.brand}</span></p>
               <p className="text-muted" style={{ fontSize: 11 }}>
                 {CATEGORY_LABEL[p.category]}
-                {p.subcategory && ` (${subcategoryLabel(p.category, p.subcategory)}${p.type ? " - " + typeLabel(p.category, p.subcategory, p.type) : ""})`} · {fmtPrice(p.price)}
+                {p.subcategory && ` (${subcategoryLabel(p.category, p.subcategory)}${p.type ? " - " + typeLabel(p.category, p.subcategory, p.type) : ""}${p.facets && facetsSummary(p.category, p.subcategory, p.facets) ? " - " + facetsSummary(p.category, p.subcategory, p.facets) : ""})`} · {fmtPrice(p.price)}
                 {p.variants && p.variants.length > 0 && (
                   <span className="text-gold"> · {p.variants.length} طیف رنگ</span>
                 )}
