@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   ShoppingBag, X, Plus, Minus, Trash2, LayoutDashboard,
-  Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock, Upload
+  Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock, Upload, Search
 } from "lucide-react";
 
 // آدرس بک‌اندی که راه‌اندازی کردی را اینجا جایگزین کن
@@ -208,6 +208,7 @@ const PERFUME_FACETS = [
     options: {
       parfum: "پرفیوم",
       eauDeParfum: "ادو پرفیوم",
+      eauDeParfumIntense: "ادوپرفیوم اینتنس",
       eauDeToilette: "ادو تویلت",
       eauDeCologne: "ادو کلن",
       eauFraiche: "او فرش",
@@ -649,6 +650,9 @@ export default function MaisonStore() {
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [menuNav, setMenuNav] = useState(null); // null | { category } | { category, subcategory }
   const [categoryPageOpen, setCategoryPageOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchDraft, setSearchDraft] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [cartBump, setCartBump] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
@@ -942,6 +946,14 @@ export default function MaisonStore() {
   }, [products, activeCategory]);
 
   const filteredProducts = products.filter((p) => {
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      return (
+        (p.name || "").toLowerCase().includes(q) ||
+        (p.brand || "").toLowerCase().includes(q) ||
+        (p.description || "").toLowerCase().includes(q)
+      );
+    }
     if (activeCategory !== "all" && p.category !== activeCategory) return false;
     if (activeCategory !== "all" && activeSubcategory !== "all" && (p.subcategory || "") !== activeSubcategory) return false;
     if (activeSubcategory !== "all" && activeType !== "all" && (p.type || "") !== activeType) return false;
@@ -973,6 +985,22 @@ export default function MaisonStore() {
     setActiveFacets({});
     setActiveBrand("all");
     setCategoryPageOpen(false);
+    setSearchTerm("");
+    setSearchDraft("");
+  }
+
+  function performSearch(term) {
+    const q = term.trim();
+    if (!q) return;
+    setSearchTerm(q);
+    setActiveCategory("all");
+    setActiveSubcategory("all");
+    setActiveType("all");
+    setActiveFacets({});
+    setActiveBrand("all");
+    setCategoryPageOpen(true);
+    setSearchOpen(false);
+    setView("store");
   }
 
   function selectSubcategory(key) {
@@ -1094,6 +1122,9 @@ export default function MaisonStore() {
                 {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
               </button>
             )}
+            <button onClick={() => { setSearchOpen(true); setSearchDraft(searchTerm); }} aria-label="جستجوی محصول">
+              <Search size={21} color="#F3EDE4" />
+            </button>
             <button onClick={() => setCartOpen(true)} className={`relative ${cartBump ? "cart-bump" : ""}`} aria-label="سبد خرید">
               <ShoppingBag size={22} color="#F3EDE4" />
               {cartCount > 0 && (
@@ -1231,6 +1262,30 @@ export default function MaisonStore() {
         )}
       </header>
 
+      {/* پنل جستجوی محصول */}
+      {searchOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", paddingTop: "15vh" }} onClick={() => setSearchOpen(false)}>
+          <div className="bg-panel-2 rounded-lg p-5 w-full border border-hair" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <form
+              onSubmit={(e) => { e.preventDefault(); performSearch(searchDraft); }}
+              className="flex items-center gap-2"
+            >
+              <Search size={18} color="#DCB77E" />
+              <input
+                autoFocus
+                value={searchDraft}
+                onChange={(e) => setSearchDraft(e.target.value)}
+                placeholder="نام محصول را جستجو کن..."
+                className="bg-panel border border-hair rounded px-3 py-2 text-sm flex-1"
+                style={{ color: "#F3EDE4" }}
+              />
+              <button type="submit" className="btn-gold rounded px-4 py-2 text-sm">جستجو</button>
+              <button type="button" onClick={() => setSearchOpen(false)}><X size={18} color="#F3EDE4" /></button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* پنل انتخاب بر اساس برند — از منوی کشویی باز می‌شود */}
       {brandMenuOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setBrandMenuOpen(false)}>
@@ -1356,9 +1411,15 @@ export default function MaisonStore() {
                 <span>›</span> بازگشت به فروشگاه
               </button>
               <h1 className="font-display" style={{ fontSize: 22 }}>
-                {CATEGORY_LABEL[activeCategory]}
-                {activeSubcategory !== "all" && (
-                  <span className="text-gold"> / {subcategoryLabel(activeCategory, activeSubcategory)}</span>
+                {searchTerm ? (
+                  <>نتایج جستجو برای «{searchTerm}»</>
+                ) : (
+                  <>
+                    {CATEGORY_LABEL[activeCategory]}
+                    {activeSubcategory !== "all" && (
+                      <span className="text-gold"> / {subcategoryLabel(activeCategory, activeSubcategory)}</span>
+                    )}
+                  </>
                 )}
               </h1>
             </div>
@@ -1366,12 +1427,14 @@ export default function MaisonStore() {
 
           {/* Catalog */}
           <section id="catalog" className="px-4 sm:px-8 max-w-6xl mx-auto pb-20">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles size={16} color="#D4AF7A" />
-              <h2 className="font-display" style={{ fontSize: 20 }}>
-                {activeCategory === "all" ? "محصولات منتخب" : CATEGORY_LABEL[activeCategory]}
-              </h2>
-            </div>
+            {!categoryPageOpen && (
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles size={16} color="#D4AF7A" />
+                <h2 className="font-display" style={{ fontSize: 20 }}>
+                  {activeCategory === "all" ? "محصولات منتخب" : CATEGORY_LABEL[activeCategory]}
+                </h2>
+              </div>
+            )}
 
             {activeSubcategories && (
               <div className="flex flex-wrap gap-2 mb-4">
