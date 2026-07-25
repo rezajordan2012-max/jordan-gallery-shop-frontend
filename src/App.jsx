@@ -240,7 +240,7 @@ const PERFUME_FACETS = [
 
 const CATEGORIES = {
   perfume: {
-    label: "ادکلن، اسپری و بادی اسپلش",
+    label: "ادکلن",
     subcategories: {
       menPerfume: { label: "ادکلن مردانه", types: PERFUME_FACETS },
       womenPerfume: { label: "ادکلن زنانه", types: PERFUME_FACETS },
@@ -250,6 +250,11 @@ const CATEGORIES = {
       miniature: { label: "مینیاتوری", types: PERFUME_FACETS },
       giftSet: { label: "گیفت ست", types: PERFUME_FACETS },
       decant: { label: "دکانت (دست‌ریز)", types: PERFUME_FACETS },
+    },
+  },
+  sprayAndSplash: {
+    label: "اسپری و بادی اسپلش",
+    subcategories: {
       menSpray: "اسپری خوشبو‌کننده مردانه",
       womenSpray: "اسپری خوشبو‌کننده زنانه",
       menBodySplash: "بادی اسپلش مردانه",
@@ -384,6 +389,7 @@ const CATEGORY_ORDER = Object.keys(CATEGORIES);
 
 const CATEGORY_CARD_CLASS = {
   perfume: "card-perfume",
+  sprayAndSplash: "card-perfume",
   makeup: "card-beauty",
   hygiene: "card-hygiene",
   electronics: "card-electronics",
@@ -434,7 +440,13 @@ function facetsSummary(category, subcategory, facets) {
   const types = subcategoryTypes(category, subcategory);
   if (!types || !isGroupedTypes(types) || !facets) return "";
   return types
-    .map((g) => (facets[g.key] ? g.options[facets[g.key]] : null))
+    .map((g) => {
+      const vals = facets[g.key];
+      if (!vals || (Array.isArray(vals) && vals.length === 0)) return null;
+      const arr = Array.isArray(vals) ? vals : [vals];
+      const labels = arr.map((v) => g.options[v]).filter(Boolean);
+      return labels.length ? labels.join("/") : null;
+    })
     .filter(Boolean)
     .join(" · ");
 }
@@ -449,7 +461,7 @@ function isAdminUser(user) {
 
 function CategoryIcon({ category, size = 34 }) {
   const stroke = "#D4AF7A";
-  if (category === "perfume") {
+  if (category === "perfume" || category === "sprayAndSplash") {
     return (
       <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
         <rect x="16" y="6" width="6" height="6" rx="1" stroke={stroke} strokeWidth="1.6" />
@@ -934,8 +946,10 @@ export default function MaisonStore() {
     if (activeCategory !== "all" && activeSubcategory !== "all" && (p.subcategory || "") !== activeSubcategory) return false;
     if (activeSubcategory !== "all" && activeType !== "all" && (p.type || "") !== activeType) return false;
     if (activeSubcategory !== "all" && Object.keys(activeFacets).length > 0) {
-      for (const [facetKey, wanted] of Object.entries(activeFacets)) {
-        if ((p.facets && p.facets[facetKey]) !== wanted) return false;
+      for (const [facetKey, wantedArr] of Object.entries(activeFacets)) {
+        const productVals = (p.facets && p.facets[facetKey]) || [];
+        const hasOverlap = wantedArr.some((w) => productVals.includes(w));
+        if (!hasOverlap) return false;
       }
     }
     if (activeBrand !== "all" && p.brand !== activeBrand) return false;
@@ -969,9 +983,12 @@ export default function MaisonStore() {
 
   function toggleFacet(key, value) {
     setActiveFacets((prev) => {
+      const current = prev[key] || [];
+      const exists = current.includes(value);
+      const nextArr = exists ? current.filter((v) => v !== value) : [...current, value];
       const next = { ...prev };
-      if (next[key] === value) delete next[key]; // زدن دوباره‌ی همون گزینه، انتخابش را پاک می‌کند
-      else next[key] = value;
+      if (nextArr.length === 0) delete next[key];
+      else next[key] = nextArr;
       return next;
     });
   }
@@ -1400,7 +1417,7 @@ export default function MaisonStore() {
                               key={key}
                               onClick={() => toggleFacet(g.key, key)}
                               className="btn-ghost rounded-full px-3 py-1 text-xs"
-                              style={activeFacets[g.key] === key ? { borderColor: "#DCB77E", color: "#DCB77E", background: "rgba(220,183,126,0.12)" } : { opacity: 0.85 }}
+                              style={(activeFacets[g.key] || []).includes(key) ? { borderColor: "#DCB77E", color: "#DCB77E", background: "rgba(220,183,126,0.12)" } : { opacity: 0.85 }}
                             >
                               {label}
                             </button>
@@ -1865,23 +1882,33 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         )}
         {subcategoryTypes(form.category, form.subcategory) && (
           isGroupedTypes(subcategoryTypes(form.category, form.subcategory)) ? (
-            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {subcategoryTypes(form.category, form.subcategory).map((g) => (
-                <div key={g.key} className="flex flex-col gap-1">
-                  <label className="text-muted" style={{ fontSize: 11 }}>{g.group}</label>
-                  <select
-                    value={(form.facets && form.facets[g.key]) || ""}
-                    onChange={(e) => setForm({ ...form, facets: { ...form.facets, [g.key]: e.target.value } })}
-                    className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-                    style={{ color: "#F3EDE4" }}
-                  >
-                    <option value="">— انتخاب نشده —</option>
-                    {Object.entries(g.options).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+            <div className="sm:col-span-2 flex flex-col gap-3">
+              {subcategoryTypes(form.category, form.subcategory).map((g) => {
+                const selected = (form.facets && form.facets[g.key]) || [];
+                function toggleFormFacet(key) {
+                  const has = selected.includes(key);
+                  const nextArr = has ? selected.filter((v) => v !== key) : [...selected, key];
+                  setForm({ ...form, facets: { ...form.facets, [g.key]: nextArr } });
+                }
+                return (
+                  <div key={g.key} className="flex flex-col gap-1">
+                    <label className="text-muted" style={{ fontSize: 11 }}>{g.group} (می‌توانی چند مورد انتخاب کنی)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(g.options).map(([k, v]) => (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => toggleFormFacet(k)}
+                          className="btn-ghost rounded-full px-3 py-1 text-xs"
+                          style={selected.includes(k) ? { borderColor: "#DCB77E", color: "#DCB77E", background: "rgba(220,183,126,0.12)" } : { opacity: 0.85 }}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <select
