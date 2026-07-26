@@ -664,7 +664,8 @@ export default function MaisonStore() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState(false);
-  const [heroImage, setHeroImage] = useState(null);
+  const [heroBanners, setHeroBanners] = useState([]); // لیست عکس‌های بنر متحرک صفحه‌ی اصلی
+  const [bannerIndex, setBannerIndex] = useState(0);
 
   // احراز هویت و پرداخت — توکن در localStorage نگه داشته می‌شود تا با رفرش صفحه
   // یا برگشت به تب مرورگر، ورود کاربر حفظ شود و فقط با زدن دکمه‌ی خروج پاک شود.
@@ -725,9 +726,11 @@ export default function MaisonStore() {
       const res = await fetch(`${API_BASE_URL}/api/settings`);
       if (!res.ok) return;
       const data = await res.json();
-      if (data && data.heroImage) setHeroImage(data.heroImage);
+      if (data && Array.isArray(data.heroBanners) && data.heroBanners.length > 0) {
+        setHeroBanners(data.heroBanners);
+      }
     } catch (e) {
-      // اگر سرور در دسترس نبود، همان تصویر پیش‌فرض نمایش داده می‌شود.
+      // اگر سرور در دسترس نبود، همان طرح پیش‌فرض نمایش داده می‌شود.
     }
   };
 
@@ -735,6 +738,14 @@ export default function MaisonStore() {
     loadProducts();
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    if (heroBanners.length < 2) return;
+    const timer = setInterval(() => {
+      setBannerIndex((i) => (i + 1) % heroBanners.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [heroBanners]);
 
   // اگر کاربر خارج شد یا کاربر دیگری وارد شد، در صورتی که در پنل مدیریت بود، به فروشگاه برگردد.
   useEffect(() => {
@@ -788,15 +799,16 @@ export default function MaisonStore() {
     return data.url;
   }
 
-  async function updateHeroImage(url) {
+  async function updateHeroBanners(banners) {
     const res = await fetch(`${API_BASE_URL}/api/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ heroImage: url }),
+      body: JSON.stringify({ heroBanners: banners }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "ذخیره‌ی تصویر ناموفق بود");
-    setHeroImage(url);
+    if (!res.ok) throw new Error(data.error || "ذخیره‌ی بنرها ناموفق بود");
+    setHeroBanners(banners);
+    setBannerIndex(0);
   }
 
   function addToCart(product, variantId) {
@@ -1322,12 +1334,42 @@ export default function MaisonStore() {
           onRemove={deleteProduct}
           onUploadImage={uploadImage}
           storageError={storageError}
-          heroImage={heroImage}
-          onUpdateHeroImage={updateHeroImage}
+          heroBanners={heroBanners}
+          onUpdateHeroBanners={updateHeroBanners}
         />
       ) : (
         <>
           {!categoryPageOpen && (
+          <>
+          {heroBanners.length > 0 && (
+            <section className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 9", maxHeight: 480 }}>
+              <img
+                key={bannerIndex}
+                src={heroBanners[bannerIndex]}
+                alt={`بنر تبلیغاتی ${bannerIndex + 1}`}
+                className="fade-in-up"
+                style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+              />
+              {heroBanners.length > 1 && (
+                <div className="absolute flex items-center gap-1.5" style={{ bottom: 14, left: "50%", transform: "translateX(-50%)" }}>
+                  {heroBanners.map((_, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        width: i === bannerIndex ? 18 : 6,
+                        height: 6,
+                        borderRadius: 999,
+                        background: i === bannerIndex ? "#DCB77E" : "rgba(255,255,255,0.5)",
+                        transition: "width 0.3s ease",
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {heroBanners.length === 0 && (
           <>
           {/* Hero */}
           <section className="px-4 sm:px-8 py-10 sm:py-16 flex flex-col sm:flex-row items-center gap-8 sm:gap-4 max-w-6xl mx-auto">
@@ -1350,30 +1392,22 @@ export default function MaisonStore() {
 
             <div className="flex-1 order-1 sm:order-2 flex justify-center">
               <div className="float-slow" style={{ position: "relative", width: 150, height: 200 }}>
-                {heroImage ? (
-                  <img
-                    src={heroImage}
-                    alt="عطر جردن"
-                    style={{ width: 150, height: 200, objectFit: "contain", filter: "drop-shadow(0 14px 24px rgba(0,0,0,0.5))" }}
-                  />
-                ) : (
-                  <svg width="150" height="200" viewBox="0 0 150 200" fill="none">
-                    <rect x="55" y="10" width="40" height="24" rx="4" fill="#B08D57" />
-                    <rect x="62" y="0" width="26" height="14" rx="3" fill="#D4AF7A" />
-                    <rect x="30" y="34" width="90" height="150" rx="14" fill="url(#bottleGrad)" stroke="#9C7A45" strokeWidth="1.5" />
-                    <rect x="30" y="90" width="90" height="94" rx="14" fill="url(#liquidGrad)" opacity="0.85" />
-                    <defs>
-                      <linearGradient id="bottleGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0" stopColor="#3B2440" />
-                        <stop offset="1" stopColor="#241A29" />
-                      </linearGradient>
-                      <linearGradient id="liquidGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0" stopColor="#D4AF7A" />
-                        <stop offset="1" stopColor="#8A6A3E" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                )}
+                <svg width="150" height="200" viewBox="0 0 150 200" fill="none">
+                  <rect x="55" y="10" width="40" height="24" rx="4" fill="#B08D57" />
+                  <rect x="62" y="0" width="26" height="14" rx="3" fill="#D4AF7A" />
+                  <rect x="30" y="34" width="90" height="150" rx="14" fill="url(#bottleGrad)" stroke="#9C7A45" strokeWidth="1.5" />
+                  <rect x="30" y="90" width="90" height="94" rx="14" fill="url(#liquidGrad)" opacity="0.85" />
+                  <defs>
+                    <linearGradient id="bottleGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stopColor="#3B2440" />
+                      <stop offset="1" stopColor="#241A29" />
+                    </linearGradient>
+                    <linearGradient id="liquidGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stopColor="#D4AF7A" />
+                      <stop offset="1" stopColor="#8A6A3E" />
+                    </linearGradient>
+                  </defs>
+                </svg>
                 <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 14 }}>
                   <div className="glint" />
                 </div>
@@ -1383,6 +1417,8 @@ export default function MaisonStore() {
               </div>
             </div>
           </section>
+          </>
+          )}
 
           {/* Category strip */}
           <section className="px-4 sm:px-8 max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
@@ -1719,8 +1755,8 @@ function emptyForm() {
   return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", description: "", image: "", variantsText: "" };
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroImage, onUpdateHeroImage }) {
-  const [heroUrlDraft, setHeroUrlDraft] = useState(heroImage || "");
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners }) {
+  const [bannerDrafts, setBannerDrafts] = useState(heroBanners || []);
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
   const [heroError, setHeroError] = useState("");
@@ -1776,7 +1812,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         reader.readAsDataURL(file);
       });
       const url = await onUploadImage(base64);
-      setHeroUrlDraft(url);
+      setBannerDrafts((prev) => [...prev, url]);
     } catch (err) {
       setHeroError(err.message || "آپلود تصویر ناموفق بود");
     } finally {
@@ -1784,13 +1820,28 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     }
   }
 
-  async function saveHeroImage() {
-    if (!heroUrlDraft) return;
+  function removeBannerDraft(index) {
+    setBannerDrafts((prev) => prev.filter((_, i) => i !== index));
+    setHeroSaved(false);
+  }
+
+  function moveBannerDraft(index, dir) {
+    setBannerDrafts((prev) => {
+      const next = [...prev];
+      const target = index + dir;
+      if (target < 0 || target >= next.length) return next;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+    setHeroSaved(false);
+  }
+
+  async function saveHeroBanners() {
     setHeroError("");
     setHeroSaved(false);
     setHeroSaving(true);
     try {
-      await onUpdateHeroImage(heroUrlDraft);
+      await onUpdateHeroBanners(bannerDrafts);
       setHeroSaved(true);
     } catch (err) {
       setHeroError(err.message || "ذخیره‌سازی ناموفق بود");
@@ -1861,48 +1912,58 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         </p>
       )}
 
-      {/* تنظیمات تصویر Hero صفحه‌ی اصلی */}
+      {/* تنظیمات بنرهای متحرک صفحه‌ی اصلی */}
       <div className="bg-panel border border-hair rounded-lg p-4 mb-8">
-        <h3 className="font-display mb-1" style={{ fontSize: 15 }}>تصویر صفحه‌ی اصلی (Hero)</h3>
+        <h3 className="font-display mb-1" style={{ fontSize: 15 }}>بنرهای متحرک صفحه‌ی اصلی</h3>
         <p className="text-muted mb-3" style={{ fontSize: 11 }}>
-          این عکس همان تصویری است که بالای صفحه‌ی اصلی سایت، کنار متن معرفی، نمایش داده می‌شود.
+          چند عکس تبلیغاتی اضافه کن؛ روی صفحه‌ی اصلی هر ۵ ثانیه یکی بعد از دیگری نمایش داده می‌شوند (مثل اسلایدر).
         </p>
-        <div className="flex items-center gap-3 flex-wrap mb-2">
+
+        {bannerDrafts.length > 0 && (
+          <div className="flex flex-col gap-2 mb-3">
+            {bannerDrafts.map((url, i) => (
+              <div key={i} className="flex items-center gap-2 bg-panel-2 border border-hair rounded p-2">
+                <img
+                  src={url}
+                  alt={`بنر ${i + 1}`}
+                  style={{ width: 56, height: 32, borderRadius: 4, objectFit: "cover" }}
+                  onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
+                />
+                <span className="text-muted" style={{ fontSize: 11, flex: 1 }}>بنر شماره {i + 1}</span>
+                <button type="button" onClick={() => moveBannerDraft(i, -1)} disabled={i === 0} className="btn-ghost rounded px-2 py-1 text-xs">▲</button>
+                <button type="button" onClick={() => moveBannerDraft(i, 1)} disabled={i === bannerDrafts.length - 1} className="btn-ghost rounded px-2 py-1 text-xs">▼</button>
+                <button type="button" onClick={() => removeBannerDraft(i)} className="btn-ghost rounded px-2 py-1 text-xs" style={{ color: "#E3A9A9" }}>حذف</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 flex-wrap mb-3">
           <label
             className="btn-ghost rounded px-3 py-2 text-xs flex items-center gap-2"
             style={{ cursor: heroUploading ? "default" : "pointer", opacity: heroUploading ? 0.6 : 1 }}
           >
             <Upload size={14} />
-            {heroUploading ? "در حال آپلود..." : "انتخاب از گالری"}
+            {heroUploading ? "در حال آپلود..." : "افزودن عکس از گالری"}
             <input type="file" accept="image/*" onChange={handleHeroFile} disabled={heroUploading} style={{ display: "none" }} />
           </label>
-          <input
-            placeholder="یا لینک عکس را اینجا بچسبان"
-            value={heroUrlDraft}
-            onChange={(e) => { setHeroUrlDraft(e.target.value); setHeroSaved(false); }}
-            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
-            style={{ color: "#F3EDE4", minWidth: 200 }}
-            dir="ltr"
-          />
-          {heroUrlDraft && (
-            <img
-              src={heroUrlDraft}
-              alt="پیش‌نمایش"
-              style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(216,191,158,0.25)" }}
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-            />
-          )}
         </div>
+
         <button
-          onClick={saveHeroImage}
-          disabled={heroSaving || !heroUrlDraft}
+          onClick={saveHeroBanners}
+          disabled={heroSaving}
           type="button"
           className="btn-gold rounded px-4 py-2 text-sm"
         >
-          {heroSaving ? "در حال ذخیره..." : "ذخیره‌ی تصویر صفحه‌ی اصلی"}
+          {heroSaving ? "در حال ذخیره..." : "ذخیره‌ی بنرهای صفحه‌ی اصلی"}
         </button>
         {heroSaved && <span className="text-gold" style={{ fontSize: 12, marginRight: 10 }}>ذخیره شد ✓</span>}
         {heroError && <p style={{ fontSize: 12, color: "#E3A9A9", marginTop: 6 }}>{heroError}</p>}
+        {bannerDrafts.length === 0 && (
+          <p className="text-muted" style={{ fontSize: 11, marginTop: 6 }}>
+            اگه هیچ بنری اضافه نکنی، همون طرح گرافیکی پیش‌فرض سایت نمایش داده می‌شود.
+          </p>
+        )}
       </div>
 
       <form onSubmit={submit} className="bg-panel border border-hair rounded-lg p-4 mb-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
