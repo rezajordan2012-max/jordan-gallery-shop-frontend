@@ -1165,7 +1165,24 @@ export default function MaisonStore() {
         </div>
 
         {menuOpen && (
-          <div className="sm:hidden flex flex-col gap-1 px-4 pb-3 text-sm text-muted">
+          <div
+            className="sm:hidden flex flex-col gap-1 text-sm text-muted"
+            style={{
+              position: "fixed",
+              top: 92,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 25,
+              background: "#17111C",
+              padding: "16px",
+              overflowY: "auto",
+            }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-display text-gold" style={{ fontSize: 14 }}>منو</span>
+              <button onClick={closeMenu} aria-label="بستن منو"><X size={18} color="#F3EDE4" /></button>
+            </div>
             {menuNav === null && (
               <>
                 <button onClick={() => onMenuCategoryClick("all")} className="text-right py-1">
@@ -1342,7 +1359,7 @@ export default function MaisonStore() {
           {!categoryPageOpen && (
           <>
           {heroBanners.length > 0 && (
-            <section className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 9", maxHeight: 480 }}>
+            <section className="relative w-full overflow-hidden" style={{ height: "78vh", minHeight: 480 }}>
               <img
                 key={bannerIndex}
                 src={heroBanners[bannerIndex]}
