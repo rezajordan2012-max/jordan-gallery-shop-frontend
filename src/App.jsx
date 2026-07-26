@@ -1104,7 +1104,7 @@ export default function MaisonStore() {
         <div className="flex items-center justify-between px-4 py-3 sm:px-8">
           <div className="flex items-center gap-3">
             <button className="sm:hidden" onClick={() => { setMenuOpen((v) => !v); setMenuNav(null); }} aria-label="منو">
-              <Menu size={22} color="#F3EDE4" />
+              {menuOpen ? <X size={22} color="#F3EDE4" /> : <Menu size={22} color="#F3EDE4" />}
             </button>
             <div className="flex flex-col leading-none">
               <span className="font-latin text-gold" style={{ fontSize: 13 }}>JORDAN</span>
@@ -1169,20 +1169,17 @@ export default function MaisonStore() {
             className="sm:hidden flex flex-col gap-1 text-sm text-muted"
             style={{
               position: "fixed",
-              top: 92,
+              top: 0,
               left: 0,
               right: 0,
               bottom: 0,
               zIndex: 25,
               background: "#17111C",
               padding: "16px",
+              paddingTop: 20,
               overflowY: "auto",
             }}
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-display text-gold" style={{ fontSize: 14 }}>منو</span>
-              <button onClick={closeMenu} aria-label="بستن منو"><X size={18} color="#F3EDE4" /></button>
-            </div>
             {menuNav === null && (
               <>
                 <button onClick={() => onMenuCategoryClick("all")} className="text-right py-1">
