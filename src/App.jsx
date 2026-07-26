@@ -1164,6 +1164,8 @@ export default function MaisonStore() {
           </div>
         </div>
 
+      </header>
+
         {menuOpen && (
           <div
             className="sm:hidden flex flex-col gap-1 text-sm text-muted"
@@ -1286,7 +1288,6 @@ export default function MaisonStore() {
             )}
           </div>
         )}
-      </header>
 
       {/* پنل جستجوی محصول */}
       {searchOpen && (
