@@ -237,6 +237,8 @@ const PERFUME_FACETS = [
       spicy: "ادویه‌ای",
       greenMossy: "سبز و خزه‌ای",
       aquatic: "آکوآتیک",
+      resinous: "رزینی",
+      scentStick: "سنستیک",
     },
   },
 ];
@@ -589,7 +591,7 @@ function ProductCard({ product, onAdd }) {
 
   return (
     <div className={`${CATEGORY_CARD_CLASS[product.category]} product-card rounded-xl border border-hair overflow-hidden flex flex-col`}>
-      <div className="flex items-center justify-center" style={{ background: "rgba(123,92,246,0.08)", height: 220, overflow: "hidden" }}>
+      <div className="flex items-center justify-center" style={{ background: "rgba(123,92,246,0.08)", height: 168, overflow: "hidden" }}>
         {displayImage ? (
           <img
             src={displayImage}
@@ -1202,7 +1204,7 @@ export default function MaisonStore() {
               left: 0,
               right: 0,
               bottom: 0,
-              zIndex: 25,
+              zIndex: 50,
               background: "#FFFCF7",
               padding: "16px",
               paddingTop: 20,
@@ -1613,10 +1615,10 @@ export default function MaisonStore() {
             )}
 
             {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="rounded-xl border border-hair overflow-hidden">
-                    <div className="skeleton" style={{ height: 220 }} />
+                    <div className="skeleton" style={{ height: 168 }} />
                     <div className="p-4 flex flex-col gap-2">
                       <div className="skeleton" style={{ height: 10, width: "40%", borderRadius: 4 }} />
                       <div className="skeleton" style={{ height: 14, width: "70%", borderRadius: 4 }} />
@@ -1628,7 +1630,7 @@ export default function MaisonStore() {
             ) : filteredProducts.length === 0 ? (
               <p className="text-muted">محصولی در این دسته ثبت نشده است.</p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredProducts.map((p, i) => (
                   <div key={p.id} className="fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 0.06}s` }}>
                     <ProductCard product={p} onAdd={addToCart} />
