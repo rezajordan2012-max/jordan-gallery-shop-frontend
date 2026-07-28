@@ -14,60 +14,61 @@ const API_BASE_URL = "https://jordan-gallery-shop-backend.onrender.com";
 const ADMIN_EMAIL = "rezajordan2012@gmail.com";
 
 const FONTS = `
-  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Baloo+2:wght@500;600;700;800&display=swap');
 
   .maison-root {
     font-family: 'Vazirmatn', sans-serif;
     background:
-      radial-gradient(1200px 600px at 15% -10%, rgba(212,175,122,0.10), transparent 60%),
-      radial-gradient(900px 500px at 100% 0%, rgba(148,90,150,0.14), transparent 55%),
-      #17111C;
-    color: #F3EDE4;
+      radial-gradient(1100px 550px at 12% -8%, rgba(255,62,142,0.16), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(123,92,246,0.16), transparent 55%),
+      radial-gradient(900px 500px at 50% 105%, rgba(0,209,178,0.14), transparent 55%),
+      #FFFCF7;
+    color: #241E3D;
     -webkit-font-smoothing: antialiased;
   }
-  .font-latin { font-family: 'Cormorant Garamond', serif; letter-spacing: 0.2em; }
-  .font-display { font-family: 'Vazirmatn', sans-serif; font-weight: 800; letter-spacing: -0.01em; }
+  .font-latin { font-family: 'Baloo 2', sans-serif; letter-spacing: 0.14em; }
+  .font-display { font-family: 'Baloo 2', 'Vazirmatn', sans-serif; font-weight: 800; letter-spacing: -0.01em; }
 
-  ::selection { background: rgba(212,175,122,0.35); color: #1B1420; }
+  ::selection { background: rgba(255,62,142,0.28); color: #241E3D; }
 
-  .bg-panel { background: #211823; }
-  .bg-panel-2 { background: #2A1F2E; }
-  .border-hair { border-color: rgba(216, 191, 158, 0.14); }
-  .text-gold { color: #DCB77E; }
-  .text-muted { color: #A99BB0; }
-  .bg-gold { background: #B08D57; }
-  .bg-gold-grad { background: linear-gradient(135deg, #D4AF7A, #9C7A45); }
+  .bg-panel { background: #FFFFFF; }
+  .bg-panel-2 { background: #FBF3FF; }
+  .border-hair { border-color: rgba(123,92,246,0.16); }
+  .text-gold { color: #FF3E8E; }
+  .text-muted { color: #756E93; }
+  .bg-gold { background: #FF3E8E; }
+  .bg-gold-grad { background: linear-gradient(135deg, #FF7CB3, #7B5CF6); }
 
   .btn-gold {
-    background: linear-gradient(135deg, #E4C08C, #B98A4C);
-    color: #1B1420;
-    box-shadow: 0 6px 20px -6px rgba(212,175,122,0.45);
+    background: linear-gradient(135deg, #FF3E8E, #7B5CF6);
+    color: #FFFFFF;
+    box-shadow: 0 6px 20px -6px rgba(255,62,142,0.5);
     transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
   }
-  .btn-gold:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 10px 24px -6px rgba(212,175,122,0.55); }
+  .btn-gold:hover { filter: brightness(1.07); transform: translateY(-1px); box-shadow: 0 10px 26px -6px rgba(255,62,142,0.6); }
   .btn-gold:active { transform: translateY(0); }
 
   .btn-ghost {
-    border: 1px solid rgba(216, 191, 158, 0.3);
-    color: #F3EDE4;
-    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(123,92,246,0.3);
+    color: #241E3D;
+    background: rgba(123,92,246,0.04);
     transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
   }
-  .btn-ghost:hover { border-color: #DCB77E; color: #DCB77E; background: rgba(220,183,126,0.06); }
+  .btn-ghost:hover { border-color: #FF3E8E; color: #FF3E8E; background: rgba(255,62,142,0.08); }
 
-  .card-perfume { background: linear-gradient(160deg, #3B2440, #211823); }
-  .card-beauty { background: linear-gradient(160deg, #402637, #211823); }
-  .card-hygiene { background: linear-gradient(160deg, #2E3A34, #17111C); }
-  .card-electronics { background: linear-gradient(160deg, #24303F, #17111C); }
+  .card-perfume { background: linear-gradient(160deg, #FFD9EC, #FFF3F9); }
+  .card-beauty { background: linear-gradient(160deg, #FFF0AE, #FFFBEA); }
+  .card-hygiene { background: linear-gradient(160deg, #BDF3EA, #EEFFFC); }
+  .card-electronics { background: linear-gradient(160deg, #E2D4FF, #F8F2FF); }
 
   .product-card {
     transition: transform 0.28s cubic-bezier(.2,.8,.2,1), box-shadow 0.28s ease, border-color 0.28s ease;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 12px 24px -18px rgba(0,0,0,0.6);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset, 0 12px 24px -18px rgba(123,92,246,0.35);
   }
   .product-card:hover {
     transform: translateY(-4px);
-    border-color: rgba(220,183,126,0.4);
-    box-shadow: 0 18px 34px -16px rgba(0,0,0,0.65), 0 0 0 1px rgba(220,183,126,0.12);
+    border-color: rgba(255,62,142,0.5);
+    box-shadow: 0 18px 34px -16px rgba(123,92,246,0.4), 0 0 0 1px rgba(255,62,142,0.18);
   }
   .product-card img { transition: transform 0.5s ease; }
   .product-card:hover img { transform: scale(1.045); }
@@ -77,13 +78,13 @@ const FONTS = `
   }
   .category-card:hover {
     transform: translateY(-3px);
-    border-color: rgba(220,183,126,0.45);
-    box-shadow: 0 16px 30px -18px rgba(0,0,0,0.6);
+    border-color: rgba(255,62,142,0.55);
+    box-shadow: 0 16px 30px -18px rgba(123,92,246,0.45);
   }
 
   .glint {
     position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
-    background: linear-gradient(100deg, transparent, rgba(255,255,255,0.18), transparent);
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,0.55), transparent);
     animation: glintMove 5s ease-in-out infinite;
   }
   @keyframes glintMove {
@@ -103,7 +104,7 @@ const FONTS = `
   }
   .ray-burst {
     position: absolute; top: 50%; left: 50%; width: 340px; height: 340px;
-    background: repeating-conic-gradient(from 0deg, rgba(228,192,140,0.16) 0deg 4deg, transparent 4deg 18deg);
+    background: repeating-conic-gradient(from 0deg, rgba(255,62,142,0.18) 0deg 4deg, transparent 4deg 18deg);
     border-radius: 50%;
     animation: rayRotate 34s linear infinite;
     pointer-events: none;
@@ -114,7 +115,7 @@ const FONTS = `
   }
   .hero-halo {
     position: absolute; top: 50%; left: 50%; width: 260px; height: 260px;
-    background: radial-gradient(circle, rgba(228,192,140,0.35), rgba(148,90,150,0.16) 55%, transparent 75%);
+    background: radial-gradient(circle, rgba(255,124,179,0.4), rgba(123,92,246,0.2) 55%, transparent 75%);
     filter: blur(6px);
     border-radius: 50%;
     animation: haloBreathe 5s ease-in-out infinite;
@@ -131,15 +132,15 @@ const FONTS = `
 
   .nav-link { position: relative; padding-bottom: 4px; transition: color 0.18s ease; }
   .nav-link::after {
-    content: ""; position: absolute; right: 0; bottom: 0; height: 1px; width: 0;
-    background: #DCB77E; transition: width 0.25s ease;
+    content: ""; position: absolute; right: 0; bottom: 0; height: 2px; width: 0;
+    background: linear-gradient(90deg, #FF3E8E, #7B5CF6); border-radius: 2px; transition: width 0.25s ease;
   }
   .nav-link.active::after, .nav-link:hover::after { width: 100%; }
 
   input:focus, textarea:focus, select:focus {
     outline: none;
-    border-color: rgba(220,183,126,0.55) !important;
-    box-shadow: 0 0 0 3px rgba(220,183,126,0.12);
+    border-color: rgba(255,62,142,0.6) !important;
+    box-shadow: 0 0 0 3px rgba(255,62,142,0.14);
   }
 
   /* نوار اعلان متحرک بالای صفحه */
@@ -164,7 +165,7 @@ const FONTS = `
 
   /* اسکلتون درخشان هنگام بارگذاری محصولات */
   .skeleton {
-    background: linear-gradient(100deg, #241a29 30%, #33253a 50%, #241a29 70%);
+    background: linear-gradient(100deg, #F3E9FF 30%, #FFE3F0 50%, #F3E9FF 70%);
     background-size: 200% 100%;
     animation: skeletonShine 1.4s ease-in-out infinite;
   }
@@ -181,8 +182,8 @@ const FONTS = `
   .sparkle { animation: sparkleFloat 3.2s ease-in-out infinite; }
 
   @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(220,183,126,0.4); }
-    50% { box-shadow: 0 0 0 6px rgba(220,183,126,0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,62,142,0.45); }
+    50% { box-shadow: 0 0 0 6px rgba(255,62,142,0); }
   }
   .pulse-glow { animation: pulseGlow 2.2s ease-in-out infinite; }
 
@@ -461,7 +462,7 @@ function isAdminUser(user) {
 }
 
 function CategoryIcon({ category, size = 34 }) {
-  const stroke = "#D4AF7A";
+  const stroke = "#7B5CF6";
   if (category === "perfume" || category === "sprayAndSplash") {
     return (
       <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
@@ -562,7 +563,7 @@ function ProductCard({ product, onAdd }) {
 
   return (
     <div className={`${CATEGORY_CARD_CLASS[product.category]} product-card rounded-xl border border-hair overflow-hidden flex flex-col`}>
-      <div className="flex items-center justify-center" style={{ background: "rgba(0,0,0,0.15)", height: 220, overflow: "hidden" }}>
+      <div className="flex items-center justify-center" style={{ background: "rgba(123,92,246,0.08)", height: 220, overflow: "hidden" }}>
         {displayImage ? (
           <img
             src={displayImage}
@@ -579,7 +580,7 @@ function ProductCard({ product, onAdd }) {
         <div className="flex items-center justify-between">
           <span className="text-gold" style={{ fontSize: 11 }}>{product.brand}</span>
           {product.subcategory && (
-            <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(216,191,158,0.25)", borderRadius: 999, padding: "2px 8px" }}>
+            <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px" }}>
               {subcategoryLabel(product.category, product.subcategory)}
               {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
               {product.facets && facetsSummary(product.category, product.subcategory, product.facets) && ` · ${facetsSummary(product.category, product.subcategory, product.facets)}`}
@@ -595,7 +596,7 @@ function ProductCard({ product, onAdd }) {
               <img
                 src={selectedVariant.image}
                 alt={selectedVariant.label}
-                style={{ width: 20, height: 20, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(255,255,255,0.4)", flexShrink: 0 }}
+                style={{ width: 20, height: 20, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(123,92,246,0.4)", flexShrink: 0 }}
               />
             ) : (
               selectedVariant && selectedVariant.hex && (
@@ -605,7 +606,7 @@ function ProductCard({ product, onAdd }) {
                     height: 16,
                     borderRadius: "50%",
                     background: selectedVariant.hex,
-                    border: "1px solid rgba(255,255,255,0.4)",
+                    border: "1px solid rgba(123,92,246,0.4)",
                     flexShrink: 0,
                   }}
                 />
@@ -615,7 +616,7 @@ function ProductCard({ product, onAdd }) {
               value={variantId}
               onChange={(e) => setVariantId(e.target.value)}
               className="bg-panel-2 border border-hair rounded px-2 py-1.5 text-xs flex-1"
-              style={{ color: "#F3EDE4" }}
+              style={{ color: "#241E3D" }}
             >
               <option value="">انتخاب رنگ / شماره ({product.variants.length} طیف)</option>
               {product.variants.map((v) => (
@@ -637,7 +638,7 @@ function ProductCard({ product, onAdd }) {
           </button>
         </div>
         {hasVariants && !variantId && (
-          <p style={{ fontSize: 10, color: "#A99BB0" }}>برای افزودن به سبد، رنگ را انتخاب کن.</p>
+          <p style={{ fontSize: 10, color: "#756E93" }}>برای افزودن به سبد، رنگ را انتخاب کن.</p>
         )}
       </div>
     </div>
@@ -1086,8 +1087,8 @@ export default function MaisonStore() {
       <style>{FONTS}</style>
 
       {/* Announcement marquee */}
-      <div className="sticky top-0 z-40 overflow-hidden" style={{ background: "linear-gradient(90deg, #B98A4C, #E4C08C, #B98A4C)" }}>
-        <div className="marquee-track py-1.5" style={{ color: "#1B1420", fontSize: 12, fontWeight: 600 }}>
+      <div className="sticky top-0 z-40 overflow-hidden" style={{ background: "linear-gradient(90deg, #FF3E8E, #7B5CF6, #00C2CB, #FF3E8E)" }}>
+        <div className="marquee-track py-1.5" style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700 }}>
           {Array.from({ length: 2 }).map((_, i) => (
             <span key={i} className="flex items-center gap-10 px-6">
               <span>✦ ارسال سریع به سراسر ایران</span>
@@ -1104,7 +1105,7 @@ export default function MaisonStore() {
         <div className="flex items-center justify-between px-4 py-3 sm:px-8">
           <div className="flex items-center gap-3">
             <button className="sm:hidden" onClick={() => { setMenuOpen((v) => !v); setMenuNav(null); }} aria-label="منو">
-              {menuOpen ? <X size={22} color="#F3EDE4" /> : <Menu size={22} color="#F3EDE4" />}
+              {menuOpen ? <X size={22} color="#241E3D" /> : <Menu size={22} color="#241E3D" />}
             </button>
             <div className="flex flex-col leading-none">
               <span className="font-latin text-gold" style={{ fontSize: 13 }}>JORDAN</span>
@@ -1135,14 +1136,14 @@ export default function MaisonStore() {
               </button>
             )}
             <button onClick={() => { setSearchOpen(true); setSearchDraft(searchTerm); }} aria-label="جستجوی محصول">
-              <Search size={21} color="#F3EDE4" />
+              <Search size={21} color="#241E3D" />
             </button>
             <button onClick={() => setCartOpen(true)} className={`relative ${cartBump ? "cart-bump" : ""}`} aria-label="سبد خرید">
-              <ShoppingBag size={22} color="#F3EDE4" />
+              <ShoppingBag size={22} color="#241E3D" />
               {cartCount > 0 && (
                 <span
                   className="absolute -top-2 -left-2 bg-gold rounded-full text-xs flex items-center justify-center"
-                  style={{ width: 18, height: 18, color: "#1B1420", fontWeight: 700 }}
+                  style={{ width: 18, height: 18, color: "#FFFFFF", fontWeight: 700 }}
                 >
                   {cartCount}
                 </span>
@@ -1176,7 +1177,7 @@ export default function MaisonStore() {
               right: 0,
               bottom: 0,
               zIndex: 25,
-              background: "#17111C",
+              background: "#FFFCF7",
               padding: "16px",
               paddingTop: 20,
               overflowY: "auto",
@@ -1222,7 +1223,7 @@ export default function MaisonStore() {
                 <button onClick={() => setMenuNav(null)} className="text-right py-1 text-gold flex items-center gap-1">
                   <span>›</span> بازگشت
                 </button>
-                <p className="font-display" style={{ fontSize: 15, color: "#F3EDE4", margin: "4px 0" }}>
+                <p className="font-display" style={{ fontSize: 15, color: "#241E3D", margin: "4px 0" }}>
                   {CATEGORY_LABEL[menuNav.category]}
                 </p>
                 <button onClick={() => onMenuSubcategoryClick(menuNav.category, "all")} className="text-right py-1">
@@ -1246,7 +1247,7 @@ export default function MaisonStore() {
                 <button onClick={() => setMenuNav({ category: menuNav.category })} className="text-right py-1 text-gold flex items-center gap-1">
                   <span>›</span> بازگشت
                 </button>
-                <p className="font-display" style={{ fontSize: 15, color: "#F3EDE4", margin: "4px 0" }}>
+                <p className="font-display" style={{ fontSize: 15, color: "#241E3D", margin: "4px 0" }}>
                   {subcategoryLabel(menuNav.category, menuNav.subcategory)}
                 </p>
                 <button onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, "all")} className="text-right py-1">
@@ -1291,23 +1292,23 @@ export default function MaisonStore() {
 
       {/* پنل جستجوی محصول */}
       {searchOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", paddingTop: "15vh" }} onClick={() => setSearchOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4" style={{ background: "rgba(36,30,61,0.45)", paddingTop: "15vh" }} onClick={() => setSearchOpen(false)}>
           <div className="bg-panel-2 rounded-lg p-5 w-full border border-hair" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
             <form
               onSubmit={(e) => { e.preventDefault(); performSearch(searchDraft); }}
               className="flex items-center gap-2"
             >
-              <Search size={18} color="#DCB77E" />
+              <Search size={18} color="#FF3E8E" />
               <input
                 autoFocus
                 value={searchDraft}
                 onChange={(e) => setSearchDraft(e.target.value)}
                 placeholder="نام محصول را جستجو کن..."
                 className="bg-panel border border-hair rounded px-3 py-2 text-sm flex-1"
-                style={{ color: "#F3EDE4" }}
+                style={{ color: "#241E3D" }}
               />
               <button type="submit" className="btn-gold rounded px-4 py-2 text-sm">جستجو</button>
-              <button type="button" onClick={() => setSearchOpen(false)}><X size={18} color="#F3EDE4" /></button>
+              <button type="button" onClick={() => setSearchOpen(false)}><X size={18} color="#241E3D" /></button>
             </form>
           </div>
         </div>
@@ -1315,11 +1316,11 @@ export default function MaisonStore() {
 
       {/* پنل انتخاب بر اساس برند — از منوی کشویی باز می‌شود */}
       {brandMenuOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setBrandMenuOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(36,30,61,0.45)" }} onClick={() => setBrandMenuOpen(false)}>
           <div className="bg-panel-2 rounded-lg p-6 w-full border border-hair" style={{ maxWidth: 380, maxHeight: "70vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display" style={{ fontSize: 17 }}>انتخاب بر اساس برند</h3>
-              <button onClick={() => setBrandMenuOpen(false)}><X size={18} color="#F3EDE4" /></button>
+              <button onClick={() => setBrandMenuOpen(false)}><X size={18} color="#241E3D" /></button>
             </div>
             {allBrands.length === 0 ? (
               <p className="text-muted" style={{ fontSize: 13 }}>هنوز برندی ثبت نشده است.</p>
@@ -1374,7 +1375,7 @@ export default function MaisonStore() {
                         width: i === bannerIndex ? 18 : 6,
                         height: 6,
                         borderRadius: 999,
-                        background: i === bannerIndex ? "#DCB77E" : "rgba(255,255,255,0.5)",
+                        background: i === bannerIndex ? "#FF3E8E" : "rgba(255,255,255,0.6)",
                         transition: "width 0.3s ease",
                       }}
                     />
@@ -1408,27 +1409,27 @@ export default function MaisonStore() {
             <div className="flex-1 order-1 sm:order-2 flex justify-center">
               <div className="float-slow" style={{ position: "relative", width: 150, height: 200 }}>
                 <svg width="150" height="200" viewBox="0 0 150 200" fill="none">
-                  <rect x="55" y="10" width="40" height="24" rx="4" fill="#B08D57" />
-                  <rect x="62" y="0" width="26" height="14" rx="3" fill="#D4AF7A" />
-                  <rect x="30" y="34" width="90" height="150" rx="14" fill="url(#bottleGrad)" stroke="#9C7A45" strokeWidth="1.5" />
-                  <rect x="30" y="90" width="90" height="94" rx="14" fill="url(#liquidGrad)" opacity="0.85" />
+                  <rect x="55" y="10" width="40" height="24" rx="4" fill="#FF3E8E" />
+                  <rect x="62" y="0" width="26" height="14" rx="3" fill="#7B5CF6" />
+                  <rect x="30" y="34" width="90" height="150" rx="14" fill="url(#bottleGrad)" stroke="#7B5CF6" strokeWidth="1.5" />
+                  <rect x="30" y="90" width="90" height="94" rx="14" fill="url(#liquidGrad)" opacity="0.9" />
                   <defs>
                     <linearGradient id="bottleGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0" stopColor="#3B2440" />
-                      <stop offset="1" stopColor="#241A29" />
+                      <stop offset="0" stopColor="#FFE1F0" />
+                      <stop offset="1" stopColor="#F3E9FF" />
                     </linearGradient>
                     <linearGradient id="liquidGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0" stopColor="#D4AF7A" />
-                      <stop offset="1" stopColor="#8A6A3E" />
+                      <stop offset="0" stopColor="#FF7CB3" />
+                      <stop offset="1" stopColor="#00C2CB" />
                     </linearGradient>
                   </defs>
                 </svg>
                 <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 14 }}>
                   <div className="glint" />
                 </div>
-                <span className="sparkle" style={{ position: "absolute", top: 6, right: -6, width: 6, height: 6, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)" }} />
-                <span className="sparkle" style={{ position: "absolute", top: "45%", left: -12, width: 5, height: 5, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 8px 2px rgba(243,217,168,0.8)", animationDelay: "0.8s" }} />
-                <span className="sparkle" style={{ position: "absolute", bottom: 14, right: 10, width: 4, height: 4, borderRadius: "50%", background: "#F3D9A8", boxShadow: "0 0 6px 2px rgba(243,217,168,0.8)", animationDelay: "1.6s" }} />
+                <span className="sparkle" style={{ position: "absolute", top: 6, right: -6, width: 6, height: 6, borderRadius: "50%", background: "#FFD23F", boxShadow: "0 0 8px 2px rgba(255,210,63,0.85)" }} />
+                <span className="sparkle" style={{ position: "absolute", top: "45%", left: -12, width: 5, height: 5, borderRadius: "50%", background: "#FFD23F", boxShadow: "0 0 8px 2px rgba(255,210,63,0.85)", animationDelay: "0.8s" }} />
+                <span className="sparkle" style={{ position: "absolute", bottom: 14, right: 10, width: 4, height: 4, borderRadius: "50%", background: "#FFD23F", boxShadow: "0 0 6px 2px rgba(255,210,63,0.85)", animationDelay: "1.6s" }} />
               </div>
             </div>
           </section>
@@ -1480,7 +1481,7 @@ export default function MaisonStore() {
           <section id="catalog" className="px-4 sm:px-8 max-w-6xl mx-auto pb-20">
             {!categoryPageOpen && (
               <div className="flex items-center gap-2 mb-4">
-                <Sparkles size={16} color="#D4AF7A" />
+                <Sparkles size={16} color="#FF3E8E" />
                 <h2 className="font-display" style={{ fontSize: 20 }}>
                   {activeCategory === "all" ? "محصولات منتخب" : CATEGORY_LABEL[activeCategory]}
                 </h2>
@@ -1492,7 +1493,7 @@ export default function MaisonStore() {
                 <button
                   onClick={() => selectSubcategory("all")}
                   className="btn-ghost rounded-full px-3 py-1.5 text-xs"
-                  style={activeSubcategory === "all" ? { borderColor: "#DCB77E", color: "#DCB77E" } : undefined}
+                  style={activeSubcategory === "all" ? { borderColor: "#FF3E8E", color: "#FF3E8E" } : undefined}
                 >
                   همه
                 </button>
@@ -1501,7 +1502,7 @@ export default function MaisonStore() {
                     key={key}
                     onClick={() => selectSubcategory(key)}
                     className="btn-ghost rounded-full px-3 py-1.5 text-xs"
-                    style={activeSubcategory === key ? { borderColor: "#DCB77E", color: "#DCB77E" } : undefined}
+                    style={activeSubcategory === key ? { borderColor: "#FF3E8E", color: "#FF3E8E" } : undefined}
                   >
                     {subcategoryLabel(activeCategory, key)}
                   </button>
@@ -1517,7 +1518,7 @@ export default function MaisonStore() {
                       <button
                         onClick={() => setActiveFacets({})}
                         className="btn-ghost rounded-full px-3 py-1 text-xs mb-2"
-                        style={{ borderColor: "#DCB77E", color: "#DCB77E" }}
+                        style={{ borderColor: "#FF3E8E", color: "#FF3E8E" }}
                       >
                         پاک کردن همه‌ی فیلترها ✕
                       </button>
@@ -1531,7 +1532,7 @@ export default function MaisonStore() {
                               key={key}
                               onClick={() => toggleFacet(g.key, key)}
                               className="btn-ghost rounded-full px-3 py-1 text-xs"
-                              style={(activeFacets[g.key] || []).includes(key) ? { borderColor: "#DCB77E", color: "#DCB77E", background: "rgba(220,183,126,0.12)" } : { opacity: 0.85 }}
+                              style={(activeFacets[g.key] || []).includes(key) ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
                             >
                               {label}
                             </button>
@@ -1546,7 +1547,7 @@ export default function MaisonStore() {
                       <button
                         onClick={() => setActiveType("all")}
                         className="btn-ghost rounded-full px-3 py-1 text-xs"
-                        style={activeType === "all" ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
+                        style={activeType === "all" ? { borderColor: "#FF3E8E", color: "#FF3E8E" } : { opacity: 0.85 }}
                       >
                         همه‌ی انواع
                       </button>
@@ -1557,7 +1558,7 @@ export default function MaisonStore() {
                           key={key}
                           onClick={() => setActiveType(key)}
                           className="btn-ghost rounded-full px-3 py-1 text-xs"
-                          style={activeType === key ? { borderColor: "#DCB77E", color: "#DCB77E" } : { opacity: 0.85 }}
+                          style={activeType === key ? { borderColor: "#FF3E8E", color: "#FF3E8E" } : { opacity: 0.85 }}
                         >
                           {label}
                         </button>
@@ -1575,7 +1576,7 @@ export default function MaisonStore() {
                   value={activeBrand}
                   onChange={(e) => setActiveBrand(e.target.value)}
                   className="bg-panel-2 border border-hair rounded-full px-3 py-1.5 text-xs"
-                  style={{ color: "#F3EDE4" }}
+                  style={{ color: "#241E3D" }}
                 >
                   <option value="all">همه‌ی برندها</option>
                   {brandsInCategory.map((b) => (
@@ -1624,24 +1625,25 @@ export default function MaisonStore() {
           left: 20,
           width: 42,
           height: 42,
-          background: "rgba(36,26,41,0.85)",
-          border: "1px solid rgba(216,191,158,0.25)",
+          background: "rgba(255,255,255,0.9)",
+          border: "1px solid rgba(123,92,246,0.3)",
+          boxShadow: "0 4px 14px -4px rgba(123,92,246,0.35)",
         }}
       >
-        <Lock size={16} color="#D4AF7A" />
+        <Lock size={16} color="#7B5CF6" />
       </button>
 
       {/* Cart Drawer */}
       {cartOpen && (
-        <div className="fixed inset-0 z-40 flex justify-end" style={{ background: "rgba(0,0,0,0.55)" }} onClick={() => setCartOpen(false)}>
+        <div className="fixed inset-0 z-40 flex justify-end" style={{ background: "rgba(36,30,61,0.45)" }} onClick={() => setCartOpen(false)}>
           <div
             className="cart-drawer bg-panel-2 h-full w-full sm:w-96 p-5 flex flex-col border-hair"
-            style={{ borderInlineStart: "1px solid rgba(216,191,158,0.16)" }}
+            style={{ borderInlineStart: "1px solid rgba(123,92,246,0.2)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-display" style={{ fontSize: 18 }}>سبد خرید</h3>
-              <button onClick={() => setCartOpen(false)}><X size={20} color="#F3EDE4" /></button>
+              <button onClick={() => setCartOpen(false)}><X size={20} color="#241E3D" /></button>
             </div>
 
             {cartItems.length === 0 ? (
@@ -1650,7 +1652,7 @@ export default function MaisonStore() {
               <div className="flex-1 overflow-y-auto flex flex-col gap-4">
                 {cartItems.map((item) => (
                   <div key={item.cartKey} className="flex items-center gap-3 border-b border-hair pb-3">
-                    <div className="flex items-center justify-center rounded overflow-hidden" style={{ width: 44, height: 44, background: "rgba(255,255,255,0.05)" }}>
+                    <div className="flex items-center justify-center rounded overflow-hidden" style={{ width: 44, height: 44, background: "rgba(123,92,246,0.08)" }}>
                       {(item.variant && item.variant.image) || item.image ? (
                         <img
                           src={(item.variant && item.variant.image) || item.image}
@@ -1658,7 +1660,7 @@ export default function MaisonStore() {
                           style={{ width: "100%", height: "100%", objectFit: "cover" }}
                         />
                       ) : item.variant && item.variant.hex ? (
-                        <span style={{ width: 20, height: 20, borderRadius: "50%", background: item.variant.hex, border: "1px solid rgba(255,255,255,0.4)" }} />
+                        <span style={{ width: 20, height: 20, borderRadius: "50%", background: item.variant.hex, border: "1px solid rgba(123,92,246,0.4)" }} />
                       ) : (
                         <CategoryIcon category={item.category} size={22} />
                       )}
@@ -1671,11 +1673,11 @@ export default function MaisonStore() {
                       <p className="text-muted" style={{ fontSize: 11 }}>{fmtPrice(item.price)}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => changeQty(item.cartKey, -1)}><Minus size={14} color="#D4AF7A" /></button>
+                      <button onClick={() => changeQty(item.cartKey, -1)}><Minus size={14} color="#7B5CF6" /></button>
                       <span style={{ fontSize: 13 }}>{item.qty}</span>
-                      <button onClick={() => changeQty(item.cartKey, 1)}><Plus size={14} color="#D4AF7A" /></button>
+                      <button onClick={() => changeQty(item.cartKey, 1)}><Plus size={14} color="#7B5CF6" /></button>
                     </div>
-                    <button onClick={() => removeFromCart(item.cartKey)}><Trash2 size={15} color="#A99BB0" /></button>
+                    <button onClick={() => removeFromCart(item.cartKey)}><Trash2 size={15} color="#756E93" /></button>
                   </div>
                 ))}
               </div>
@@ -1694,7 +1696,7 @@ export default function MaisonStore() {
                 {checkoutLoading ? "در حال اتصال به درگاه..." : user ? "پرداخت و تکمیل سفارش" : "ورود و پرداخت"}
               </button>
               {checkoutError && (
-                <p className="mt-2" style={{ fontSize: 11, color: "#E3A9A9" }}>{checkoutError}</p>
+                <p className="mt-2" style={{ fontSize: 11, color: "#D6336C" }}>{checkoutError}</p>
               )}
               <p className="text-muted mt-2" style={{ fontSize: 10 }}>
                 پرداخت از طریق درگاه زرین‌پال انجام می‌شود.
@@ -1705,13 +1707,13 @@ export default function MaisonStore() {
       )}
 
       {authOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setAuthOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(36,30,61,0.45)" }} onClick={() => setAuthOpen(false)}>
           <div className="bg-panel-2 rounded-lg p-6 w-full border border-hair" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display" style={{ fontSize: 17 }}>
                 {authMode === "login" ? "ورود به حساب کاربری" : "ساخت حساب کاربری"}
               </h3>
-              <button onClick={() => setAuthOpen(false)}><X size={18} color="#F3EDE4" /></button>
+              <button onClick={() => setAuthOpen(false)}><X size={18} color="#241E3D" /></button>
             </div>
 
             <form onSubmit={handleAuthSubmit} className="flex flex-col gap-3">
@@ -1721,7 +1723,7 @@ export default function MaisonStore() {
                   value={authForm.fullName}
                   onChange={(e) => setAuthForm({ ...authForm, fullName: e.target.value })}
                   className="bg-panel border border-hair rounded px-3 py-2 text-sm"
-                  style={{ color: "#F3EDE4" }}
+                  style={{ color: "#241E3D" }}
                 />
               )}
               <input
@@ -1731,7 +1733,7 @@ export default function MaisonStore() {
                 value={authForm.email}
                 onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
                 className="bg-panel border border-hair rounded px-3 py-2 text-sm"
-                style={{ color: "#F3EDE4" }}
+                style={{ color: "#241E3D" }}
               />
               <input
                 type="password"
@@ -1740,9 +1742,9 @@ export default function MaisonStore() {
                 value={authForm.password}
                 onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
                 className="bg-panel border border-hair rounded px-3 py-2 text-sm"
-                style={{ color: "#F3EDE4" }}
+                style={{ color: "#241E3D" }}
               />
-              {authError && <p style={{ fontSize: 12, color: "#E3A9A9" }}>{authError}</p>}
+              {authError && <p style={{ fontSize: 12, color: "#D6336C" }}>{authError}</p>}
               <button type="submit" disabled={authLoading} className="btn-gold rounded py-2.5 text-sm font-medium">
                 {authLoading ? "در حال ارسال..." : authMode === "login" ? "ورود" : "ثبت‌نام"}
               </button>
@@ -1910,19 +1912,19 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   return (
     <section className="px-4 sm:px-8 max-w-5xl mx-auto py-8">
       <div className="flex items-center gap-2 mb-1">
-        <LayoutDashboard size={18} color="#D4AF7A" />
+        <LayoutDashboard size={18} color="#7B5CF6" />
         <h2 className="font-display" style={{ fontSize: 20 }}>پنل مدیریت محصولات</h2>
       </div>
       <p className="text-muted mb-6" style={{ fontSize: 12 }}>
         محصولات روی سرور فروشگاه ذخیره می‌شوند و برای همه‌ی مشتریان قابل مشاهده‌اند.
       </p>
       {storageError && (
-        <p className="mb-4 rounded p-3" style={{ fontSize: 12, background: "rgba(180,80,80,0.15)", color: "#E3A9A9" }}>
+        <p className="mb-4 rounded p-3" style={{ fontSize: 12, background: "rgba(214,51,108,0.12)", color: "#D6336C" }}>
           اتصال به سرور فروشگاه برقرار نشد؛ محصولات نمونه نمایش داده شده‌اند و تغییرات ذخیره نمی‌شوند. دوباره صفحه را باز کن.
         </p>
       )}
       {formError && (
-        <p className="mb-4 rounded p-3" style={{ fontSize: 12, background: "rgba(180,80,80,0.15)", color: "#E3A9A9" }}>
+        <p className="mb-4 rounded p-3" style={{ fontSize: 12, background: "rgba(214,51,108,0.12)", color: "#D6336C" }}>
           {formError}
         </p>
       )}
@@ -1947,7 +1949,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 <span className="text-muted" style={{ fontSize: 11, flex: 1 }}>بنر شماره {i + 1}</span>
                 <button type="button" onClick={() => moveBannerDraft(i, -1)} disabled={i === 0} className="btn-ghost rounded px-2 py-1 text-xs">▲</button>
                 <button type="button" onClick={() => moveBannerDraft(i, 1)} disabled={i === bannerDrafts.length - 1} className="btn-ghost rounded px-2 py-1 text-xs">▼</button>
-                <button type="button" onClick={() => removeBannerDraft(i)} className="btn-ghost rounded px-2 py-1 text-xs" style={{ color: "#E3A9A9" }}>حذف</button>
+                <button type="button" onClick={() => removeBannerDraft(i)} className="btn-ghost rounded px-2 py-1 text-xs" style={{ color: "#D6336C" }}>حذف</button>
               </div>
             ))}
           </div>
@@ -1973,7 +1975,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           {heroSaving ? "در حال ذخیره..." : "ذخیره‌ی بنرهای صفحه‌ی اصلی"}
         </button>
         {heroSaved && <span className="text-gold" style={{ fontSize: 12, marginRight: 10 }}>ذخیره شد ✓</span>}
-        {heroError && <p style={{ fontSize: 12, color: "#E3A9A9", marginTop: 6 }}>{heroError}</p>}
+        {heroError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 6 }}>{heroError}</p>}
         {bannerDrafts.length === 0 && (
           <p className="text-muted" style={{ fontSize: 11, marginTop: 6 }}>
             اگه هیچ بنری اضافه نکنی، همون طرح گرافیکی پیش‌فرض سایت نمایش داده می‌شود.
@@ -1987,20 +1989,20 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-          style={{ color: "#F3EDE4" }}
+          style={{ color: "#241E3D" }}
         />
         <input
           placeholder="برند"
           value={form.brand}
           onChange={(e) => setForm({ ...form, brand: e.target.value })}
           className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-          style={{ color: "#F3EDE4" }}
+          style={{ color: "#241E3D" }}
         />
         <select
           value={form.category}
           onChange={(e) => setForm({ ...form, category: e.target.value, subcategory: "", type: "" })}
           className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-          style={{ color: "#F3EDE4" }}
+          style={{ color: "#241E3D" }}
         >
           {CATEGORY_ORDER.map((k) => (
             <option key={k} value={k}>{CATEGORY_LABEL[k]}</option>
@@ -2011,7 +2013,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             value={form.subcategory}
             onChange={(e) => setForm({ ...form, subcategory: e.target.value, type: "" })}
             className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-            style={{ color: "#F3EDE4" }}
+            style={{ color: "#241E3D" }}
           >
             <option value="">زیرشاخه را انتخاب کن</option>
             {Object.keys(CATEGORIES[form.category].subcategories).map((k) => (
@@ -2039,7 +2041,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                           type="button"
                           onClick={() => toggleFormFacet(k)}
                           className="btn-ghost rounded-full px-3 py-1 text-xs"
-                          style={selected.includes(k) ? { borderColor: "#DCB77E", color: "#DCB77E", background: "rgba(220,183,126,0.12)" } : { opacity: 0.85 }}
+                          style={selected.includes(k) ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
                         >
                           {v}
                         </button>
@@ -2054,7 +2056,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
               className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-              style={{ color: "#F3EDE4" }}
+              style={{ color: "#241E3D" }}
             >
               <option value="">نوع محصول را انتخاب کن</option>
               {Object.entries(subcategoryTypes(form.category, form.subcategory)).map(([k, v]) => (
@@ -2069,14 +2071,14 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           value={form.price}
           onChange={(e) => setForm({ ...form, price: e.target.value })}
           className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-          style={{ color: "#F3EDE4" }}
+          style={{ color: "#241E3D" }}
         />
         <textarea
           placeholder="توضیح کوتاه"
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
           className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm sm:col-span-2"
-          style={{ color: "#F3EDE4", minHeight: 60 }}
+          style={{ color: "#241E3D", minHeight: 60 }}
         />
         <div className="sm:col-span-2 flex flex-col gap-1">
           <label className="text-muted" style={{ fontSize: 12 }}>
@@ -2102,14 +2104,14 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               value={form.image}
               onChange={(e) => setForm({ ...form, image: e.target.value })}
               className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
-              style={{ color: "#F3EDE4", minWidth: 200 }}
+              style={{ color: "#241E3D", minWidth: 200 }}
               dir="ltr"
             />
             {form.image && (
               <img
                 src={form.image}
                 alt="پیش‌نمایش"
-                style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(216,191,158,0.25)" }}
+                style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)" }}
                 onError={(e) => { e.currentTarget.style.display = "none"; }}
               />
             )}
@@ -2124,7 +2126,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             value={form.variantsText}
             onChange={(e) => setForm({ ...form, variantsText: e.target.value })}
             className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-            style={{ color: "#F3EDE4", minHeight: 110, fontFamily: "monospace", fontSize: 12 }}
+            style={{ color: "#241E3D", minHeight: 110, fontFamily: "monospace", fontSize: 12 }}
             dir="ltr"
           />
           <p className="text-muted" style={{ fontSize: 11 }}>
@@ -2147,7 +2149,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       <div className="flex flex-col gap-2">
         {products.map((p) => (
           <div key={p.id} className="bg-panel border border-hair rounded-lg p-3 flex items-center gap-3">
-            <div className="flex items-center justify-center rounded overflow-hidden" style={{ width: 40, height: 40, background: "rgba(255,255,255,0.05)", flexShrink: 0 }}>
+            <div className="flex items-center justify-center rounded overflow-hidden" style={{ width: 40, height: 40, background: "rgba(123,92,246,0.08)", flexShrink: 0 }}>
               {p.image ? (
                 <img
                   src={p.image}
