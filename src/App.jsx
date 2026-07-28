@@ -60,6 +60,7 @@ const FONTS = `
   .card-beauty { background: linear-gradient(160deg, #FFF0AE, #FFFBEA); }
   .card-hygiene { background: linear-gradient(160deg, #BDF3EA, #EEFFFC); }
   .card-electronics { background: linear-gradient(160deg, #E2D4FF, #F8F2FF); }
+  .card-hairstyling { background: linear-gradient(160deg, #C6F5C1, #F1FFEF); }
 
   .product-card {
     transition: transform 0.28s cubic-bezier(.2,.8,.2,1), box-shadow 0.28s ease, border-color 0.28s ease;
@@ -264,7 +265,7 @@ const CATEGORIES = {
     },
   },
   makeup: {
-    label: "آرایشی",
+    label: "آرایشی صورت و بدن",
     subcategories: {
       face: {
         label: "صورت",
@@ -309,6 +310,21 @@ const CATEGORIES = {
           lashes: "مژه‌ها",
         },
       },
+    },
+  },
+  hairStyling: {
+    label: "آرایشی مو",
+    subcategories: {
+      menHairColor: "رنگ مو آقایان",
+      hairColor: "رنگ مو",
+      colorShampoo: "شامپو رنگ",
+      hairMousseMeshSpray: "موس و اسپری مش مو",
+      hairStylingMousse: "موس حالت دهنده مو",
+      hairStylingSpray: "اسپری حالت دهنده مو",
+      hairGlueSpray: "اسپری چسب مو",
+      hairWax: "واکس مو",
+      hairCream: "کرم مو",
+      hairGel: "ژل مو",
     },
   },
   hygiene: {
@@ -393,6 +409,7 @@ const CATEGORY_CARD_CLASS = {
   perfume: "card-perfume",
   sprayAndSplash: "card-perfume",
   makeup: "card-beauty",
+  hairStyling: "card-hairstyling",
   hygiene: "card-hygiene",
   electronics: "card-electronics",
 };
@@ -478,6 +495,15 @@ function CategoryIcon({ category, size = 34 }) {
         <circle cx="24" cy="20" r="10" stroke={stroke} strokeWidth="1.6" />
         <path d="M24 30v12M18 42h12" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
         <circle cx="24" cy="20" r="4" stroke={stroke} strokeWidth="1.2" opacity="0.6" />
+      </svg>
+    );
+  }
+  if (category === "hairStyling") {
+    return (
+      <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+        <path d="M8 14c6 0 6 6 12 6s6-6 12-6 6 6 12 6" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M8 24c6 0 6 6 12 6s6-6 12-6 6 6 12 6" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" opacity="0.7" />
+        <path d="M8 34c6 0 6 6 12 6s6-6 12-6 6 6 12 6" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" opacity="0.4" />
       </svg>
     );
   }
