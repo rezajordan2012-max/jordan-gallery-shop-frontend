@@ -642,15 +642,16 @@ const SEED_PRODUCTS = [
   { id: "p11", name: "دستگاه پاکسازی صورت", brand: "ولوره", category: "electronics", subcategory: "face", price: 1650000, description: "برس سونیک برای پاکسازی عمیق منافذ پوست صورت.", image: "" },
 ];
 
-function ProductCard({ product, onAdd }) {
+function ProductCard({ product, onOpen }) {
+  const displayImage = product.image || "";
   const hasVariants = product.variants && product.variants.length > 0;
-  const [variantId, setVariantId] = useState("");
-  const selectedVariant = hasVariants ? product.variants.find((v) => v.id === variantId) : null;
-
-  const displayImage = (selectedVariant && selectedVariant.image) || product.image || "";
 
   return (
-    <div className={`${CATEGORY_CARD_CLASS[product.category]} product-card rounded-xl border border-hair overflow-hidden flex flex-col`}>
+    <button
+      type="button"
+      onClick={() => onOpen(product.id)}
+      className={`${CATEGORY_CARD_CLASS[product.category]} product-card rounded-xl border border-hair overflow-hidden flex flex-col text-right w-full`}
+    >
       <div className="flex items-center justify-center" style={{ background: "rgba(123,92,246,0.08)", height: 168, overflow: "hidden" }}>
         {displayImage ? (
           <img
@@ -678,68 +679,128 @@ function ProductCard({ product, onAdd }) {
         <h3 className="font-display" style={{ fontSize: 16 }}>{product.name}</h3>
         <p className="text-muted" style={{ fontSize: 12, minHeight: 32 }}>{product.description}</p>
 
-        {hasVariants && (
-          <div className="flex flex-col gap-2 mt-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {product.variants.map((v) => {
-                const isSelected = variantId === v.id;
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => setVariantId(v.id)}
-                    title={v.label}
-                    aria-label={v.label}
-                    style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: "50%",
-                      padding: 0,
-                      flexShrink: 0,
-                      cursor: "pointer",
-                      background: v.image ? `center/cover no-repeat url(${v.image})` : (v.hex || "#EEE"),
-                      border: isSelected ? "2px solid #FF3E8E" : "1px solid rgba(123,92,246,0.35)",
-                      boxShadow: isSelected ? "0 0 0 3px rgba(255,62,142,0.22)" : "none",
-                      transition: "box-shadow 0.15s ease, border-color 0.15s ease",
-                    }}
-                  />
-                );
-              })}
-            </div>
-            {selectedVariant ? (
-              <div className="flex items-center gap-2">
-                {selectedVariant.image ? (
-                  <img
-                    src={selectedVariant.image}
-                    alt={selectedVariant.label}
-                    style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)", flexShrink: 0 }}
-                  />
-                ) : selectedVariant.hex ? (
-                  <span
-                    style={{ width: 22, height: 22, borderRadius: "50%", background: selectedVariant.hex, border: "1px solid rgba(123,92,246,0.3)", flexShrink: 0 }}
-                  />
-                ) : null}
-                <span className="text-gold" style={{ fontSize: 11.5, fontWeight: 600 }}>{selectedVariant.label}</span>
-              </div>
-            ) : (
-              <p className="text-muted" style={{ fontSize: 10.5 }}>یکی از {product.variants.length} رنگ/شماره بالا رو لمس کن</p>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center justify-between mt-2">
           <span style={{ fontSize: 14, fontWeight: 600 }}>{fmtPrice(product.price)}</span>
-          <button
-            onClick={() => onAdd(product, variantId || undefined)}
-            disabled={hasVariants && !variantId}
-            className="btn-gold rounded px-3 py-2 text-xs"
-            style={hasVariants && !variantId ? { opacity: 0.5 } : undefined}
-          >
-            افزودن
-          </button>
+          {hasVariants ? (
+            <span className="text-gold" style={{ fontSize: 10.5 }}>{product.variants.length} رنگ/شماره ›</span>
+          ) : (
+            <span className="text-muted" style={{ fontSize: 10.5 }}>مشاهده ›</span>
+          )}
         </div>
       </div>
-    </div>
+    </button>
+  );
+}
+
+function ProductDetailPage({ product, onBack, onAdd }) {
+  const hasVariants = !!product && product.variants && product.variants.length > 0;
+  const [variantId, setVariantId] = useState("");
+  const selectedVariant = hasVariants ? product.variants.find((v) => v.id === variantId) : null;
+  const displayImage = (selectedVariant && selectedVariant.image) || (product && product.image) || "";
+
+  if (!product) {
+    return (
+      <section className="px-4 sm:px-8 max-w-3xl mx-auto py-16 text-center">
+        <p className="text-muted mb-4">این محصول یافت نشد یا حذف شده است.</p>
+        <button onClick={onBack} className="btn-ghost rounded-full px-4 py-2 text-sm">بازگشت</button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="px-4 sm:px-8 max-w-3xl mx-auto py-6 pb-24">
+      <button onClick={onBack} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-4">
+        <span>›</span> بازگشت
+      </button>
+
+      <div
+        className={`${CATEGORY_CARD_CLASS[product.category]} rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5`}
+        style={{ height: 320 }}
+      >
+        {displayImage ? (
+          <img src={displayImage} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <CategoryIcon category={product.category} size={80} />
+        )}
+      </div>
+
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-gold" style={{ fontSize: 12 }}>{product.brand}</span>
+        {product.subcategory && (
+          <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px" }}>
+            {subcategoryLabel(product.category, product.subcategory)}
+            {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
+            {product.facets && facetsSummary(product.category, product.subcategory, product.facets) && ` · ${facetsSummary(product.category, product.subcategory, product.facets)}`}
+          </span>
+        )}
+      </div>
+      <h1 className="font-display" style={{ fontSize: 24, marginBottom: 6 }}>{product.name}</h1>
+      <p style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{fmtPrice(product.price)}</p>
+
+      {hasVariants && (
+        <div className="mb-6">
+          <p className="text-muted mb-2" style={{ fontSize: 12.5 }}>
+            رنگ / شماره ({product.variants.length} طیف){selectedVariant ? ` — ${selectedVariant.label}` : ""}
+          </p>
+          <div className="flex flex-wrap gap-2.5">
+            {product.variants.map((v) => {
+              const isSelected = variantId === v.id;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setVariantId(v.id)}
+                  title={v.label}
+                  aria-label={v.label}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    padding: 0,
+                    cursor: "pointer",
+                    background: v.image ? `center/cover no-repeat url(${v.image})` : (v.hex || "#EEE"),
+                    border: isSelected ? "2.5px solid #FF3E8E" : "1px solid rgba(123,92,246,0.35)",
+                    boxShadow: isSelected ? "0 0 0 3px rgba(255,62,142,0.22)" : "none",
+                    transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {product.description && (
+        <div className="mb-5">
+          <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>معرفی محصول</h2>
+          <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.description}</p>
+        </div>
+      )}
+      {product.properties && (
+        <div className="mb-5">
+          <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ویژگی‌ها و خواص</h2>
+          <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.properties}</p>
+        </div>
+      )}
+      {product.ingredients && (
+        <div className="mb-7">
+          <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ترکیبات</h2>
+          <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.ingredients}</p>
+        </div>
+      )}
+
+      <button
+        onClick={() => onAdd(product, variantId || undefined)}
+        disabled={hasVariants && !variantId}
+        className="btn-gold w-full rounded py-3 text-sm font-medium"
+        style={hasVariants && !variantId ? { opacity: 0.55 } : undefined}
+      >
+        افزودن به سبد خرید
+      </button>
+      {hasVariants && !variantId && (
+        <p className="text-muted text-center mt-2" style={{ fontSize: 11 }}>برای افزودن به سبد، یکی از رنگ‌ها/شماره‌ها رو انتخاب کن.</p>
+      )}
+    </section>
   );
 }
 
@@ -749,6 +810,7 @@ export default function MaisonStore() {
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [menuNav, setMenuNav] = useState(null); // null | { category } | { category, subcategory }
   const [categoryPageOpen, setCategoryPageOpen] = useState(false);
+  const [openProductId, setOpenProductId] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -1046,6 +1108,7 @@ export default function MaisonStore() {
     setActiveBrand(brand);
     setView("store");
     setCategoryPageOpen(false);
+    setOpenProductId(null);
     setBrandMenuOpen(false);
     setMenuOpen(false);
     setTimeout(() => document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -1087,6 +1150,7 @@ export default function MaisonStore() {
     setActiveBrand("all");
     setView("store");
     setCategoryPageOpen(c !== "all");
+    setOpenProductId(null);
   }
 
   function backToStore() {
@@ -1098,6 +1162,14 @@ export default function MaisonStore() {
     setCategoryPageOpen(false);
     setSearchTerm("");
     setSearchDraft("");
+    setOpenProductId(null);
+  }
+
+  function openProduct(id) {
+    setOpenProductId(id);
+  }
+  function closeProduct() {
+    setOpenProductId(null);
   }
 
   function performSearch(term) {
@@ -1112,6 +1184,7 @@ export default function MaisonStore() {
     setCategoryPageOpen(true);
     setSearchOpen(false);
     setView("store");
+    setOpenProductId(null);
   }
 
   function selectSubcategory(key) {
@@ -1451,6 +1524,12 @@ export default function MaisonStore() {
           heroBanners={heroBanners}
           onUpdateHeroBanners={updateHeroBanners}
         />
+      ) : openProductId ? (
+        <ProductDetailPage
+          product={products.find((p) => p.id === openProductId)}
+          onBack={closeProduct}
+          onAdd={addToCart}
+        />
       ) : (
         <>
           {!categoryPageOpen && (
@@ -1703,7 +1782,7 @@ export default function MaisonStore() {
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredProducts.map((p, i) => (
                   <div key={p.id} className="fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 0.06}s` }}>
-                    <ProductCard product={p} onAdd={addToCart} />
+                    <ProductCard product={p} onOpen={openProduct} />
                   </div>
                 ))}
               </div>
@@ -1867,7 +1946,7 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", description: "", image: "", variantsText: "" };
+  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", description: "", properties: "", ingredients: "", image: "", variantsText: "" };
 }
 
 function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners }) {
@@ -1968,7 +2047,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   function startEdit(p) {
     setEditingId(p.id);
     setFormError("");
-    setForm({ ...p, price: String(p.price), variantsText: variantsToText(p.variants), facets: p.facets || {} });
+    setForm({ ...p, price: String(p.price), variantsText: variantsToText(p.variants), facets: p.facets || {}, properties: p.properties || "", ingredients: p.ingredients || "" });
   }
   function cancelEdit() {
     setEditingId(null);
@@ -2180,6 +2259,30 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         />
         <div className="sm:col-span-2 flex flex-col gap-1">
           <label className="text-muted" style={{ fontSize: 12 }}>
+            ویژگی‌ها و خواص (این متن در صفحه‌ی اختصاصی محصول به مشتری نمایش داده می‌شود)
+          </label>
+          <textarea
+            placeholder={"مثال:\nماندگاری بالا\nمقاوم در برابر آب\nمناسب پوست حساس"}
+            value={form.properties}
+            onChange={(e) => setForm({ ...form, properties: e.target.value })}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D", minHeight: 70 }}
+          />
+        </div>
+        <div className="sm:col-span-2 flex flex-col gap-1">
+          <label className="text-muted" style={{ fontSize: 12 }}>
+            ترکیبات (اختیاری — در صفحه‌ی اختصاصی محصول نمایش داده می‌شود)
+          </label>
+          <textarea
+            placeholder="مثال: آب، گلیسیرین، روغن آرگان، ویتامین E ..."
+            value={form.ingredients}
+            onChange={(e) => setForm({ ...form, ingredients: e.target.value })}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D", minHeight: 70 }}
+          />
+        </div>
+        <div className="sm:col-span-2 flex flex-col gap-1">
+          <label className="text-muted" style={{ fontSize: 12 }}>
             تصویر اصلی محصول
           </label>
           <div className="flex items-center gap-3 flex-wrap">
@@ -2271,10 +2374,4 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               </p>
             </div>
             <button onClick={() => startEdit(p)} className="btn-ghost rounded p-2"><Pencil size={14} /></button>
-            <button onClick={() => remove(p.id)} className="btn-ghost rounded p-2"><Trash2 size={14} /></button>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
+            <button onClick={() => remove(p.id)} classNam
