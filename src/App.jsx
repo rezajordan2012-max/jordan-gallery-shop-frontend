@@ -182,6 +182,28 @@ const FONTS = `
   }
   .sparkle { animation: sparkleFloat 3.2s ease-in-out infinite; }
 
+  @keyframes mistPuff {
+    0% { transform: translateY(0) scale(0.6); opacity: 0.7; }
+    100% { transform: translateY(-14px) scale(1.3); opacity: 0; }
+  }
+  .mist-puff { animation: mistPuff 1.8s ease-in-out infinite; }
+
+  @keyframes waveShift {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(3px); }
+  }
+  .wave-flow { animation: waveShift 2.4s ease-in-out infinite; }
+
+  @keyframes rippleGrow {
+    0% { transform: scale(0.5); opacity: 0.55; }
+    100% { transform: scale(1.7); opacity: 0; }
+  }
+  .ripple-ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1.5px solid currentColor;
+    animation: rippleGrow 1.8s ease-out infinite;
+  }
+
   @keyframes pulseGlow {
     0%, 100% { box-shadow: 0 0 0 0 rgba(255,62,142,0.45); }
     50% { box-shadow: 0 0 0 6px rgba(255,62,142,0); }
@@ -192,6 +214,7 @@ const FONTS = `
     .glint, .float-slow, .fade-in-up { animation: none; }
     .product-card, .product-card img, .category-card { transition: none; }
     .marquee-track, .cart-bump, .skeleton, .sparkle, .pulse-glow { animation: none; }
+    .mist-puff, .wave-flow, .ripple-ring { animation: none; }
     .ray-burst, .hero-halo { animation: none; }
   }
 `;
@@ -480,49 +503,86 @@ function isAdminUser(user) {
   return !!user && typeof user.email === "string" && user.email.toLowerCase() === ADMIN_EMAIL;
 }
 
+const CATEGORY_ICON_COLOR = {
+  perfume: "#FF3E8E",
+  sprayAndSplash: "#FF6FA5",
+  makeup: "#D97706",
+  hairStyling: "#16A34A",
+  hygiene: "#0EA5A4",
+  electronics: "#7B5CF6",
+};
+
 function CategoryIcon({ category, size = 34 }) {
-  const stroke = "#7B5CF6";
-  if (category === "perfume" || category === "sprayAndSplash") {
+  const c = CATEGORY_ICON_COLOR[category] || "#7B5CF6";
+
+  if (category === "perfume") {
     return (
-      <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-        <rect x="16" y="6" width="6" height="6" rx="1" stroke={stroke} strokeWidth="1.6" />
-        <path d="M14 16h20a2 2 0 0 1 2 2v20a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4V18a2 2 0 0 1 2-2Z" stroke={stroke} strokeWidth="1.6" />
-        <path d="M14 26h20" stroke={stroke} strokeWidth="1.2" opacity="0.6" />
-      </svg>
+      <span style={{ position: "relative", display: "inline-flex", width: size, height: size }}>
+        <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+          <rect x="18" y="4" width="12" height="7" rx="2" fill={c} opacity="0.9" />
+          <path d="M14 15a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4v21a6 6 0 0 1-6 6H20a6 6 0 0 1-6-6V15Z" fill={c} opacity="0.18" stroke={c} strokeWidth="1.8" />
+          <path d="M14 24h20" stroke={c} strokeWidth="1.4" opacity="0.55" />
+        </svg>
+        <span className="sparkle" style={{ position: "absolute", top: -2, left: -2, width: 5, height: 5, borderRadius: "50%", background: c, boxShadow: `0 0 6px 2px ${c}99` }} />
+        <span className="sparkle" style={{ position: "absolute", bottom: 2, right: -3, width: 4, height: 4, borderRadius: "50%", background: c, boxShadow: `0 0 6px 2px ${c}99`, animationDelay: "0.7s" }} />
+      </span>
+    );
+  }
+  if (category === "sprayAndSplash") {
+    return (
+      <span style={{ position: "relative", display: "inline-flex", width: size, height: size }}>
+        <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+          <rect x="16" y="6" width="6" height="6" rx="1" fill={c} />
+          <path d="M14 16h20a2 2 0 0 1 2 2v20a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4V18a2 2 0 0 1 2-2Z" fill={c} opacity="0.18" stroke={c} strokeWidth="1.8" />
+        </svg>
+        <span className="mist-puff" style={{ position: "absolute", top: -6, left: 6, width: 6, height: 6, borderRadius: "50%", background: c, opacity: 0.6 }} />
+        <span className="mist-puff" style={{ position: "absolute", top: -10, left: 16, width: 5, height: 5, borderRadius: "50%", background: c, opacity: 0.5, animationDelay: "0.5s" }} />
+        <span className="mist-puff" style={{ position: "absolute", top: -4, left: 24, width: 4, height: 4, borderRadius: "50%", background: c, opacity: 0.45, animationDelay: "1s" }} />
+      </span>
     );
   }
   if (category === "makeup") {
     return (
-      <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-        <circle cx="24" cy="20" r="10" stroke={stroke} strokeWidth="1.6" />
-        <path d="M24 30v12M18 42h12" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
-        <circle cx="24" cy="20" r="4" stroke={stroke} strokeWidth="1.2" opacity="0.6" />
-      </svg>
+      <span className="pulse-glow" style={{ position: "relative", display: "inline-flex", width: size, height: size, borderRadius: "50%" }}>
+        <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+          <rect x="20" y="4" width="8" height="16" rx="4" fill={c} />
+          <path d="M15 20h18l-2.4 20a4 4 0 0 1-4 3.6h-5.2a4 4 0 0 1-4-3.6L15 20Z" fill={c} opacity="0.22" stroke={c} strokeWidth="1.8" />
+        </svg>
+      </span>
     );
   }
   if (category === "hairStyling") {
     return (
-      <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-        <path d="M8 14c6 0 6 6 12 6s6-6 12-6 6 6 12 6" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
-        <path d="M8 24c6 0 6 6 12 6s6-6 12-6 6 6 12 6" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" opacity="0.7" />
-        <path d="M8 34c6 0 6 6 12 6s6-6 12-6 6 6 12 6" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" opacity="0.4" />
-      </svg>
+      <span style={{ position: "relative", display: "inline-flex", width: size, height: size }}>
+        <svg width={size} height={size} viewBox="0 0 48 48" fill="none" className="wave-flow">
+          <path d="M6 16c6 0 6 6 12 6s6-6 12-6 6 6 12 6" stroke={c} strokeWidth="2.2" strokeLinecap="round" fill="none" />
+          <path d="M6 26c6 0 6 6 12 6s6-6 12-6 6 6 12 6" stroke={c} strokeWidth="2.2" strokeLinecap="round" fill="none" opacity="0.7" />
+          <path d="M6 36c6 0 6 6 12 6s6-6 12-6 6 6 12 6" stroke={c} strokeWidth="2.2" strokeLinecap="round" fill="none" opacity="0.45" />
+        </svg>
+      </span>
     );
   }
   if (category === "hygiene") {
     return (
-      <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-        <path d="M24 6c8 10 12 16.5 12 22a12 12 0 1 1-24 0c0-5.5 4-12 12-22Z" stroke={stroke} strokeWidth="1.6" />
-        <path d="M18 30a6 6 0 0 0 6 6" stroke={stroke} strokeWidth="1.2" opacity="0.6" />
-      </svg>
+      <span style={{ position: "relative", display: "inline-flex", width: size, height: size }}>
+        <span className="ripple-ring" style={{ borderColor: c }} />
+        <span className="ripple-ring" style={{ borderColor: c, animationDelay: "0.9s" }} />
+        <svg width={size} height={size} viewBox="0 0 48 48" fill="none" style={{ position: "relative" }}>
+          <path d="M24 6c8 10 12 16.5 12 22a12 12 0 1 1-24 0c0-5.5 4-12 12-22Z" fill={c} opacity="0.85" />
+          <path d="M18 30a6 6 0 0 0 6 6" stroke="#FFFFFF" strokeWidth="1.4" opacity="0.7" strokeLinecap="round" />
+        </svg>
+      </span>
     );
   }
+  // electronics
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <rect x="10" y="14" width="28" height="18" rx="3" stroke={stroke} strokeWidth="1.6" />
-      <path d="M18 32v4M30 32v4M16 40h16" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
-      <path d="M16 20h16" stroke={stroke} strokeWidth="1.2" opacity="0.6" />
-    </svg>
+    <span className="pulse-glow" style={{ position: "relative", display: "inline-flex", width: size, height: size, borderRadius: 8 }}>
+      <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+        <rect x="10" y="14" width="28" height="18" rx="3" fill={c} opacity="0.18" stroke={c} strokeWidth="1.8" />
+        <path d="M18 32v4M30 32v4M16 40h16" stroke={c} strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M16 23h16" stroke={c} strokeWidth="1.6" opacity="0.7" />
+      </svg>
+    </span>
   );
 }
 
@@ -1472,7 +1532,7 @@ export default function MaisonStore() {
                 onClick={() => selectCategory(c)}
                 className={`${CATEGORY_CARD_CLASS[c]} category-card rounded-xl p-5 flex items-center gap-4 border border-hair text-right`}
               >
-                <CategoryIcon category={c} />
+                <CategoryIcon category={c} size={42} />
                 <div>
                   <p className="font-display" style={{ fontSize: 16 }}>{CATEGORY_LABEL[c]}</p>
                   <p className="text-muted" style={{ fontSize: 12 }}>
