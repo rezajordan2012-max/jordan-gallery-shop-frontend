@@ -799,115 +799,118 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
   }
 
   return (
-    <section className="px-4 sm:px-8 max-w-3xl mx-auto py-6 pb-24">
+    <section className="px-4 sm:px-8 lg:px-12 max-w-3xl lg:max-w-5xl mx-auto py-6 pb-24">
       <button onClick={onBack} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-4">
         <span>›</span> بازگشت
       </button>
 
-      <div
-        className={`${CATEGORY_CARD_CLASS[product.category]} rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5`}
-        style={{ height: 320 }}
-      >
-        {displayImage ? (
-          <img src={displayImage} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <CategoryIcon category={product.category} size={80} />
-        )}
-      </div>
+      <div className="lg:flex lg:items-start lg:gap-10">
+        <div
+          className={`${CATEGORY_CARD_CLASS[product.category]} rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-80 lg:h-[440px] lg:w-[380px] lg:flex-shrink-0`}
+        >
+          {displayImage ? (
+            <img src={displayImage} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <CategoryIcon category={product.category} size={80} />
+          )}
+        </div>
 
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-gold" style={{ fontSize: 12 }}>{product.brand}</span>
-        {product.subcategory && (
-          <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px" }}>
-            {subcategoryLabel(product.category, product.subcategory)}
-            {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
-            {product.facets && facetsSummary(product.category, product.subcategory, product.facets) && ` · ${facetsSummary(product.category, product.subcategory, product.facets)}`}
-          </span>
-        )}
-      </div>
-      <h1 className="font-display" style={{ fontSize: 24, marginBottom: 6 }}>{product.name}</h1>
-      <p style={{ marginBottom: 16 }}>
-        {discountPct > 0 && (
-          <span className="text-muted" style={{ fontSize: 13, textDecoration: "line-through", marginInlineEnd: 8 }}>
-            {fmtPrice(product.price)}
-          </span>
-        )}
-        <span style={{ fontSize: 19, fontWeight: 700, color: discountPct > 0 ? "#FF3E8E" : undefined }}>{fmtPrice(finalPrice)}</span>
-        {discountPct > 0 && (
-          <span
-            style={{
-              marginInlineStart: 8, background: "linear-gradient(135deg, #FF3E8E, #7B5CF6)", color: "#fff",
-              fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "2px 9px",
-            }}
-          >
-            ٪{discountPct.toLocaleString("fa-IR")} تخفیف
-          </span>
-        )}
-      </p>
-
-      {hasVariants && (
-        <div className="mb-6">
-          <p className="text-muted mb-2" style={{ fontSize: 12.5 }}>
-            رنگ / شماره ({product.variants.length} طیف){selectedVariant ? ` — ${selectedVariant.label}` : ""}
-          </p>
-          <div className="flex flex-wrap gap-2.5">
-            {product.variants.map((v) => {
-              const isSelected = variantId === v.id;
-              return (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => setVariantId(v.id)}
-                  title={v.label}
-                  aria-label={v.label}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: "50%",
-                    padding: 0,
-                    cursor: "pointer",
-                    background: v.image ? `center/cover no-repeat url(${v.image})` : (v.hex || "#EEE"),
-                    border: isSelected ? "2.5px solid #FF3E8E" : "1px solid rgba(123,92,246,0.35)",
-                    boxShadow: isSelected ? "0 0 0 3px rgba(255,62,142,0.22)" : "none",
-                    transition: "box-shadow 0.15s ease, border-color 0.15s ease",
-                  }}
-                />
-              );
-            })}
+        <div className="lg:flex-1 lg:min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-gold" style={{ fontSize: 12 }}>{product.brand}</span>
+            {product.subcategory && (
+              <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px" }}>
+                {subcategoryLabel(product.category, product.subcategory)}
+                {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
+                {product.facets && facetsSummary(product.category, product.subcategory, product.facets) && ` · ${facetsSummary(product.category, product.subcategory, product.facets)}`}
+              </span>
+            )}
           </div>
-        </div>
-      )}
+          <h1 className="font-display" style={{ fontSize: 24, marginBottom: 6 }}>{product.name}</h1>
+          <p style={{ marginBottom: 16 }}>
+            {discountPct > 0 && (
+              <span className="text-muted" style={{ fontSize: 13, textDecoration: "line-through", marginInlineEnd: 8 }}>
+                {fmtPrice(product.price)}
+              </span>
+            )}
+            <span style={{ fontSize: 19, fontWeight: 700, color: discountPct > 0 ? "#FF3E8E" : undefined }}>{fmtPrice(finalPrice)}</span>
+            {discountPct > 0 && (
+              <span
+                style={{
+                  marginInlineStart: 8, background: "linear-gradient(135deg, #FF3E8E, #7B5CF6)", color: "#fff",
+                  fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "2px 9px",
+                }}
+              >
+                ٪{discountPct.toLocaleString("fa-IR")} تخفیف
+              </span>
+            )}
+          </p>
 
-      {product.description && (
-        <div className="mb-5">
-          <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>معرفی محصول</h2>
-          <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.description}</p>
-        </div>
-      )}
-      {product.properties && (
-        <div className="mb-5">
-          <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ویژگی‌ها و خواص</h2>
-          <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.properties}</p>
-        </div>
-      )}
-      {product.ingredients && (
-        <div className="mb-7">
-          <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ترکیبات</h2>
-          <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.ingredients}</p>
-        </div>
-      )}
+          {hasVariants && (
+            <div className="mb-6">
+              <p className="text-muted mb-2" style={{ fontSize: 12.5 }}>
+                رنگ / شماره ({product.variants.length} طیف){selectedVariant ? ` — ${selectedVariant.label}` : ""}
+              </p>
+              <div className="flex flex-wrap gap-2.5">
+                {product.variants.map((v) => {
+                  const isSelected = variantId === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setVariantId(v.id)}
+                      title={v.label}
+                      aria-label={v.label}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: "50%",
+                        padding: 0,
+                        cursor: "pointer",
+                        background: v.image ? `center/cover no-repeat url(${v.image})` : (v.hex || "#EEE"),
+                        border: isSelected ? "2.5px solid #FF3E8E" : "1px solid rgba(123,92,246,0.35)",
+                        boxShadow: isSelected ? "0 0 0 3px rgba(255,62,142,0.22)" : "none",
+                        transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-      <button
-        onClick={() => onAdd(product, variantId || undefined)}
-        disabled={hasVariants && !variantId}
-        className="btn-gold w-full rounded py-3 text-sm font-medium"
-        style={hasVariants && !variantId ? { opacity: 0.55 } : undefined}
-      >
-        افزودن به سبد خرید
-      </button>
-      {hasVariants && !variantId && (
-        <p className="text-muted text-center mt-2" style={{ fontSize: 11 }}>برای افزودن به سبد، یکی از رنگ‌ها/شماره‌ها رو انتخاب کن.</p>
-      )}
+          {product.description && (
+            <div className="mb-5">
+              <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>معرفی محصول</h2>
+              <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.description}</p>
+            </div>
+          )}
+          {product.properties && (
+            <div className="mb-5">
+              <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ویژگی‌ها و خواص</h2>
+              <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.properties}</p>
+            </div>
+          )}
+          {product.ingredients && (
+            <div className="mb-7">
+              <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ترکیبات</h2>
+              <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.ingredients}</p>
+            </div>
+          )}
+
+          <button
+            onClick={() => onAdd(product, variantId || undefined)}
+            disabled={hasVariants && !variantId}
+            className="btn-gold w-full lg:w-auto lg:px-10 rounded py-3 text-sm font-medium"
+            style={hasVariants && !variantId ? { opacity: 0.55 } : undefined}
+          >
+            افزودن به سبد خرید
+          </button>
+          {hasVariants && !variantId && (
+            <p className="text-muted text-center lg:text-right mt-2" style={{ fontSize: 11 }}>برای افزودن به سبد، یکی از رنگ‌ها/شماره‌ها رو انتخاب کن.</p>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
@@ -1397,7 +1400,7 @@ export default function MaisonStore() {
 
       {/* Header */}
       <header className="sticky z-30 bg-panel border-b border-hair" style={{ top: 28, backdropFilter: "blur(6px)" }}>
-        <div className="flex items-center justify-between px-4 py-3 sm:px-8">
+        <div className="flex items-center justify-between px-4 py-3 sm:px-8 lg:px-12 max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <button className="sm:hidden" onClick={() => { setMenuOpen((v) => !v); setMenuNav(null); }} aria-label="منو">
               {menuOpen ? <X size={22} color="#241E3D" /> : <Menu size={22} color="#241E3D" />}
@@ -1662,7 +1665,7 @@ export default function MaisonStore() {
           {!categoryPageOpen && (
           <>
           {heroBanners.length > 0 && (
-            <section className="relative w-full overflow-hidden" style={{ height: "78vh", minHeight: 480 }}>
+            <section className="relative w-full overflow-hidden" style={{ height: "clamp(320px, 62vh, 620px)" }}>
               <img
                 key={bannerIndex}
                 src={heroBanners[bannerIndex]}
@@ -1692,7 +1695,7 @@ export default function MaisonStore() {
           {heroBanners.length === 0 && (
           <>
           {/* Hero */}
-          <section className="px-4 sm:px-8 py-10 sm:py-16 flex flex-col sm:flex-row items-center gap-8 sm:gap-4 max-w-6xl mx-auto">
+          <section className="px-4 sm:px-8 lg:px-12 py-10 sm:py-16 flex flex-col sm:flex-row items-center gap-8 sm:gap-10 max-w-6xl xl:max-w-7xl mx-auto">
             <div className="flex-1 order-2 sm:order-1 text-center sm:text-right">
               <p className="font-latin text-gold" style={{ fontSize: 13, marginBottom: 10 }}>PARFUM · BEAUTY · CARE</p>
               <h1 className="font-display" style={{ fontSize: "clamp(28px,5vw,44px)", lineHeight: 1.35 }}>
@@ -1741,7 +1744,7 @@ export default function MaisonStore() {
           )}
 
           {/* Category strip */}
-          <section className="px-4 sm:px-8 max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+          <section className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
             {CATEGORY_ORDER.map((c) => (
               <button
                 key={c}
@@ -1762,7 +1765,7 @@ export default function MaisonStore() {
           )}
 
           {categoryPageOpen && (
-            <div className="px-4 sm:px-8 max-w-6xl mx-auto pt-6 pb-2">
+            <div className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto pt-6 pb-2">
               <button onClick={backToStore} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-3">
                 <span>›</span> بازگشت به فروشگاه
               </button>
@@ -1782,7 +1785,7 @@ export default function MaisonStore() {
           )}
 
           {/* Catalog */}
-          <section id="catalog" className="px-4 sm:px-8 max-w-6xl mx-auto pb-20">
+          <section id="catalog" className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto pb-20">
             {!categoryPageOpen && (
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles size={16} color="#FF3E8E" />
@@ -1891,7 +1894,7 @@ export default function MaisonStore() {
             )}
 
             {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="rounded-xl border border-hair overflow-hidden">
                     <div className="skeleton" style={{ height: 168 }} />
@@ -1906,7 +1909,7 @@ export default function MaisonStore() {
             ) : filteredProducts.length === 0 ? (
               <p className="text-muted">محصولی در این دسته ثبت نشده است.</p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {filteredProducts.map((p, i) => (
                   <div key={p.id} className="fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 0.06}s` }}>
                     <ProductCard product={p} onOpen={openProduct} globalDiscountPercent={globalDiscountPercent} />
