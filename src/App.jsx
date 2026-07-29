@@ -499,6 +499,76 @@ function fmtPrice(n) {
   return new Intl.NumberFormat("fa-IR").format(n) + " تومان";
 }
 
+// اگر محصول تخفیف اختصاصی داشته باشد همان اعمال می‌شود؛ در غیر این صورت تخفیف همگانی (مثلاً بلک‌فرایدی) اعمال می‌شود.
+function effectiveDiscountPercent(product, globalDiscountPercent) {
+  const own = Number(product?.discountPercent);
+  if (Number.isFinite(own) && own > 0) return Math.min(own, 90);
+  const g = Number(globalDiscountPercent);
+  if (Number.isFinite(g) && g > 0) return Math.min(g, 90);
+  return 0;
+}
+
+function discountedPrice(product, globalDiscountPercent) {
+  const pct = effectiveDiscountPercent(product, globalDiscountPercent);
+  if (pct <= 0) return product.price;
+  return Math.round((product.price * (1 - pct / 100)) / 10) * 10;
+}
+
+// برای نمایش قیمت با جداکننده‌ی هزارگان (۳ رقم ۳ رقم) حین تایپ در پنل مدیریت
+function formatPriceInput(digitsStr) {
+  if (!digitsStr) return "";
+  const n = Number(digitsStr);
+  if (!Number.isFinite(n)) return "";
+  return n.toLocaleString("en-US");
+}
+
+const PERSIAN_ONES = ["", "یک", "دو", "سه", "چهار", "پنج", "شش", "هفت", "هشت", "نه"];
+const PERSIAN_TEENS = ["ده", "یازده", "دوازده", "سیزده", "چهارده", "پانزده", "شانزده", "هفده", "هجده", "نوزده"];
+const PERSIAN_TENS = ["", "ده", "بیست", "سی", "چهل", "پنجاه", "شصت", "هفتاد", "هشتاد", "نود"];
+const PERSIAN_HUNDREDS = ["", "صد", "دویست", "سیصد", "چهارصد", "پانصد", "ششصد", "هفتصد", "هشتصد", "نهصد"];
+const PERSIAN_SCALES = ["", "هزار", "میلیون", "میلیارد", "تریلیون"];
+
+function threeDigitToPersianWords(n) {
+  if (n === 0) return "";
+  const parts = [];
+  const h = Math.floor(n / 100);
+  const rem = n % 100;
+  if (h > 0) parts.push(PERSIAN_HUNDREDS[h]);
+  if (rem > 0) {
+    if (rem < 10) parts.push(PERSIAN_ONES[rem]);
+    else if (rem < 20) parts.push(PERSIAN_TEENS[rem - 10]);
+    else {
+      const t = Math.floor(rem / 10);
+      const o = rem % 10;
+      parts.push(o === 0 ? PERSIAN_TENS[t] : `${PERSIAN_TENS[t]} و ${PERSIAN_ONES[o]}`);
+    }
+  }
+  return parts.join(" و ");
+}
+
+// عدد را به حروف فارسی تبدیل می‌کند — برای نمایش مبلغ به حروف حین وارد کردن قیمت در پنل مدیریت
+function numberToPersianWords(value) {
+  let num = Math.floor(Number(value) || 0);
+  if (num === 0) return "صفر";
+  if (num < 0) return `منفی ${numberToPersianWords(-num)}`;
+
+  const groups = [];
+  let n = num;
+  while (n > 0) {
+    groups.push(n % 1000);
+    n = Math.floor(n / 1000);
+  }
+
+  const parts = [];
+  for (let i = groups.length - 1; i >= 0; i--) {
+    if (groups[i] === 0) continue;
+    const groupWords = threeDigitToPersianWords(groups[i]);
+    const scale = PERSIAN_SCALES[i];
+    parts.push(scale ? `${groupWords} ${scale}` : groupWords);
+  }
+  return parts.join(" و ");
+}
+
 function isAdminUser(user) {
   return !!user && typeof user.email === "string" && user.email.toLowerCase() === ADMIN_EMAIL;
 }
@@ -642,16 +712,30 @@ const SEED_PRODUCTS = [
   { id: "p11", name: "دستگاه پاکسازی صورت", brand: "ولوره", category: "electronics", subcategory: "face", price: 1650000, description: "برس سونیک برای پاکسازی عمیق منافذ پوست صورت.", image: "" },
 ];
 
-function ProductCard({ product, onOpen }) {
+function ProductCard({ product, onOpen, globalDiscountPercent }) {
   const displayImage = product.image || "";
   const hasVariants = product.variants && product.variants.length > 0;
+  const discountPct = effectiveDiscountPercent(product, globalDiscountPercent);
+  const finalPrice = discountedPrice(product, globalDiscountPercent);
 
   return (
     <button
       type="button"
       onClick={() => onOpen(product.id)}
       className={`${CATEGORY_CARD_CLASS[product.category]} product-card rounded-xl border border-hair overflow-hidden flex flex-col text-right w-full`}
+      style={{ position: "relative" }}
     >
+      {discountPct > 0 && (
+        <span
+          style={{
+            position: "absolute", top: 8, insetInlineStart: 8, zIndex: 1,
+            background: "linear-gradient(135deg, #FF3E8E, #7B5CF6)", color: "#fff",
+            fontSize: 10.5, fontWeight: 700, borderRadius: 999, padding: "3px 9px",
+          }}
+        >
+          ٪{discountPct.toLocaleString("fa-IR")} تخفیف
+        </span>
+      )}
       <div className="flex items-center justify-center" style={{ background: "rgba(123,92,246,0.08)", height: 168, overflow: "hidden" }}>
         {displayImage ? (
           <img
@@ -680,7 +764,12 @@ function ProductCard({ product, onOpen }) {
         <p className="text-muted" style={{ fontSize: 12, minHeight: 32 }}>{product.description}</p>
 
         <div className="flex items-center justify-between mt-2">
-          <span style={{ fontSize: 14, fontWeight: 600 }}>{fmtPrice(product.price)}</span>
+          <div className="flex flex-col">
+            {discountPct > 0 && (
+              <span className="text-muted" style={{ fontSize: 11, textDecoration: "line-through" }}>{fmtPrice(product.price)}</span>
+            )}
+            <span style={{ fontSize: 14, fontWeight: 700, color: discountPct > 0 ? "#FF3E8E" : undefined }}>{fmtPrice(finalPrice)}</span>
+          </div>
           {hasVariants ? (
             <span className="text-gold" style={{ fontSize: 10.5 }}>{product.variants.length} رنگ/شماره ›</span>
           ) : (
@@ -692,11 +781,13 @@ function ProductCard({ product, onOpen }) {
   );
 }
 
-function ProductDetailPage({ product, onBack, onAdd }) {
+function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
   const hasVariants = !!product && product.variants && product.variants.length > 0;
   const [variantId, setVariantId] = useState("");
   const selectedVariant = hasVariants ? product.variants.find((v) => v.id === variantId) : null;
   const displayImage = (selectedVariant && selectedVariant.image) || (product && product.image) || "";
+  const discountPct = product ? effectiveDiscountPercent(product, globalDiscountPercent) : 0;
+  const finalPrice = product ? discountedPrice(product, globalDiscountPercent) : 0;
 
   if (!product) {
     return (
@@ -735,7 +826,24 @@ function ProductDetailPage({ product, onBack, onAdd }) {
         )}
       </div>
       <h1 className="font-display" style={{ fontSize: 24, marginBottom: 6 }}>{product.name}</h1>
-      <p style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{fmtPrice(product.price)}</p>
+      <p style={{ marginBottom: 16 }}>
+        {discountPct > 0 && (
+          <span className="text-muted" style={{ fontSize: 13, textDecoration: "line-through", marginInlineEnd: 8 }}>
+            {fmtPrice(product.price)}
+          </span>
+        )}
+        <span style={{ fontSize: 19, fontWeight: 700, color: discountPct > 0 ? "#FF3E8E" : undefined }}>{fmtPrice(finalPrice)}</span>
+        {discountPct > 0 && (
+          <span
+            style={{
+              marginInlineStart: 8, background: "linear-gradient(135deg, #FF3E8E, #7B5CF6)", color: "#fff",
+              fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "2px 9px",
+            }}
+          >
+            ٪{discountPct.toLocaleString("fa-IR")} تخفیف
+          </span>
+        )}
+      </p>
 
       {hasVariants && (
         <div className="mb-6">
@@ -827,6 +935,7 @@ export default function MaisonStore() {
   const [storageError, setStorageError] = useState(false);
   const [heroBanners, setHeroBanners] = useState([]); // لیست عکس‌های بنر متحرک صفحه‌ی اصلی
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [globalDiscountPercent, setGlobalDiscountPercent] = useState(0); // تخفیف همگانی روی همه‌ی محصولات (مثلاً برای بلک فرایدی)
 
   // احراز هویت و پرداخت — توکن در localStorage نگه داشته می‌شود تا با رفرش صفحه
   // یا برگشت به تب مرورگر، ورود کاربر حفظ شود و فقط با زدن دکمه‌ی خروج پاک شود.
@@ -889,6 +998,9 @@ export default function MaisonStore() {
       const data = await res.json();
       if (data && Array.isArray(data.heroBanners) && data.heroBanners.length > 0) {
         setHeroBanners(data.heroBanners);
+      }
+      if (data && Number.isFinite(Number(data.globalDiscountPercent))) {
+        setGlobalDiscountPercent(Number(data.globalDiscountPercent));
       }
     } catch (e) {
       // اگر سرور در دسترس نبود، همان طرح پیش‌فرض نمایش داده می‌شود.
@@ -970,6 +1082,17 @@ export default function MaisonStore() {
     if (!res.ok) throw new Error(data.error || "ذخیره‌ی بنرها ناموفق بود");
     setHeroBanners(banners);
     setBannerIndex(0);
+  }
+
+  async function updateGlobalDiscount(percent) {
+    const res = await fetch(`${API_BASE_URL}/api/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ globalDiscountPercent: percent }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "ذخیره‌ی تخفیف همگانی ناموفق بود");
+    setGlobalDiscountPercent(percent);
   }
 
   function addToCart(product, variantId) {
@@ -1089,10 +1212,11 @@ export default function MaisonStore() {
           const product = products.find((p) => p.id === productId);
           if (!product) return null;
           const variant = variantId ? (product.variants || []).find((v) => v.id === variantId) : null;
-          return { ...product, cartKey: key, qty, variant };
+          const unitPrice = discountedPrice(product, globalDiscountPercent);
+          return { ...product, cartKey: key, qty, variant, originalPrice: product.price, price: unitPrice };
         })
         .filter(Boolean),
-    [cart, products]
+    [cart, products, globalDiscountPercent]
   );
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cartItems.reduce((s, i) => s + i.qty * i.price, 0);
@@ -1523,12 +1647,15 @@ export default function MaisonStore() {
           storageError={storageError}
           heroBanners={heroBanners}
           onUpdateHeroBanners={updateHeroBanners}
+          globalDiscountPercent={globalDiscountPercent}
+          onUpdateGlobalDiscount={updateGlobalDiscount}
         />
       ) : openProductId ? (
         <ProductDetailPage
           product={products.find((p) => p.id === openProductId)}
           onBack={closeProduct}
           onAdd={addToCart}
+          globalDiscountPercent={globalDiscountPercent}
         />
       ) : (
         <>
@@ -1782,7 +1909,7 @@ export default function MaisonStore() {
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredProducts.map((p, i) => (
                   <div key={p.id} className="fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 0.06}s` }}>
-                    <ProductCard product={p} onOpen={openProduct} />
+                    <ProductCard product={p} onOpen={openProduct} globalDiscountPercent={globalDiscountPercent} />
                   </div>
                 ))}
               </div>
@@ -1847,7 +1974,12 @@ export default function MaisonStore() {
                       {item.variant && (
                         <p className="text-gold" style={{ fontSize: 11 }}>{item.variant.label}</p>
                       )}
-                      <p className="text-muted" style={{ fontSize: 11 }}>{fmtPrice(item.price)}</p>
+                      <p className="text-muted" style={{ fontSize: 11 }}>
+                        {item.originalPrice > item.price && (
+                          <span style={{ textDecoration: "line-through", marginInlineEnd: 6 }}>{fmtPrice(item.originalPrice)}</span>
+                        )}
+                        {fmtPrice(item.price)}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => changeQty(item.cartKey, -1)}><Minus size={14} color="#7B5CF6" /></button>
@@ -1946,20 +2078,119 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", description: "", properties: "", ingredients: "", image: "", variantsText: "" };
+  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", image: "", variantsList: [] };
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners }) {
+function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("فایل انتخاب‌شده تصویر نیست");
+      return;
+    }
+    setError("");
+    setUploading(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const url = await onUploadImage(base64);
+      onChange({ ...variant, image: url });
+    } catch (err) {
+      setError(err.message || "آپلود تصویر ناموفق بود");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="bg-panel-2 border border-hair rounded-lg p-3 flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <input
+          placeholder="نام/شماره رنگ (مثلاً 999 - قرمز کلاسیک)"
+          value={variant.label}
+          onChange={(e) => onChange({ ...variant, label: e.target.value })}
+          className="bg-panel border border-hair rounded px-2 py-1.5 text-xs flex-1"
+          style={{ color: "#241E3D" }}
+        />
+        <input
+          type="color"
+          value={variant.hex || "#CCCCCC"}
+          onChange={(e) => onChange({ ...variant, hex: e.target.value })}
+          title="رنگ پایه (اگه عکس نذاری همین رنگ به‌جای دایره نمایش داده می‌شود)"
+          style={{ width: 34, height: 30, padding: 0, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 6, background: "none", flexShrink: 0 }}
+        />
+        <button type="button" onClick={onRemove} className="btn-ghost rounded px-2 py-1.5 text-xs" style={{ color: "#D6336C", flexShrink: 0 }}>
+          حذف
+        </button>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        {variant.image ? (
+          <img src={variant.image} alt={variant.label} style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)" }} />
+        ) : (
+          <span style={{ width: 34, height: 34, borderRadius: 6, background: variant.hex || "#EEE", border: "1px solid rgba(123,92,246,0.3)" }} />
+        )}
+        <label
+          className="btn-ghost rounded px-3 py-1.5 text-xs flex items-center gap-1.5"
+          style={{ cursor: uploading ? "default" : "pointer", opacity: uploading ? 0.6 : 1 }}
+        >
+          <Upload size={13} />
+          {uploading ? "در حال آپلود..." : variant.image ? "تغییر عکس این رنگ" : "افزودن عکس این رنگ"}
+          <input type="file" accept="image/*" onChange={handleFile} disabled={uploading} style={{ display: "none" }} />
+        </label>
+        {variant.image && (
+          <button type="button" onClick={() => onChange({ ...variant, image: "" })} className="text-muted" style={{ fontSize: 11 }}>
+            حذف عکس
+          </button>
+        )}
+      </div>
+      {error && <p style={{ fontSize: 11, color: "#D6336C" }}>{error}</p>}
+    </div>
+  );
+}
+
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount }) {
   const [bannerDrafts, setBannerDrafts] = useState(heroBanners || []);
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
   const [heroError, setHeroError] = useState("");
   const [heroSaved, setHeroSaved] = useState(false);
+  const [discountDraft, setDiscountDraft] = useState(String(globalDiscountPercent || ""));
+  const [discountSaving, setDiscountSaving] = useState(false);
+  const [discountError, setDiscountError] = useState("");
+  const [discountSaved, setDiscountSaved] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [uploading, setUploading] = useState(false);
+
+  async function saveGlobalDiscount() {
+    const pct = Number(discountDraft) || 0;
+    if (pct < 0 || pct > 90) {
+      setDiscountError("درصد تخفیف باید بین ۰ تا ۹۰ باشد");
+      return;
+    }
+    setDiscountError("");
+    setDiscountSaved(false);
+    setDiscountSaving(true);
+    try {
+      await onUpdateGlobalDiscount(pct);
+      setDiscountSaved(true);
+    } catch (err) {
+      setDiscountError(err.message || "ذخیره‌سازی ناموفق بود");
+    } finally {
+      setDiscountSaving(false);
+    }
+  }
 
   async function handleImageFile(e) {
     const file = e.target.files && e.target.files[0];
@@ -2047,7 +2278,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   function startEdit(p) {
     setEditingId(p.id);
     setFormError("");
-    setForm({ ...p, price: String(p.price), variantsText: variantsToText(p.variants), facets: p.facets || {}, properties: p.properties || "", ingredients: p.ingredients || "" });
+    setForm({ ...p, price: String(p.price), discountPercent: p.discountPercent ? String(p.discountPercent) : "", variantsList: (p.variants || []).map((v) => ({ ...v })), facets: p.facets || {}, properties: p.properties || "", ingredients: p.ingredients || "" });
   }
   function cancelEdit() {
     setEditingId(null);
@@ -2061,9 +2292,10 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     setSaving(true);
     setFormError("");
     const priceNum = Number(form.price);
-    const variants = parseVariantsText(form.variantsText);
-    const { variantsText, id, ...rest } = form;
-    const payload = { ...rest, price: priceNum, ...(variants.length > 0 ? { variants } : { variants: undefined }) };
+    const discountPercentNum = form.discountPercent ? Number(form.discountPercent) : 0;
+    const variants = (form.variantsList || []).filter((v) => v.label && v.label.trim());
+    const { variantsList, id, ...rest } = form;
+    const payload = { ...rest, price: priceNum, discountPercent: discountPercentNum, ...(variants.length > 0 ? { variants } : { variants: undefined }) };
     try {
       if (editingId) {
         await onUpdate(editingId, payload);
@@ -2105,6 +2337,47 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           {formError}
         </p>
       )}
+
+      {/* تخفیف همگانی روی همه‌ی محصولات — برای مناسبت‌هایی مثل بلک فرایدی */}
+      <div className="bg-panel border border-hair rounded-lg p-4 mb-8">
+        <h3 className="font-display mb-1" style={{ fontSize: 15 }}>تخفیف همگانی (مثلاً بلک فرایدی)</h3>
+        <p className="text-muted mb-3" style={{ fontSize: 11 }}>
+          یک درصد تخفیف برای همه‌ی محصولات فروشگاه وارد کن. اگر محصولی تخفیف اختصاصی خودش رو داشته باشه (پایین‌تر توی فرم محصول)، همون تخفیف اختصاصی به‌جای این عدد اعمال می‌شود.
+        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="number"
+            min="0"
+            max="90"
+            placeholder="مثلاً 20"
+            value={discountDraft}
+            onChange={(e) => { setDiscountDraft(e.target.value); setDiscountSaved(false); }}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D", width: 100 }}
+            dir="ltr"
+          />
+          <span className="text-muted" style={{ fontSize: 13 }}>٪ درصد تخفیف</span>
+          <button onClick={saveGlobalDiscount} disabled={discountSaving} type="button" className="btn-gold rounded px-4 py-2 text-sm">
+            {discountSaving ? "در حال ذخیره..." : "اعمال روی همه‌ی محصولات"}
+          </button>
+          {Number(globalDiscountPercent) > 0 && (
+            <button
+              type="button"
+              onClick={async () => { setDiscountDraft("0"); await onUpdateGlobalDiscount(0); setDiscountSaved(true); }}
+              className="btn-ghost rounded px-3 py-2 text-xs"
+            >
+              پایان تخفیف همگانی
+            </button>
+          )}
+        </div>
+        {discountSaved && <span className="text-gold" style={{ fontSize: 12 }}>ذخیره شد ✓</span>}
+        {discountError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 6 }}>{discountError}</p>}
+        {Number(globalDiscountPercent) > 0 && (
+          <p className="text-gold mt-2" style={{ fontSize: 12 }}>
+            هم‌اکنون ٪{Number(globalDiscountPercent).toLocaleString("fa-IR")} تخفیف همگانی فعال است.
+          </p>
+        )}
+      </div>
 
       {/* تنظیمات بنرهای متحرک صفحه‌ی اصلی */}
       <div className="bg-panel border border-hair rounded-lg p-4 mb-8">
@@ -2242,14 +2515,44 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             </select>
           )
         )}
-        <input
-          placeholder="قیمت (تومان)"
-          type="number"
-          value={form.price}
-          onChange={(e) => setForm({ ...form, price: e.target.value })}
-          className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-          style={{ color: "#241E3D" }}
-        />
+        <div className="flex flex-col gap-1">
+          <input
+            placeholder="قیمت (تومان)"
+            type="text"
+            inputMode="numeric"
+            value={formatPriceInput(form.price)}
+            onChange={(e) => {
+              const digitsOnly = e.target.value.replace(/[^\d]/g, "");
+              setForm({ ...form, price: digitsOnly });
+            }}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D" }}
+            dir="ltr"
+          />
+          {form.price && Number(form.price) > 0 && (
+            <p className="text-gold" style={{ fontSize: 11 }}>
+              {numberToPersianWords(form.price)} تومان
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col gap-1">
+          <input
+            type="number"
+            min="0"
+            max="90"
+            placeholder="درصد تخفیف این محصول (اختیاری)"
+            value={form.discountPercent}
+            onChange={(e) => setForm({ ...form, discountPercent: e.target.value })}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D" }}
+            dir="ltr"
+          />
+          {form.price && form.discountPercent && Number(form.discountPercent) > 0 && (
+            <p className="text-gold" style={{ fontSize: 11 }}>
+              قیمت با تخفیف: {fmtPrice(discountedPrice({ price: Number(form.price), discountPercent: Number(form.discountPercent) }, 0))}
+            </p>
+          )}
+        </div>
         <textarea
           placeholder="توضیح کوتاه"
           value={form.description}
@@ -2318,20 +2621,33 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             )}
           </div>
         </div>
-        <div className="sm:col-span-2 flex flex-col gap-1">
+        <div className="sm:col-span-2 flex flex-col gap-2">
           <label className="text-muted" style={{ fontSize: 12 }}>
-            طیف رنگی / شماره‌ها (اختیاری — برای محصولاتی مثل رژلب و سایه و رژگونه که مشتری باید رنگ انتخاب کند)
+            طیف رنگ / شماره‌ها (اختیاری — برای محصولاتی مثل رژلب، سایه و رژگونه که مشتری باید رنگ انتخاب کند)
           </label>
-          <textarea
-            placeholder={"هر خط یک رنگ، به‌صورت: نام رنگ, کدهگز (اختیاری), لینک عکس آن رنگ (اختیاری)\nمثال:\nشماره ۱ - قرمز کلاسیک, #B0202E, https://example.com/red.jpg\nشماره ۲ - صورتی ملایم, #D98CA0, https://example.com/pink.jpg"}
-            value={form.variantsText}
-            onChange={(e) => setForm({ ...form, variantsText: e.target.value })}
-            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-            style={{ color: "#241E3D", minHeight: 110, fontFamily: "monospace", fontSize: 12 }}
-            dir="ltr"
-          />
+          {(form.variantsList || []).map((v) => (
+            <VariantRowEditor
+              key={v.id}
+              variant={v}
+              onChange={(next) => setForm((f) => ({ ...f, variantsList: f.variantsList.map((x) => (x.id === v.id ? next : x)) }))}
+              onRemove={() => setForm((f) => ({ ...f, variantsList: f.variantsList.filter((x) => x.id !== v.id) }))}
+              onUploadImage={onUploadImage}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              setForm((f) => ({
+                ...f,
+                variantsList: [...(f.variantsList || []), { id: `v${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, label: "", hex: "", image: "" }],
+              }))
+            }
+            className="btn-ghost rounded px-3 py-2 text-xs self-start flex items-center gap-1.5"
+          >
+            <Plus size={13} /> افزودن رنگ / شماره
+          </button>
           <p className="text-muted" style={{ fontSize: 11 }}>
-            می‌توانی صدها خط رنگ را یک‌جا کپی/پیست کنی — هر خط یک شماره، نام رنگ، کدهگز و (در صورت تمایل) لینک عکس دقیق همان رنگ می‌شود. اگر لینک عکس بدهی، همان عکس به‌جای دایره‌ی رنگ نمایش داده می‌شود.
+            برای هر رنگ، اسم یا شماره‌اش رو بنویس و از دکمه‌ی «افزودن عکس این رنگ» مستقیم از گالری گوشی عکس همون طیف رو آپلود کن — نیازی به لینک عکس از جای دیگه نیست. اگه عکس نذاری، همون رنگ هگز به‌جای عکس نمایش داده می‌شود.
           </p>
         </div>
         <div className="sm:col-span-2 flex gap-2">
@@ -2370,6 +2686,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 {p.subcategory && ` (${subcategoryLabel(p.category, p.subcategory)}${p.type ? " - " + typeLabel(p.category, p.subcategory, p.type) : ""}${p.facets && facetsSummary(p.category, p.subcategory, p.facets) ? " - " + facetsSummary(p.category, p.subcategory, p.facets) : ""})`} · {fmtPrice(p.price)}
                 {p.variants && p.variants.length > 0 && (
                   <span className="text-gold"> · {p.variants.length} طیف رنگ</span>
+                )}
+                {effectiveDiscountPercent(p, globalDiscountPercent) > 0 && (
+                  <span className="text-gold"> · ٪{effectiveDiscountPercent(p, globalDiscountPercent).toLocaleString("fa-IR")} تخفیف{p.discountPercent ? "" : " (همگانی)"}</span>
                 )}
               </p>
             </div>
