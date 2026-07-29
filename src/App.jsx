@@ -679,38 +679,51 @@ function ProductCard({ product, onAdd }) {
         <p className="text-muted" style={{ fontSize: 12, minHeight: 32 }}>{product.description}</p>
 
         {hasVariants && (
-          <div className="flex items-center gap-2 mt-1">
-            {selectedVariant && selectedVariant.image ? (
-              <img
-                src={selectedVariant.image}
-                alt={selectedVariant.label}
-                style={{ width: 20, height: 20, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(123,92,246,0.4)", flexShrink: 0 }}
-              />
+          <div className="flex flex-col gap-2 mt-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {product.variants.map((v) => {
+                const isSelected = variantId === v.id;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => setVariantId(v.id)}
+                    title={v.label}
+                    aria-label={v.label}
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: "50%",
+                      padding: 0,
+                      flexShrink: 0,
+                      cursor: "pointer",
+                      background: v.image ? `center/cover no-repeat url(${v.image})` : (v.hex || "#EEE"),
+                      border: isSelected ? "2px solid #FF3E8E" : "1px solid rgba(123,92,246,0.35)",
+                      boxShadow: isSelected ? "0 0 0 3px rgba(255,62,142,0.22)" : "none",
+                      transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+                    }}
+                  />
+                );
+              })}
+            </div>
+            {selectedVariant ? (
+              <div className="flex items-center gap-2">
+                {selectedVariant.image ? (
+                  <img
+                    src={selectedVariant.image}
+                    alt={selectedVariant.label}
+                    style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)", flexShrink: 0 }}
+                  />
+                ) : selectedVariant.hex ? (
+                  <span
+                    style={{ width: 22, height: 22, borderRadius: "50%", background: selectedVariant.hex, border: "1px solid rgba(123,92,246,0.3)", flexShrink: 0 }}
+                  />
+                ) : null}
+                <span className="text-gold" style={{ fontSize: 11.5, fontWeight: 600 }}>{selectedVariant.label}</span>
+              </div>
             ) : (
-              selectedVariant && selectedVariant.hex && (
-                <span
-                  style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: "50%",
-                    background: selectedVariant.hex,
-                    border: "1px solid rgba(123,92,246,0.4)",
-                    flexShrink: 0,
-                  }}
-                />
-              )
+              <p className="text-muted" style={{ fontSize: 10.5 }}>یکی از {product.variants.length} رنگ/شماره بالا رو لمس کن</p>
             )}
-            <select
-              value={variantId}
-              onChange={(e) => setVariantId(e.target.value)}
-              className="bg-panel-2 border border-hair rounded px-2 py-1.5 text-xs flex-1"
-              style={{ color: "#241E3D" }}
-            >
-              <option value="">انتخاب رنگ / شماره ({product.variants.length} طیف)</option>
-              {product.variants.map((v) => (
-                <option key={v.id} value={v.id}>{v.label}</option>
-              ))}
-            </select>
           </div>
         )}
 
@@ -725,9 +738,6 @@ function ProductCard({ product, onAdd }) {
             افزودن
           </button>
         </div>
-        {hasVariants && !variantId && (
-          <p style={{ fontSize: 10, color: "#756E93" }}>برای افزودن به سبد، رنگ را انتخاب کن.</p>
-        )}
       </div>
     </div>
   );
