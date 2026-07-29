@@ -231,13 +231,13 @@ const PERFUME_FACETS = [
     key: "concentration",
     group: "نوع",
     options: {
+      extraitDeParfum: "اکستریت د پرفیوم",
       parfum: "پرفیوم",
       eauDeParfum: "ادو پرفیوم",
       eauDeParfumIntense: "ادوپرفیوم اینتنس",
       eauDeToilette: "ادو تویلت",
       eauDeCologne: "ادو کلن",
       eauFraiche: "او فرش",
-      extraitDeParfum: "اکستریت د پرفیوم",
     },
   },
   {
@@ -415,7 +415,7 @@ const CATEGORIES = {
         },
       },
       feminine: "بهداشت شخصی بانوان",
-      masculine: "مراقبت شخصی آقایان",
+      masculine: "بهداشت شخصی آقایان",
     },
   },
   electronics: {
