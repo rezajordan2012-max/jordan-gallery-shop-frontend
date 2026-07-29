@@ -2374,4 +2374,10 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               </p>
             </div>
             <button onClick={() => startEdit(p)} className="btn-ghost rounded p-2"><Pencil size={14} /></button>
-            <button onClick={() => remove(p.id)} classNam
+            <button onClick={() => remove(p.id)} className="btn-ghost rounded p-2"><Trash2 size={14} /></button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
