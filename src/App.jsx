@@ -14,7 +14,7 @@ const API_BASE_URL = "https://jordan-gallery-shop-backend.onrender.com";
 const ADMIN_EMAIL = "rezajordan2012@gmail.com";
 
 const FONTS = `
-  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Baloo+2:wght@500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Baloo+2:wght@500;600;700;800&family=Lalezar&display=swap');
 
   .maison-root {
     font-family: 'Vazirmatn', sans-serif;
@@ -28,6 +28,25 @@ const FONTS = `
   }
   .font-latin { font-family: 'Baloo 2', sans-serif; letter-spacing: 0.14em; }
   .font-display { font-family: 'Baloo 2', 'Vazirmatn', sans-serif; font-weight: 800; letter-spacing: -0.01em; }
+
+  .brand-showcase {
+    font-family: 'Lalezar', 'Vazirmatn', sans-serif;
+    background: linear-gradient(90deg, #FF3E8E, #7B5CF6, #00C2CB, #FF3E8E);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: brandShine 6s ease-in-out infinite;
+    line-height: 1.35;
+  }
+  @keyframes brandShine {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .brand-showcase { animation: none; }
+  }
 
   ::selection { background: rgba(255,62,142,0.28); color: #241E3D; }
 
@@ -681,8 +700,8 @@ function variantsToText(variants) {
 }
 
 const SEED_PRODUCTS = [
-  { id: "p1", name: "بلور شب", brand: "خانه میسان", category: "perfume", subcategory: "womenPerfume", price: 2450000, description: "رایحه‌ای شرقی و گرم با نت‌های عود و وانیل، مناسب شب.", image: "" },
-  { id: "p2", name: "باغ سپید", brand: "خانه میسان", category: "perfume", subcategory: "menPerfume", price: 1980000, description: "ترکیبی تازه از یاس و مرکبات برای روزهای بهاری.", image: "" },
+  { id: "p1", name: "بلور شب", brand: "جردن", category: "perfume", subcategory: "womenPerfume", price: 2450000, description: "رایحه‌ای شرقی و گرم با نت‌های عود و وانیل، مناسب شب.", image: "" },
+  { id: "p2", name: "باغ سپید", brand: "جردن", category: "perfume", subcategory: "menPerfume", price: 1980000, description: "ترکیبی تازه از یاس و مرکبات برای روزهای بهاری.", image: "" },
   { id: "p3", name: "کانسیلر پوششی", brand: "اطلس", category: "makeup", subcategory: "face", type: "concealer", price: 890000, description: "کانسیلر با پوشش بالا، مناسب پوست‌های خشک و بی‌روح.", image: "" },
   { id: "p4", name: "پالت سایه صدف", brand: "اطلس", category: "makeup", subcategory: "eye", type: "eyeshadow", price: 1250000, description: "پالت سایه با پیگمنت بالا و بافت مخملی.", image: "" },
   {
@@ -1406,8 +1425,10 @@ export default function MaisonStore() {
               {menuOpen ? <X size={22} color="#241E3D" /> : <Menu size={22} color="#241E3D" />}
             </button>
             <div className="flex flex-col leading-none">
-              <span className="font-latin text-gold" style={{ fontSize: 13 }}>JORDAN</span>
-              <span className="font-display" style={{ fontSize: 20 }}>گالری جردن</span>
+              <span className="font-latin text-gold" style={{ fontSize: 11 }}>JORDAN</span>
+              <span className="brand-showcase" style={{ fontSize: "clamp(15px, 3.6vw, 21px)", fontWeight: 400 }}>
+                گالری آرایشی، بهداشتی و ادکلن جردن
+              </span>
             </div>
           </div>
 
@@ -2397,4 +2418,309 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                   src={url}
                   alt={`بنر ${i + 1}`}
                   style={{ width: 56, height: 32, borderRadius: 4, objectFit: "cover" }}
-          
+                  onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
+                />
+                <span className="text-muted" style={{ fontSize: 11, flex: 1 }}>بنر شماره {i + 1}</span>
+                <button type="button" onClick={() => moveBannerDraft(i, -1)} disabled={i === 0} className="btn-ghost rounded px-2 py-1 text-xs">▲</button>
+                <button type="button" onClick={() => moveBannerDraft(i, 1)} disabled={i === bannerDrafts.length - 1} className="btn-ghost rounded px-2 py-1 text-xs">▼</button>
+                <button type="button" onClick={() => removeBannerDraft(i)} className="btn-ghost rounded px-2 py-1 text-xs" style={{ color: "#D6336C" }}>حذف</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 flex-wrap mb-3">
+          <label
+            className="btn-ghost rounded px-3 py-2 text-xs flex items-center gap-2"
+            style={{ cursor: heroUploading ? "default" : "pointer", opacity: heroUploading ? 0.6 : 1 }}
+          >
+            <Upload size={14} />
+            {heroUploading ? "در حال آپلود..." : "افزودن عکس از گالری"}
+            <input type="file" accept="image/*" onChange={handleHeroFile} disabled={heroUploading} style={{ display: "none" }} />
+          </label>
+        </div>
+
+        <button
+          onClick={saveHeroBanners}
+          disabled={heroSaving}
+          type="button"
+          className="btn-gold rounded px-4 py-2 text-sm"
+        >
+          {heroSaving ? "در حال ذخیره..." : "ذخیره‌ی بنرهای صفحه‌ی اصلی"}
+        </button>
+        {heroSaved && <span className="text-gold" style={{ fontSize: 12, marginRight: 10 }}>ذخیره شد ✓</span>}
+        {heroError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 6 }}>{heroError}</p>}
+        {bannerDrafts.length === 0 && (
+          <p className="text-muted" style={{ fontSize: 11, marginTop: 6 }}>
+            اگه هیچ بنری اضافه نکنی، همون طرح گرافیکی پیش‌فرض سایت نمایش داده می‌شود.
+          </p>
+        )}
+      </div>
+
+      <form onSubmit={submit} className="bg-panel border border-hair rounded-lg p-4 mb-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <input
+          placeholder="نام محصول"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+          style={{ color: "#241E3D" }}
+        />
+        <input
+          placeholder="برند"
+          value={form.brand}
+          onChange={(e) => setForm({ ...form, brand: e.target.value })}
+          className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+          style={{ color: "#241E3D" }}
+        />
+        <select
+          value={form.category}
+          onChange={(e) => setForm({ ...form, category: e.target.value, subcategory: "", type: "" })}
+          className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+          style={{ color: "#241E3D" }}
+        >
+          {CATEGORY_ORDER.map((k) => (
+            <option key={k} value={k}>{CATEGORY_LABEL[k]}</option>
+          ))}
+        </select>
+        {CATEGORIES[form.category]?.subcategories && (
+          <select
+            value={form.subcategory}
+            onChange={(e) => setForm({ ...form, subcategory: e.target.value, type: "" })}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D" }}
+          >
+            <option value="">زیرشاخه را انتخاب کن</option>
+            {Object.keys(CATEGORIES[form.category].subcategories).map((k) => (
+              <option key={k} value={k}>{subcategoryLabel(form.category, k)}</option>
+            ))}
+          </select>
+        )}
+        {subcategoryTypes(form.category, form.subcategory) && (
+          isGroupedTypes(subcategoryTypes(form.category, form.subcategory)) ? (
+            <div className="sm:col-span-2 flex flex-col gap-3">
+              {subcategoryTypes(form.category, form.subcategory).map((g) => {
+                const selected = (form.facets && form.facets[g.key]) || [];
+                function toggleFormFacet(key) {
+                  const has = selected.includes(key);
+                  const nextArr = has ? selected.filter((v) => v !== key) : [...selected, key];
+                  setForm({ ...form, facets: { ...form.facets, [g.key]: nextArr } });
+                }
+                return (
+                  <div key={g.key} className="flex flex-col gap-1">
+                    <label className="text-muted" style={{ fontSize: 11 }}>{g.group} (می‌توانی چند مورد انتخاب کنی)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(g.options).map(([k, v]) => (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => toggleFormFacet(k)}
+                          className="btn-ghost rounded-full px-3 py-1 text-xs"
+                          style={selected.includes(k) ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <select
+              value={form.type}
+              onChange={(e) => setForm({ ...form, type: e.target.value })}
+              className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+              style={{ color: "#241E3D" }}
+            >
+              <option value="">نوع محصول را انتخاب کن</option>
+              {Object.entries(subcategoryTypes(form.category, form.subcategory)).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
+          )
+        )}
+        <div className="flex flex-col gap-1">
+          <input
+            placeholder="قیمت (تومان)"
+            type="text"
+            inputMode="numeric"
+            value={formatPriceInput(form.price)}
+            onChange={(e) => {
+              const digitsOnly = e.target.value.replace(/[^\d]/g, "");
+              setForm({ ...form, price: digitsOnly });
+            }}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D" }}
+            dir="ltr"
+          />
+          {form.price && Number(form.price) > 0 && (
+            <p className="text-gold" style={{ fontSize: 11 }}>
+              {numberToPersianWords(form.price)} تومان
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col gap-1">
+          <input
+            type="number"
+            min="0"
+            max="90"
+            placeholder="درصد تخفیف این محصول (اختیاری)"
+            value={form.discountPercent}
+            onChange={(e) => setForm({ ...form, discountPercent: e.target.value })}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D" }}
+            dir="ltr"
+          />
+          {form.price && form.discountPercent && Number(form.discountPercent) > 0 && (
+            <p className="text-gold" style={{ fontSize: 11 }}>
+              قیمت با تخفیف: {fmtPrice(discountedPrice({ price: Number(form.price), discountPercent: Number(form.discountPercent) }, 0))}
+            </p>
+          )}
+        </div>
+        <textarea
+          placeholder="توضیح کوتاه"
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm sm:col-span-2"
+          style={{ color: "#241E3D", minHeight: 60 }}
+        />
+        <div className="sm:col-span-2 flex flex-col gap-1">
+          <label className="text-muted" style={{ fontSize: 12 }}>
+            ویژگی‌ها و خواص (این متن در صفحه‌ی اختصاصی محصول به مشتری نمایش داده می‌شود)
+          </label>
+          <textarea
+            placeholder={"مثال:\nماندگاری بالا\nمقاوم در برابر آب\nمناسب پوست حساس"}
+            value={form.properties}
+            onChange={(e) => setForm({ ...form, properties: e.target.value })}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D", minHeight: 70 }}
+          />
+        </div>
+        <div className="sm:col-span-2 flex flex-col gap-1">
+          <label className="text-muted" style={{ fontSize: 12 }}>
+            ترکیبات (اختیاری — در صفحه‌ی اختصاصی محصول نمایش داده می‌شود)
+          </label>
+          <textarea
+            placeholder="مثال: آب، گلیسیرین، روغن آرگان، ویتامین E ..."
+            value={form.ingredients}
+            onChange={(e) => setForm({ ...form, ingredients: e.target.value })}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D", minHeight: 70 }}
+          />
+        </div>
+        <div className="sm:col-span-2 flex flex-col gap-1">
+          <label className="text-muted" style={{ fontSize: 12 }}>
+            تصویر اصلی محصول
+          </label>
+          <div className="flex items-center gap-3 flex-wrap">
+            <label
+              className="btn-ghost rounded px-3 py-2 text-xs flex items-center gap-2"
+              style={{ cursor: uploading ? "default" : "pointer", opacity: uploading ? 0.6 : 1 }}
+            >
+              <Upload size={14} />
+              {uploading ? "در حال آپلود..." : "انتخاب از گالری"}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageFile}
+                disabled={uploading}
+                style={{ display: "none" }}
+              />
+            </label>
+            <input
+              placeholder="یا لینک عکس را اینجا بچسبان: https://example.com/image.jpg"
+              value={form.image}
+              onChange={(e) => setForm({ ...form, image: e.target.value })}
+              className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
+              style={{ color: "#241E3D", minWidth: 200 }}
+              dir="ltr"
+            />
+            {form.image && (
+              <img
+                src={form.image}
+                alt="پیش‌نمایش"
+                style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)" }}
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+            )}
+          </div>
+        </div>
+        <div className="sm:col-span-2 flex flex-col gap-2">
+          <label className="text-muted" style={{ fontSize: 12 }}>
+            طیف رنگ / شماره‌ها (اختیاری — برای محصولاتی مثل رژلب، سایه و رژگونه که مشتری باید رنگ انتخاب کند)
+          </label>
+          {(form.variantsList || []).map((v) => (
+            <VariantRowEditor
+              key={v.id}
+              variant={v}
+              onChange={(next) => setForm((f) => ({ ...f, variantsList: f.variantsList.map((x) => (x.id === v.id ? next : x)) }))}
+              onRemove={() => setForm((f) => ({ ...f, variantsList: f.variantsList.filter((x) => x.id !== v.id) }))}
+              onUploadImage={onUploadImage}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              setForm((f) => ({
+                ...f,
+                variantsList: [...(f.variantsList || []), { id: `v${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, label: "", hex: "", image: "" }],
+              }))
+            }
+            className="btn-ghost rounded px-3 py-2 text-xs self-start flex items-center gap-1.5"
+          >
+            <Plus size={13} /> افزودن رنگ / شماره
+          </button>
+          <p className="text-muted" style={{ fontSize: 11 }}>
+            برای هر رنگ، اسم یا شماره‌اش رو بنویس و از دکمه‌ی «افزودن عکس این رنگ» مستقیم از گالری گوشی عکس همون طیف رو آپلود کن — نیازی به لینک عکس از جای دیگه نیست. اگه عکس نذاری، همون رنگ هگز به‌جای عکس نمایش داده می‌شود.
+          </p>
+        </div>
+        <div className="sm:col-span-2 flex gap-2">
+          <button type="submit" disabled={saving} className="btn-gold rounded px-4 py-2 text-sm flex items-center gap-2">
+            {editingId ? <Check size={14} /> : <Plus size={14} />}
+            {editingId ? "ذخیره تغییرات" : "افزودن محصول"}
+          </button>
+          {editingId && (
+            <button type="button" onClick={cancelEdit} className="btn-ghost rounded px-4 py-2 text-sm">
+              انصراف
+            </button>
+          )}
+        </div>
+      </form>
+
+      <div className="flex flex-col gap-2">
+        {products.map((p) => (
+          <div key={p.id} className="bg-panel border border-hair rounded-lg p-3 flex items-center gap-3">
+            <div className="flex items-center justify-center rounded overflow-hidden" style={{ width: 40, height: 40, background: "rgba(123,92,246,0.08)", flexShrink: 0 }}>
+              {p.image ? (
+                <img
+                  src={p.image}
+                  alt={p.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }}
+                />
+              ) : null}
+              <div style={{ display: p.image ? "none" : "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+                <CategoryIcon category={p.category} size={22} />
+              </div>
+            </div>
+            <div className="flex-1">
+              <p style={{ fontSize: 14 }}>{p.name} <span className="text-muted" style={{ fontSize: 11 }}>— {p.brand}</span></p>
+              <p className="text-muted" style={{ fontSize: 11 }}>
+                {CATEGORY_LABEL[p.category]}
+                {p.subcategory && ` (${subcategoryLabel(p.category, p.subcategory)}${p.type ? " - " + typeLabel(p.category, p.subcategory, p.type) : ""}${p.facets && facetsSummary(p.category, p.subcategory, p.facets) ? " - " + facetsSummary(p.category, p.subcategory, p.facets) : ""})`} · {fmtPrice(p.price)}
+                {p.variants && p.variants.length > 0 && (
+                  <span className="text-gold"> · {p.variants.length} طیف رنگ</span>
+                )}
+                {effectiveDiscountPercent(p, globalDiscountPercent) > 0 && (
+                  <span className="text-gold"> · ٪{effectiveDiscountPercent(p, globalDiscountPercent).toLocaleString("fa-IR")} تخفیف{p.discountPercent ? "" : " (همگانی)"}</span>
+                )}
+              </p>
+            </div>
+            <button onClick={() => startEdit(p)} className="btn-ghost rounded p-2"><Pencil size={14} /></button>
+            <button onClick={() => remove(p.id)} className="btn-ghost rounded p-2"><Trash2 size={14} /></button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
