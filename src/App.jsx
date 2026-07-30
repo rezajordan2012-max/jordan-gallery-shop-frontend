@@ -37,12 +37,27 @@ const FONTS = `
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
-    animation: brandShine 6s ease-in-out infinite;
-    line-height: 1.35;
+    -webkit-text-stroke: 0.7px rgba(123,92,246,0.55);
+    text-stroke: 0.7px rgba(123,92,246,0.55);
+    animation: brandShine 6s ease-in-out infinite, brandTilt 5s ease-in-out infinite, brandGlow 6s ease-in-out infinite;
+    line-height: 1.4;
+    letter-spacing: 0.3px;
+    display: inline-block;
+    transform-style: preserve-3d;
   }
   @keyframes brandShine {
     0%, 100% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
+  }
+  @keyframes brandTilt {
+    0%, 100% { transform: perspective(320px) rotateY(0deg) rotateX(0deg) scale(1); }
+    25% { transform: perspective(320px) rotateY(5deg) rotateX(1.5deg) scale(1.015); }
+    75% { transform: perspective(320px) rotateY(-5deg) rotateX(-1.5deg) scale(1.015); }
+  }
+  @keyframes brandGlow {
+    0%, 100% { filter: drop-shadow(0 2px 4px rgba(255,62,142,0.4)); }
+    33% { filter: drop-shadow(0 2px 7px rgba(123,92,246,0.55)); }
+    66% { filter: drop-shadow(0 2px 7px rgba(0,194,203,0.55)); }
   }
   @media (prefers-reduced-motion: reduce) {
     .brand-showcase { animation: none; }
@@ -760,7 +775,7 @@ function ProductCard({ product, onOpen, globalDiscountPercent }) {
           <img
             src={displayImage}
             alt={product.name}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
             onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }}
           />
         ) : null}
@@ -828,7 +843,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
           className={`${CATEGORY_CARD_CLASS[product.category]} rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-80 lg:h-[440px] lg:w-[380px] lg:flex-shrink-0`}
         >
           {displayImage ? (
-            <img src={displayImage} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={displayImage} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           ) : (
             <CategoryIcon category={product.category} size={80} />
           )}
@@ -1426,7 +1441,7 @@ export default function MaisonStore() {
             </button>
             <div className="flex flex-col leading-none">
               <span className="font-latin text-gold" style={{ fontSize: 11 }}>JORDAN</span>
-              <span className="brand-showcase" style={{ fontSize: "clamp(15px, 3.6vw, 21px)", fontWeight: 400 }}>
+              <span className="brand-showcase" style={{ fontSize: "clamp(18px, 4.6vw, 27px)", fontWeight: 900 }}>
                 گالری آرایشی، بهداشتی و ادکلن جردن
               </span>
             </div>
@@ -1716,8 +1731,8 @@ export default function MaisonStore() {
           {heroBanners.length === 0 && (
           <>
           {/* Hero */}
-          <section className="px-4 sm:px-8 lg:px-12 py-10 sm:py-16 flex flex-col sm:flex-row items-center gap-8 sm:gap-10 max-w-6xl xl:max-w-7xl mx-auto">
-            <div className="flex-1 order-2 sm:order-1 text-center sm:text-right">
+          <section className="relative overflow-hidden px-4 sm:px-8 lg:px-12 py-10 sm:py-16 flex flex-col sm:flex-row items-center gap-8 sm:gap-10 max-w-6xl xl:max-w-7xl mx-auto">
+            <div className="flex-1 order-2 sm:order-1 text-center sm:text-right" style={{ position: "relative", zIndex: 1 }}>
               <p className="font-latin text-gold" style={{ fontSize: 13, marginBottom: 10 }}>PARFUM · BEAUTY · CARE</p>
               <h1 className="font-display" style={{ fontSize: "clamp(28px,5vw,44px)", lineHeight: 1.35 }}>
                 ظرافتی که قبل از دیده شدن،<br />حس می‌شود
@@ -1734,7 +1749,7 @@ export default function MaisonStore() {
               </button>
             </div>
 
-            <div className="flex-1 order-1 sm:order-2 flex justify-center">
+            <div className="flex-1 order-1 sm:order-2 flex justify-center" style={{ position: "relative", zIndex: 1 }}>
               <div className="float-slow" style={{ position: "relative", width: 150, height: 200 }}>
                 <svg width="150" height="200" viewBox="0 0 150 200" fill="none">
                   <rect x="55" y="10" width="40" height="24" rx="4" fill="#FF3E8E" />
@@ -2635,15 +2650,35 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               style={{ color: "#241E3D", minWidth: 200 }}
               dir="ltr"
             />
-            {form.image && (
-              <img
-                src={form.image}
-                alt="پیش‌نمایش"
-                style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)" }}
-                onError={(e) => { e.currentTarget.style.display = "none"; }}
-              />
-            )}
           </div>
+          {form.image && (
+            <div className="flex flex-col gap-1 mt-2">
+              <p className="text-muted" style={{ fontSize: 11 }}>
+                پیش‌نمایش دقیق — دقیقاً همین‌طوری توی کارت محصول نمایش داده می‌شود (کادر خودش با هر سایز عکس هماهنگ می‌شود و چیزی از عکس بریده نمی‌شود):
+              </p>
+              <div
+                className={CATEGORY_CARD_CLASS[form.category]}
+                style={{
+                  height: 168,
+                  borderRadius: 10,
+                  border: "1px solid rgba(123,92,246,0.3)",
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  maxWidth: 260,
+                }}
+              >
+                <img
+                  src={form.image}
+                  alt="پیش‌نمایش"
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement.dataset.broken = "1"; }}
+                  onLoad={(e) => { delete e.currentTarget.parentElement.dataset.broken; e.currentTarget.style.display = "block"; }}
+                />
+              </div>
+            </div>
+          )}
         </div>
         <div className="sm:col-span-2 flex flex-col gap-2">
           <label className="text-muted" style={{ fontSize: 12 }}>
