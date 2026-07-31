@@ -13,6 +13,23 @@ const API_BASE_URL = "https://jordan-gallery-shop-backend.onrender.com";
 // تشخیص نهایی مدیر بودن باید سمت سرور (بک‌اند) هم بررسی شود؛ این فقط لایه‌ی نمایش در فرانت‌اند است.
 const ADMIN_EMAIL = "rezajordan2012@gmail.com";
 
+// تابع کمکی جدید: هنگام بیدار شدن سرور رایگان (Render) که ممکن است تا ۵۰ ثانیه طول بکشد،
+// به‌جای شکست فوری، چند بار با فاصله دوباره تلاش می‌کند تا مشتری با محصولات fake گمراه نشود.
+async function fetchWithRetry(url, options = {}, { retries = 6, delayMs = 4000 } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      if (!res.ok) throw new Error("bad response");
+      return res;
+    } catch (e) {
+      lastErr = e;
+      if (attempt < retries) await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 const FONTS = `
   @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Baloo+2:wght@500;600;700;800&family=Lalezar&display=swap');
 
@@ -1013,15 +1030,14 @@ export default function MaisonStore() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/products`);
-      if (!res.ok) throw new Error("bad response");
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/products`);
       const data = await res.json();
-      setProducts(Array.isArray(data) ? data : SEED_PRODUCTS);
+      setProducts(Array.isArray(data) ? data : []);
       setStorageError(false);
     } catch (e) {
-      // اگر اتصال به سرور برقرار نشد، محصولات نمونه نمایش داده می‌شوند
-      // ولی هشدار داده می‌شود که این‌ها موقتی‌اند و از سرور نیامده‌اند.
-      setProducts(SEED_PRODUCTS);
+      // بعد از چند بار تلاش هم اتصال به سرور برقرار نشد؛ برای اینکه مشتری با محصولات fake گمراه نشود،
+      // لیست خالی نمایش داده می‌شود و پیام خطا نشان داده می‌شود.
+      setProducts([]);
       setStorageError(true);
     } finally {
       setLoading(false);
@@ -1030,8 +1046,7 @@ export default function MaisonStore() {
 
   const loadSettings = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/settings`);
-      if (!res.ok) return;
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/settings`);
       const data = await res.json();
       if (data && Array.isArray(data.heroBanners) && data.heroBanners.length > 0) {
         setHeroBanners(data.heroBanners);
@@ -1040,7 +1055,7 @@ export default function MaisonStore() {
         setGlobalDiscountPercent(Number(data.globalDiscountPercent));
       }
     } catch (e) {
-      // اگر سرور در دسترس نبود، همان طرح پیش‌فرض نمایش داده می‌شود.
+      // بعد از چند بار تلاش هم سرور در دسترس نبود، همان طرح پیش‌فرض نمایش داده می‌شود.
     }
   };
 
@@ -1822,6 +1837,11 @@ export default function MaisonStore() {
 
           {/* Catalog */}
           <section id="catalog" className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto pb-20">
+            {storageError && !loading && (
+              <p className="mb-4 rounded p-3" style={{ fontSize: 13, background: "rgba(214,51,108,0.12)", color: "#D6336C" }}>
+                اتصال به سرور فروشگاه برقرار نشد. لطفاً چند لحظه صبر کن و صفحه را رفرش کن.
+              </p>
+            )}
             {!categoryPageOpen && (
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles size={16} color="#FF3E8E" />
@@ -2368,7 +2388,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       </p>
       {storageError && (
         <p className="mb-4 rounded p-3" style={{ fontSize: 12, background: "rgba(214,51,108,0.12)", color: "#D6336C" }}>
-          اتصال به سرور فروشگاه برقرار نشد؛ محصولات نمونه نمایش داده شده‌اند و تغییرات ذخیره نمی‌شوند. دوباره صفحه را باز کن.
+          اتصال به سرور فروشگاه برقرار نشد. لطفاً چند لحظه صبر کن و دوباره صفحه را باز کن.
         </p>
       )}
       {formError && (
