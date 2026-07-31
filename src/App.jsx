@@ -341,7 +341,7 @@ const CATEGORIES = {
     },
   },
   makeup: {
-    label: "آرایشی صورت و بدن",
+    label: "آرایشی صورت",
     subcategories: {
       face: {
         label: "صورت",
