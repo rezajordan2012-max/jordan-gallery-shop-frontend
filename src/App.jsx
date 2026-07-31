@@ -19,7 +19,7 @@ async function fetchWithRetry(url, options = {}, { retries = 6, delayMs = 4000 }
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(url, options);
+      const res = await fetch(url, { ...options, cache: "no-store" });
       if (!res.ok) throw new Error("bad response");
       return res;
     } catch (e) {
@@ -27,6 +27,8 @@ async function fetchWithRetry(url, options = {}, { retries = 6, delayMs = 4000 }
       if (attempt < retries) await new Promise((r) => setTimeout(r, delayMs));
     }
   }
+  throw lastErr;
+}
   throw lastErr;
 }
 
