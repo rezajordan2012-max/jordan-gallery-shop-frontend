@@ -29,8 +29,6 @@ async function fetchWithRetry(url, options = {}, { retries = 6, delayMs = 4000 }
   }
   throw lastErr;
 }
-  throw lastErr;
-}
 
 const FONTS = `
   @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Baloo+2:wght@500;600;700;800&family=Lalezar&display=swap');
