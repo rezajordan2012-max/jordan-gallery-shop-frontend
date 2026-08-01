@@ -718,7 +718,9 @@ function CategoryIcon({ category, size = 34 }) {
 
 // کامپوننت کروماکی: ویدیو را روی یک کانواس پنهان می‌کشد و پیکسل‌های نزدیک به مشکی (پس‌زمینه‌ی ویدیو) را
 // واقعاً شفاف می‌کند (نه فقط ترفند بلند-مود CSS) — بنابراین مستقل از رنگ پس‌زمینه‌ی سایت درست دیده می‌شود.
-function ChromaKeyVideo({ src, style, className }) {
+// منبع ویدیو با کیفیت بالا (تا ۱۰۸۰) است، ولی برای عملکرد روان، کانواس داخلی در اندازه‌ی کوچک‌تری
+// (renderWidth) رسم می‌شود — مرورگر خودش کیفیت بالای منبع را با نرمی خوب کوچک می‌کند (تصویر تار نمی‌شود).
+function ChromaKeyVideo({ src, style, className, renderWidth = 240 }) {
   const videoRef = React.useRef(null);
   const canvasRef = React.useRef(null);
 
@@ -727,6 +729,8 @@ function ChromaKeyVideo({ src, style, className }) {
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     let rafId;
     let cancelled = false;
 
@@ -736,9 +740,9 @@ function ChromaKeyVideo({ src, style, className }) {
     function draw() {
       if (cancelled) return;
       if (video.readyState >= 2 && video.videoWidth > 0) {
-        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+        if (canvas.width === 0) {
+          canvas.width = renderWidth;
+          canvas.height = Math.round((video.videoHeight / video.videoWidth) * renderWidth);
         }
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -767,7 +771,7 @@ function ChromaKeyVideo({ src, style, className }) {
       cancelled = true;
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [src]);
+  }, [src, renderWidth]);
 
   return (
     <>
@@ -1529,12 +1533,28 @@ export default function MaisonStore() {
       {/* Header */}
       <header className="sticky z-30 bg-panel border-b border-hair" style={{ top: 28, backdropFilter: "blur(6px)" }}>
         <div className="flex items-center justify-between px-4 py-3 sm:px-8 lg:px-12 max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" style={{ minWidth: 0, flex: "1 1 auto" }}>
             <button className="sm:hidden" onClick={() => { setMenuOpen((v) => !v); setMenuNav(null); }} aria-label="منو">
               {menuOpen ? <X size={22} color="#241E3D" /> : <Menu size={22} color="#241E3D" />}
             </button>
-            <div className="flex flex-col leading-none">
-              <span className="brand-showcase" style={{ fontSize: "clamp(18px, 4.6vw, 27px)", fontWeight: 900 }}>
+            <ChromaKeyVideo
+              src="/jordan-crest.mp4"
+              renderWidth={160}
+              style={{ height: "clamp(30px, 7vw, 44px)", width: "auto", display: "block", flexShrink: 0 }}
+            />
+            <div className="flex flex-col leading-none" style={{ minWidth: 0, overflow: "hidden" }}>
+              <span
+                className="brand-showcase"
+                style={{
+                  fontSize: "clamp(13px, 4vw, 27px)",
+                  fontWeight: 900,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  display: "block",
+                  maxWidth: "100%",
+                }}
+              >
                 گالری آرایشی، بهداشتی و ادکلن جردن
               </span>
             </div>
@@ -1793,13 +1813,6 @@ export default function MaisonStore() {
         <>
           {!categoryPageOpen && (
           <>
-          {/* تاج متحرک لوگو — پس‌زمینه‌ی مشکی ویدیو با کروماکی واقعی (کانواس) حذف می‌شود، پس مستقل از رنگ پس‌زمینه‌ی سایت درست دیده می‌شود */}
-          <section className="w-full flex justify-center" style={{ paddingTop: 8, paddingBottom: 0 }}>
-            <ChromaKeyVideo
-              src="/jordan-crest.mp4"
-              style={{ width: "min(300px, 62vw)", height: "auto", display: "block" }}
-            />
-          </section>
           {heroBanners.length > 0 && (
             <section className="relative w-full overflow-hidden" style={{ height: "clamp(320px, 62vh, 620px)" }}>
               <img
