@@ -19,7 +19,7 @@ async function fetchWithRetry(url, options = {}, { retries = 6, delayMs = 4000 }
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(url, { ...options, cache: "no-store" });
+      const res = await fetch(url, options);
       if (!res.ok) throw new Error("bad response");
       return res;
     } catch (e) {
@@ -341,66 +341,76 @@ const CATEGORIES = {
     },
   },
   makeup: {
-    label: "آرایشی صورت",
+    label: "آرایشی",
     subcategories: {
       face: {
         label: "صورت",
+        types: [
+          {
+            key: "faceBase",
+            group: "صورت",
+            options: {
+              primer: "پرایمر",
+              concealer: "کانسیلر",
+              foundation: "کرم پودر",
+              blush: "رژگونه",
+              highlighter: "هایلایتر",
+              powder: "پودر",
+              contour: "کانتور و برنزر",
+              settingSpray: "اسپری تثبیت‌کننده",
+            },
+          },
+          {
+            key: "eyeArea",
+            group: "چشم",
+            options: {
+              eyebrow: "ابرو",
+              eyeshadow: "سایه چشم",
+              glitter: "اکلیل",
+              mascara: "ریمل",
+              eyeliner: "خط چشم",
+            },
+          },
+          {
+            key: "lipArea",
+            group: "لب",
+            options: {
+              lipstick: "رژ لب",
+              gloss: "برق لب",
+              liner: "خط لب",
+              liquidLipstick: "رژ لب مایع",
+              tint: "رنگ لب",
+              lipCare: "مراقبت از لب",
+              lipSet: "ست لب",
+            },
+          },
+          {
+            key: "accessoryArea",
+            group: "ابزارهای زیبایی",
+            options: {
+              brushes: "برس‌ها",
+              spongeTools: "اسفنج و ابزار",
+              lashes: "مژه‌ها",
+            },
+          },
+        ],
+      },
+      body: "بدن",
+      hair: {
+        label: "مو",
         types: {
-          primer: "پرایمر",
-          concealer: "کانسیلر",
-          foundation: "کرم پودر",
-          blush: "رژگونه",
-          highlighter: "هایلایتر",
-          powder: "پودر",
-          contour: "کانتور و برنزر",
-          settingSpray: "اسپری تثبیت‌کننده",
+          menHairColor: "رنگ مو آقایان",
+          hairColor: "رنگ مو",
+          colorShampoo: "شامپو رنگ",
+          hairMousseMeshSpray: "موس و اسپری مش مو",
+          hairStylingMousse: "موس حالت دهنده مو",
+          hairStylingSpray: "اسپری حالت دهنده مو",
+          hairGlueSpray: "اسپری چسب مو",
+          hairWax: "واکس مو",
+          hairCream: "کرم مو",
+          hairGel: "ژل مو",
         },
       },
-      eye: {
-        label: "چشم",
-        types: {
-          eyebrow: "ابرو",
-          eyeshadow: "سایه چشم",
-          glitter: "اکلیل",
-          mascara: "ریمل",
-          eyeliner: "خط چشم",
-        },
-      },
-      lip: {
-        label: "لب",
-        types: {
-          lipstick: "رژ لب",
-          gloss: "برق لب",
-          liner: "خط لب",
-          liquidLipstick: "رژ لب مایع",
-          tint: "رنگ لب",
-          lipCare: "مراقبت از لب",
-          lipSet: "ست لب",
-        },
-      },
-      accessory: {
-        label: "ابزارهای زیبایی",
-        types: {
-          brushes: "برس‌ها",
-          spongeTools: "اسفنج و ابزار",
-          lashes: "مژه‌ها",
-        },
-      },
-    },
-  },
-  hairStyling: {
-    label: "آرایشی مو",
-    subcategories: {
-      menHairColor: "رنگ مو آقایان",
-      hairColor: "رنگ مو",
-      colorShampoo: "شامپو رنگ",
-      hairMousseMeshSpray: "موس و اسپری مش مو",
-      hairStylingMousse: "موس حالت دهنده مو",
-      hairStylingSpray: "اسپری حالت دهنده مو",
-      hairGlueSpray: "اسپری چسب مو",
-      hairWax: "واکس مو",
-      hairCream: "کرم مو",
-      hairGel: "ژل مو",
     },
   },
   hygiene: {
@@ -485,7 +495,6 @@ const CATEGORY_CARD_CLASS = {
   perfume: "card-perfume",
   sprayAndSplash: "card-perfume",
   makeup: "card-beauty",
-  hairStyling: "card-hairstyling",
   hygiene: "card-hygiene",
   electronics: "card-electronics",
 };
