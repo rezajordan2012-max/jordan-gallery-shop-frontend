@@ -1464,7 +1464,6 @@ export default function MaisonStore() {
               {menuOpen ? <X size={22} color="#241E3D" /> : <Menu size={22} color="#241E3D" />}
             </button>
             <div className="flex flex-col leading-none">
-              <span className="font-latin text-gold" style={{ fontSize: 11 }}>JORDAN</span>
               <span className="brand-showcase" style={{ fontSize: "clamp(18px, 4.6vw, 27px)", fontWeight: 900 }}>
                 گالری آرایشی، بهداشتی و ادکلن جردن
               </span>
@@ -1724,6 +1723,23 @@ export default function MaisonStore() {
         <>
           {!categoryPageOpen && (
           <>
+          {/* تاج متحرک لوگو — پس‌زمینه‌ی سفید ویدیو با ترکیب مولتیپلای با پس‌زمینه‌ی سایت یکی می‌شود و انگار به صفحه چسبیده است */}
+          <section className="w-full flex justify-center" style={{ paddingTop: 8, paddingBottom: 0, isolation: "isolate" }}>
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              src="/jordan-crest.mp4"
+              style={{
+                width: "min(300px, 62vw)",
+                height: "auto",
+                display: "block",
+                mixBlendMode: "multiply",
+              }}
+            />
+          </section>
           {heroBanners.length > 0 && (
             <section className="relative w-full overflow-hidden" style={{ height: "clamp(320px, 62vh, 620px)" }}>
               <img
