@@ -716,6 +716,76 @@ function CategoryIcon({ category, size = 34 }) {
   );
 }
 
+// کامپوننت کروماکی: ویدیو را روی یک کانواس پنهان می‌کشد و پیکسل‌های نزدیک به مشکی (پس‌زمینه‌ی ویدیو) را
+// واقعاً شفاف می‌کند (نه فقط ترفند بلند-مود CSS) — بنابراین مستقل از رنگ پس‌زمینه‌ی سایت درست دیده می‌شود.
+function ChromaKeyVideo({ src, style, className }) {
+  const videoRef = React.useRef(null);
+  const canvasRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    let rafId;
+    let cancelled = false;
+
+    const THRESH = 20 * 20; // شعاع کاملاً شفاف (فاصله‌ی رنگی تا مشکی، به‌توان دو برای پرهیز از جذر گرفتن)
+    const FEATHER = 45; // پهنای گذار نرم بین شفاف و کدر
+
+    function draw() {
+      if (cancelled) return;
+      if (video.readyState >= 2 && video.videoWidth > 0) {
+        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = frame.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          const distSq = r * r + g * g + b * b;
+          if (distSq < THRESH) {
+            data[i + 3] = 0;
+          } else {
+            const dist = Math.sqrt(distSq);
+            const featherStart = Math.sqrt(THRESH);
+            if (dist < featherStart + FEATHER) {
+              data[i + 3] = Math.round(255 * ((dist - featherStart) / FEATHER));
+            }
+          }
+        }
+        ctx.putImageData(frame, 0, 0);
+      }
+      rafId = requestAnimationFrame(draw);
+    }
+
+    video.play().catch(() => {});
+    rafId = requestAnimationFrame(draw);
+    return () => {
+      cancelled = true;
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [src]);
+
+  return (
+    <>
+      <video
+        ref={videoRef}
+        src={src}
+        muted
+        loop
+        playsInline
+        autoPlay
+        preload="auto"
+        style={{ display: "none" }}
+      />
+      <canvas ref={canvasRef} className={className} style={style} />
+    </>
+  );
+}
+
 function parseVariantsText(text) {
   if (!text || !text.trim()) return [];
   return text
@@ -1723,21 +1793,11 @@ export default function MaisonStore() {
         <>
           {!categoryPageOpen && (
           <>
-          {/* تاج متحرک لوگو — پس‌زمینه‌ی سفید ویدیو با ترکیب مولتیپلای با پس‌زمینه‌ی سایت یکی می‌شود و انگار به صفحه چسبیده است */}
-          <section className="w-full flex justify-center" style={{ paddingTop: 8, paddingBottom: 0, isolation: "isolate" }}>
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
+          {/* تاج متحرک لوگو — پس‌زمینه‌ی مشکی ویدیو با کروماکی واقعی (کانواس) حذف می‌شود، پس مستقل از رنگ پس‌زمینه‌ی سایت درست دیده می‌شود */}
+          <section className="w-full flex justify-center" style={{ paddingTop: 8, paddingBottom: 0 }}>
+            <ChromaKeyVideo
               src="/jordan-crest.mp4"
-              style={{
-                width: "min(300px, 62vw)",
-                height: "auto",
-                display: "block",
-                mixBlendMode: "multiply",
-              }}
+              style={{ width: "min(300px, 62vw)", height: "auto", display: "block" }}
             />
           </section>
           {heroBanners.length > 0 && (
