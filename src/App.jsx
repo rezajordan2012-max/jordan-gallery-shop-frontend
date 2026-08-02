@@ -327,6 +327,7 @@ const CATEGORIES = {
       menPerfume: { label: "ادکلن مردانه", types: PERFUME_FACETS },
       womenPerfume: { label: "ادکلن زنانه", types: PERFUME_FACETS },
       unisexPerfume: { label: "ادکلن یونیسکس", types: PERFUME_FACETS },
+      kidsPerfume: { label: "ادکلن بچگانه", types: PERFUME_FACETS },
       sample: { label: "سمپل", types: PERFUME_FACETS },
       tester: { label: "تستر", types: PERFUME_FACETS },
       miniature: { label: "مینیاتوری", types: PERFUME_FACETS },
@@ -1969,7 +1970,10 @@ export default function MaisonStore() {
               </div>
             )}
 
-            {activeSubcategories && (activeCategory === "perfume" || activeType === "all") && (
+            {activeSubcategories && (
+              (activeCategory === "perfume" && activeSubcategory === "all") ||
+              (activeCategory !== "perfume" && activeType === "all")
+            ) && (
               <div className="flex flex-wrap gap-2 mb-4">
                 <button
                   onClick={() => selectSubcategory("all")}
