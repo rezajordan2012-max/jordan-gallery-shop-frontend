@@ -1390,7 +1390,7 @@ export default function MaisonStore() {
     if (activeCategory !== "all" && p.category !== activeCategory) return false;
     if (activeCategory !== "all" && activeSubcategory !== "all" && (p.subcategory || "") !== activeSubcategory) return false;
     if (activeSubcategory !== "all" && activeType !== "all" && (p.type || "") !== activeType) return false;
-    if (activeSubcategory !== "all" && Object.keys(activeFacets).length > 0) {
+    if (activeCategory === "perfume" && activeSubcategory !== "all" && Object.keys(activeFacets).length > 0) {
       for (const [facetKey, wantedArr] of Object.entries(activeFacets)) {
         const productVals = (p.facets && p.facets[facetKey]) || [];
         const hasOverlap = wantedArr.some((w) => productVals.includes(w));
@@ -1487,11 +1487,11 @@ export default function MaisonStore() {
       return;
     }
     const types = subcategoryTypes(category, subKey);
-    if (types && !isGroupedTypes(types)) {
+    if (types && !(isGroupedTypes(types) && category === "perfume")) {
       setMenuNav({ category, subcategory: subKey });
       return;
     }
-    // اگر گروه‌های موازی دارد (مثل ادکلن) یا اصلاً نوعی ندارد، مستقیم به صفحه‌ی اختصاصی همان زیرشاخه می‌رویم
+    // فقط ادکلن با گروه‌های موازی: مستقیم به صفحه‌ی اختصاصی همان زیرشاخه می‌رویم
     // تا مشتری از همان‌جا بتواند هم‌زمان از چند گروه (طبع، رایحه، نوع و ...) انتخاب کند.
     selectCategory(category);
     selectSubcategory(subKey);
@@ -1499,10 +1499,18 @@ export default function MaisonStore() {
   }
 
   // زدن روی یک نوع دقیق محصول (سطح سوم): فیلتر نهایی اعمال و منو بسته می‌شود.
-  function onMenuTypeClick(category, subKey, typeKey) {
+  // برای ادکلن (چندانتخابی، groupKey مشخص است) یک فیلتر به مجموعه‌ی فیلترهای فعال اضافه می‌شود؛
+  // برای بقیه‌ی شاخه‌ها (تک‌انتخابی) با هر بار انتخاب، صفحه‌ی قبلی جایگزین می‌شود.
+  function onMenuTypeClick(category, subKey, typeKey, groupKey) {
     selectCategory(category);
     selectSubcategory(subKey);
-    if (typeKey !== "all") setActiveType(typeKey);
+    if (typeKey !== "all") {
+      if (category === "perfume" && groupKey) {
+        toggleFacet(groupKey, typeKey);
+      } else {
+        setActiveType(typeKey);
+      }
+    }
     closeMenu();
   }
 
@@ -1708,7 +1716,7 @@ export default function MaisonStore() {
                         {Object.entries(g.options).map(([typeKey, label]) => (
                           <button
                             key={typeKey}
-                            onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey)}
+                            onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey, g.key)}
                             className="btn-ghost text-right rounded-lg px-3 py-1.5"
                             style={{ fontSize: 13 }}
                           >
@@ -1927,6 +1935,9 @@ export default function MaisonStore() {
                     {activeSubcategory !== "all" && (
                       <span className="text-gold"> / {subcategoryLabel(activeCategory, activeSubcategory)}</span>
                     )}
+                    {activeCategory !== "perfume" && activeType !== "all" && (
+                      <span className="text-gold"> / {typeLabel(activeCategory, activeSubcategory, activeType)}</span>
+                    )}
                   </>
                 )}
               </h1>
@@ -1949,7 +1960,7 @@ export default function MaisonStore() {
               </div>
             )}
 
-            {activeSubcategories && (
+            {activeSubcategories && (activeCategory === "perfume" || activeType === "all") && (
               <div className="flex flex-wrap gap-2 mb-4">
                 <button
                   onClick={() => selectSubcategory("all")}
@@ -1971,9 +1982,9 @@ export default function MaisonStore() {
               </div>
             )}
 
-            {activeTypes && (
+            {activeTypes && activeCategory === "perfume" && (
               <div className="mb-4">
-                {isGroupedTypes(activeTypes) ? (
+                {isGroupedTypes(activeTypes) && activeCategory === "perfume" ? (
                   <>
                     {Object.keys(activeFacets).length > 0 && (
                       <button
@@ -1994,6 +2005,36 @@ export default function MaisonStore() {
                               onClick={() => toggleFacet(g.key, key)}
                               className="btn-ghost rounded-full px-3 py-1 text-xs"
                               style={(activeFacets[g.key] || []).includes(key) ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : isGroupedTypes(activeTypes) ? (
+                  <>
+                    {/* غیر از ادکلن: فقط یک نوع قابل انتخاب است — با انتخاب نوع جدید، صفحه‌ی قبلی جایگزین می‌شود نه اینکه کنارش اضافه شود */}
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      <button
+                        onClick={() => setActiveType("all")}
+                        className="btn-ghost rounded-full px-3 py-1 text-xs"
+                        style={activeType === "all" ? { borderColor: "#FF3E8E", color: "#FF3E8E" } : { opacity: 0.85 }}
+                      >
+                        همه‌ی انواع
+                      </button>
+                    </div>
+                    {activeTypes.map((g) => (
+                      <div key={g.key} className="mb-2">
+                        <p className="text-muted" style={{ fontSize: 11, marginBottom: 4 }}>{g.group}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(g.options).map(([key, label]) => (
+                            <button
+                              key={key}
+                              onClick={() => setActiveType(key)}
+                              className="btn-ghost rounded-full px-3 py-1 text-xs"
+                              style={activeType === key ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
                             >
                               {label}
                             </button>
@@ -2452,7 +2493,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     const discountPercentNum = form.discountPercent ? Number(form.discountPercent) : 0;
     const variants = (form.variantsList || []).filter((v) => v.label && v.label.trim());
     const { variantsList, id, ...rest } = form;
-    const payload = { ...rest, price: priceNum, discountPercent: discountPercentNum, ...(variants.length > 0 ? { variants } : { variants: undefined }) };
+    const payload = { ...rest, price: priceNum, discountPercent: discountPercentNum, facets: form.category === "perfume" ? form.facets : {}, ...(variants.length > 0 ? { variants } : { variants: undefined }) };
     try {
       if (editingId) {
         await onUpdate(editingId, payload);
@@ -2607,7 +2648,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         />
         <select
           value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value, subcategory: "", type: "" })}
+          onChange={(e) => setForm({ ...form, category: e.target.value, subcategory: "", type: "", facets: {} })}
           className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
           style={{ color: "#241E3D" }}
         >
@@ -2618,7 +2659,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         {CATEGORIES[form.category]?.subcategories && (
           <select
             value={form.subcategory}
-            onChange={(e) => setForm({ ...form, subcategory: e.target.value, type: "" })}
+            onChange={(e) => setForm({ ...form, subcategory: e.target.value, type: "", facets: {} })}
             className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
             style={{ color: "#241E3D" }}
           >
@@ -2630,34 +2671,58 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         )}
         {subcategoryTypes(form.category, form.subcategory) && (
           isGroupedTypes(subcategoryTypes(form.category, form.subcategory)) ? (
-            <div className="sm:col-span-2 flex flex-col gap-3">
-              {subcategoryTypes(form.category, form.subcategory).map((g) => {
-                const selected = (form.facets && form.facets[g.key]) || [];
-                function toggleFormFacet(key) {
-                  const has = selected.includes(key);
-                  const nextArr = has ? selected.filter((v) => v !== key) : [...selected, key];
-                  setForm({ ...form, facets: { ...form.facets, [g.key]: nextArr } });
-                }
-                return (
+            form.category === "perfume" ? (
+              <div className="sm:col-span-2 flex flex-col gap-3">
+                {subcategoryTypes(form.category, form.subcategory).map((g) => {
+                  const selected = (form.facets && form.facets[g.key]) || [];
+                  function toggleFormFacet(key) {
+                    const has = selected.includes(key);
+                    const nextArr = has ? selected.filter((v) => v !== key) : [...selected, key];
+                    setForm({ ...form, facets: { ...form.facets, [g.key]: nextArr } });
+                  }
+                  return (
+                    <div key={g.key} className="flex flex-col gap-1">
+                      <label className="text-muted" style={{ fontSize: 11 }}>{g.group} (می‌توانی چند مورد انتخاب کنی)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(g.options).map(([k, v]) => (
+                          <button
+                            key={k}
+                            type="button"
+                            onClick={() => toggleFormFacet(k)}
+                            className="btn-ghost rounded-full px-3 py-1 text-xs"
+                            style={selected.includes(k) ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="sm:col-span-2 flex flex-col gap-3">
+                {/* غیر از ادکلن: فقط یک نوع برای هر محصول قابل انتخاب است */}
+                {subcategoryTypes(form.category, form.subcategory).map((g) => (
                   <div key={g.key} className="flex flex-col gap-1">
-                    <label className="text-muted" style={{ fontSize: 11 }}>{g.group} (می‌توانی چند مورد انتخاب کنی)</label>
+                    <label className="text-muted" style={{ fontSize: 11 }}>{g.group}</label>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(g.options).map(([k, v]) => (
                         <button
                           key={k}
                           type="button"
-                          onClick={() => toggleFormFacet(k)}
+                          onClick={() => setForm({ ...form, type: k, facets: {} })}
                           className="btn-ghost rounded-full px-3 py-1 text-xs"
-                          style={selected.includes(k) ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
+                          style={form.type === k ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
                         >
                           {v}
                         </button>
                       ))}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )
           ) : (
             <select
               value={form.type}
