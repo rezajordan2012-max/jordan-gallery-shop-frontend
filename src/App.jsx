@@ -15,11 +15,14 @@ const ADMIN_EMAIL = "rezajordan2012@gmail.com";
 
 // تابع کمکی جدید: هنگام بیدار شدن سرور رایگان (Render) که ممکن است تا ۵۰ ثانیه طول بکشد،
 // به‌جای شکست فوری، چند بار با فاصله دوباره تلاش می‌کند تا مشتری با محصولات fake گمراه نشود.
+// همچنین کش را کاملاً غیرفعال می‌کند — هم کش خود مرورگر و هم هر پراکسی/کش شبکه‌ای بین راه (مثلاً برخی
+// اپراتورهای موبایل) — چون این دقیقاً دلیل اصلیِ «توی گوشی خودم می‌بینم ولی گوشیِ بقیه نه» بود.
 async function fetchWithRetry(url, options = {}, { retries = 6, delayMs = 4000 } = {}) {
   let lastErr;
+  const bustUrl = url.includes("?") ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(url, options);
+      const res = await fetch(bustUrl, { ...options, cache: "no-store" });
       if (!res.ok) throw new Error("bad response");
       return res;
     } catch (e) {
@@ -1931,12 +1934,18 @@ export default function MaisonStore() {
                   <>نتایج جستجو برای «{searchTerm}»</>
                 ) : (
                   <>
-                    {CATEGORY_LABEL[activeCategory]}
+                    <span style={{ color: "#7B5CF6" }}>{CATEGORY_LABEL[activeCategory]}</span>
                     {activeSubcategory !== "all" && (
-                      <span className="text-gold"> / {subcategoryLabel(activeCategory, activeSubcategory)}</span>
+                      <>
+                        <span className="text-muted"> / </span>
+                        <span style={{ color: "#FF3E8E" }}>{subcategoryLabel(activeCategory, activeSubcategory)}</span>
+                      </>
                     )}
                     {activeCategory !== "perfume" && activeType !== "all" && (
-                      <span className="text-gold"> / {typeLabel(activeCategory, activeSubcategory, activeType)}</span>
+                      <>
+                        <span className="text-muted"> / </span>
+                        <span style={{ color: "#00A9A1" }}>{typeLabel(activeCategory, activeSubcategory, activeType)}</span>
+                      </>
                     )}
                   </>
                 )}
