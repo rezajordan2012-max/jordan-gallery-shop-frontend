@@ -264,38 +264,8 @@ const FONTS = `
   }
   .pulse-glow { animation: pulseGlow 2.2s ease-in-out infinite; }
 
-  /* تاج صفحه‌ی اصلی: کلمات رقصان که از دو طرف به لوگو می‌رسند و برمی‌گردند */
+  /* تاج صفحه‌ی اصلی: فقط لوگوی ویدیویی، وسط صفحه */
   .crest-section { position: relative; overflow: hidden; }
-  .crest-word {
-    display: inline-block;
-    font-family: 'Baloo 2', 'Vazirmatn', sans-serif;
-    font-weight: 800;
-    white-space: nowrap;
-    font-size: clamp(14px, 2.6vw, 25px);
-    letter-spacing: 0.2px;
-  }
-  .crest-fly-right { animation: crestFlyRight 6.5s ease-in-out infinite; }
-  .crest-fly-left { animation: crestFlyLeft 6.5s ease-in-out infinite; }
-  @keyframes crestFlyRight {
-    0%, 100% { transform: translateX(64vw) rotate(6deg) scale(0.8); opacity: 0; }
-    16% { opacity: 1; }
-    46%, 58% { transform: translateX(0) rotate(-2deg) scale(1.04); opacity: 1; }
-    84% { opacity: 1; }
-  }
-  @keyframes crestFlyLeft {
-    0%, 100% { transform: translateX(-64vw) rotate(-6deg) scale(0.8); opacity: 0; }
-    16% { opacity: 1; }
-    46%, 58% { transform: translateX(0) rotate(2deg) scale(1.04); opacity: 1; }
-    84% { opacity: 1; }
-  }
-  .crest-dot {
-    position: absolute;
-    border-radius: 50%;
-    box-shadow: 0 0 8px 2px currentColor;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .crest-fly-right, .crest-fly-left { animation: none; opacity: 1; transform: none; }
-  }
 
   @media (prefers-reduced-motion: reduce) {
     .glint, .float-slow, .fade-in-up { animation: none; }
@@ -1932,40 +1902,6 @@ export default function MaisonStore() {
           <>
           {/* تاج صفحه‌ی اصلی: لوگوی جدید در وسط، کلمات دسته‌ها از دو طرف با رقص به آن می‌رسند */}
           <section className="crest-section w-full flex items-center justify-center" style={{ height: "clamp(210px, 34vw, 340px)" }}>
-            <div style={{ position: "absolute", top: "34%", right: "50%", marginRight: 8 }}>
-              <span className="crest-word crest-fly-right" style={{ color: "#FF3E8E", animationDelay: "0s" }}>آرایشی</span>
-            </div>
-            <div style={{ position: "absolute", top: "58%", right: "50%", marginRight: 8 }}>
-              <span className="crest-word crest-fly-right" style={{ color: "#7B5CF6", animationDelay: "1.4s" }}>بهداشتی</span>
-            </div>
-            <div style={{ position: "absolute", top: "34%", left: "50%", marginLeft: 8 }}>
-              <span className="crest-word crest-fly-left" style={{ color: "#00A9A1", animationDelay: "0.7s" }}>ادکلن</span>
-            </div>
-            <div style={{ position: "absolute", top: "58%", left: "50%", marginLeft: 8 }}>
-              <span className="crest-word crest-fly-left" style={{ color: "#D97706", animationDelay: "2.1s" }}>ابزار برقی</span>
-            </div>
-            {[
-              { side: "right", top: "28%", offset: "16%", size: 5, color: "#FF3E8E", delay: "0.2s" },
-              { side: "right", top: "46%", offset: "28%", size: 4, color: "#7B5CF6", delay: "1.1s" },
-              { side: "right", top: "66%", offset: "20%", size: 6, color: "#FFD23F", delay: "0.6s" },
-              { side: "left", top: "28%", offset: "16%", size: 5, color: "#00A9A1", delay: "0.4s" },
-              { side: "left", top: "46%", offset: "28%", size: 4, color: "#D97706", delay: "1.6s" },
-              { side: "left", top: "66%", offset: "20%", size: 6, color: "#FF3E8E", delay: "0.9s" },
-            ].map((d, i) => (
-              <span
-                key={i}
-                className="crest-dot sparkle"
-                style={{
-                  top: d.top,
-                  [d.side]: d.offset,
-                  width: d.size,
-                  height: d.size,
-                  background: d.color,
-                  color: d.color,
-                  animationDelay: d.delay,
-                }}
-              />
-            ))}
             <div style={{ position: "relative", zIndex: 2 }}>
               <DifferenceKeyVideo
                 src="/jordan-logo-new.mp4"
