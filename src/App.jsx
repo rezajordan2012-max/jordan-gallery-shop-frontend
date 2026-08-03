@@ -229,6 +229,11 @@ const FONTS = `
     100% { background-position: -200% 0; }
   }
 
+  /* ذرات درخشان شناور در هدر */
+  @keyframes sparkleFloat {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.7; }
+    50% { transform: translateY(-14px) scale(1.25); opacity: 1; }
+  }
   .sparkle { animation: sparkleFloat 3.2s ease-in-out infinite; }
 
   @keyframes mistPuff {
@@ -755,6 +760,7 @@ function CategoryIcon({ category, size = 34 }) {
 function ChromaKeyVideo({ src, style, className, renderWidth = 240 }) {
   const videoRef = React.useRef(null);
   const canvasRef = React.useRef(null);
+  const sizedRef = React.useRef(false);
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -765,6 +771,7 @@ function ChromaKeyVideo({ src, style, className, renderWidth = 240 }) {
     ctx.imageSmoothingQuality = "high";
     let rafId;
     let cancelled = false;
+    sizedRef.current = false;
 
     const THRESH = 20 * 20; // شعاع کاملاً شفاف (فاصله‌ی رنگی تا مشکی، به‌توان دو برای پرهیز از جذر گرفتن)
     const FEATHER = 45; // پهنای گذار نرم بین شفاف و کدر
@@ -772,9 +779,10 @@ function ChromaKeyVideo({ src, style, className, renderWidth = 240 }) {
     function draw() {
       if (cancelled) return;
       if (video.readyState >= 2 && video.videoWidth > 0) {
-        if (canvas.width === 0) {
+        if (!sizedRef.current) {
           canvas.width = renderWidth;
           canvas.height = Math.round((video.videoHeight / video.videoWidth) * renderWidth);
+          sizedRef.current = true;
         }
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -829,6 +837,8 @@ function DifferenceKeyVideo({ src, bgSrc, style, className, renderWidth = 300, t
   const videoRef = React.useRef(null);
   const canvasRef = React.useRef(null);
   const bgDataRef = React.useRef(null);
+  const sizedRef = React.useRef(false); // نکته‌ی مهم: کانواس تازه به‌طور پیش‌فرض عرض ۳۰۰ دارد، نه صفر —
+  // پس نمی‌شود با «canvas.width === 0» فهمید آماده شده یا نه؛ یک پرچم جدا لازم است.
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -839,13 +849,14 @@ function DifferenceKeyVideo({ src, bgSrc, style, className, renderWidth = 300, t
     ctx.imageSmoothingQuality = "high";
     let rafId;
     let cancelled = false;
+    sizedRef.current = false;
 
     const bgImg = new Image();
     bgImg.crossOrigin = "anonymous";
     bgImg.src = bgSrc;
 
     function ensureReady() {
-      if (canvas.width === 0 && video.videoWidth > 0 && bgImg.complete) {
+      if (!sizedRef.current && video.videoWidth > 0 && bgImg.complete && bgImg.naturalWidth > 0) {
         canvas.width = renderWidth;
         canvas.height = Math.round((video.videoHeight / video.videoWidth) * renderWidth);
         const bgCanvas = document.createElement("canvas");
@@ -854,6 +865,7 @@ function DifferenceKeyVideo({ src, bgSrc, style, className, renderWidth = 300, t
         const bgCtx = bgCanvas.getContext("2d");
         bgCtx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
         bgDataRef.current = bgCtx.getImageData(0, 0, canvas.width, canvas.height).data;
+        sizedRef.current = true;
       }
     }
 
