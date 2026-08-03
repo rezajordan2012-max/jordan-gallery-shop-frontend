@@ -229,11 +229,6 @@ const FONTS = `
     100% { background-position: -200% 0; }
   }
 
-  /* ذرات درخشان شناور در هدر */
-  @keyframes sparkleFloat {
-    0%, 100% { transform: translateY(0) scale(1); opacity: 0.7; }
-    50% { transform: translateY(-14px) scale(1.25); opacity: 1; }
-  }
   .sparkle { animation: sparkleFloat 3.2s ease-in-out infinite; }
 
   @keyframes mistPuff {
