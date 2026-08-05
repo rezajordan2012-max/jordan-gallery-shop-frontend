@@ -265,9 +265,7 @@ const FONTS = `
   .pulse-glow { animation: pulseGlow 2.2s ease-in-out infinite; }
 
   /* تاج صفحه‌ی اصلی: فقط لوگوی ویدیویی، وسط صفحه */
-  .crest-section { position: relative; overflow: hidden; }
 
-  /* کشوی منوی موبایل */
   @keyframes drawerSlideIn {
     from { transform: translateX(-100%); }
     to { transform: translateX(0); }
@@ -1640,7 +1638,10 @@ export default function MaisonStore() {
 
       {/* Header */}
       <header className="sticky z-30 bg-panel border-b border-hair" style={{ top: 28, backdropFilter: "blur(6px)" }}>
-        <div className="flex items-center justify-between px-4 py-3 sm:px-8 lg:px-12 max-w-7xl mx-auto">
+        <div
+          className="flex items-center justify-between px-4 sm:px-8 lg:px-12 max-w-7xl mx-auto"
+          style={{ height: "12mm", position: "relative" }}
+        >
           <div className="flex items-center gap-3" style={{ minWidth: 0, flex: "1 1 auto" }}>
             <button
               className="sm:hidden"
@@ -1657,6 +1658,26 @@ export default function MaisonStore() {
             >
               <Menu size={22} color="#241E3D" />
             </button>
+          </div>
+
+          {/* لوگوی ویدیویی — دقیقاً وسط نوار ۱۲ میلی‌متری هدر */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+            }}
+          >
+            <ChromaKeyVideo
+              src="/jordan-logo-new.mp4"
+              keyColor={[120, 111, 103]}
+              threshold={45}
+              feather={30}
+              renderWidth={300}
+              style={{ height: "9mm", width: "auto", display: "block" }}
+            />
           </div>
 
           <nav className="hidden sm:flex items-center gap-6 text-sm text-muted">
@@ -1936,19 +1957,6 @@ export default function MaisonStore() {
         <>
           {!categoryPageOpen && (
           <>
-          {/* تاج صفحه‌ی اصلی: لوگوی جدید در وسط، کلمات دسته‌ها از دو طرف با رقص به آن می‌رسند */}
-          <section className="crest-section w-full flex items-center justify-center" style={{ height: "clamp(210px, 34vw, 340px)" }}>
-            <div style={{ position: "relative", zIndex: 2 }}>
-              <ChromaKeyVideo
-                src="/jordan-logo-new.mp4"
-                keyColor={[120, 111, 103]}
-                threshold={45}
-                feather={30}
-                renderWidth={340}
-                style={{ width: "min(400px, 66vw)", height: "auto", display: "block" }}
-              />
-            </div>
-          </section>
           {heroBanners.length > 0 && (
             <section className="relative w-full overflow-hidden" style={{ height: "clamp(320px, 62vh, 620px)" }}>
               <img
