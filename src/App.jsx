@@ -267,6 +267,16 @@ const FONTS = `
   /* تاج صفحه‌ی اصلی: فقط لوگوی ویدیویی، وسط صفحه */
   .crest-section { position: relative; overflow: hidden; }
 
+  /* کشوی منوی موبایل */
+  @keyframes drawerSlideIn {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+  .menu-drawer { animation: drawerSlideIn 0.25s ease-out; }
+  @media (prefers-reduced-motion: reduce) {
+    .menu-drawer { animation: none; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .glint, .float-slow, .fade-in-up { animation: none; }
     .product-card, .product-card img, .category-card { transition: none; }
@@ -727,7 +737,10 @@ function CategoryIcon({ category, size = 34 }) {
 // واقعاً شفاف می‌کند (نه فقط ترفند بلند-مود CSS) — بنابراین مستقل از رنگ پس‌زمینه‌ی سایت درست دیده می‌شود.
 // منبع ویدیو با کیفیت بالا (تا ۱۰۸۰) است، ولی برای عملکرد روان، کانواس داخلی در اندازه‌ی کوچک‌تری
 // (renderWidth) رسم می‌شود — مرورگر خودش کیفیت بالای منبع را با نرمی خوب کوچک می‌کند (تصویر تار نمی‌شود).
-function ChromaKeyVideo({ src, style, className, renderWidth = 240 }) {
+// کامپوننت کروماکی: ویدیو را روی یک کانواس پنهان می‌کشد و پیکسل‌های نزدیک به رنگ پس‌زمینه‌ی ویدیو
+// (keyColor) را واقعاً شفاف می‌کند — مستقل از رنگ پس‌زمینه‌ی سایت درست دیده می‌شود. برای پس‌زمینه‌ی
+// مشکی یک‌دست keyColor پیش‌فرض [0,0,0] کافی است؛ برای پس‌زمینه‌ی خاکستری/رنگی رنگ دقیق آن پاس داده می‌شود.
+function ChromaKeyVideo({ src, style, className, renderWidth = 240, keyColor = [0, 0, 0], threshold = 20, feather = 45 }) {
   const videoRef = React.useRef(null);
   const canvasRef = React.useRef(null);
   const sizedRef = React.useRef(false);
@@ -743,8 +756,8 @@ function ChromaKeyVideo({ src, style, className, renderWidth = 240 }) {
     let cancelled = false;
     sizedRef.current = false;
 
-    const THRESH = 20 * 20; // شعاع کاملاً شفاف (فاصله‌ی رنگی تا مشکی، به‌توان دو برای پرهیز از جذر گرفتن)
-    const FEATHER = 45; // پهنای گذار نرم بین شفاف و کدر
+    const [kr, kg, kb] = keyColor;
+    const THRESH = threshold * threshold;
 
     function draw() {
       if (cancelled) return;
@@ -758,15 +771,15 @@ function ChromaKeyVideo({ src, style, className, renderWidth = 240 }) {
         const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = frame.data;
         for (let i = 0; i < data.length; i += 4) {
-          const r = data[i], g = data[i + 1], b = data[i + 2];
-          const distSq = r * r + g * g + b * b;
+          const dr = data[i] - kr, dg = data[i + 1] - kg, db = data[i + 2] - kb;
+          const distSq = dr * dr + dg * dg + db * db;
           if (distSq < THRESH) {
             data[i + 3] = 0;
           } else {
             const dist = Math.sqrt(distSq);
             const featherStart = Math.sqrt(THRESH);
-            if (dist < featherStart + FEATHER) {
-              data[i + 3] = Math.round(255 * ((dist - featherStart) / FEATHER));
+            if (dist < featherStart + feather) {
+              data[i + 3] = Math.round(255 * ((dist - featherStart) / feather));
             }
           }
         }
@@ -781,7 +794,7 @@ function ChromaKeyVideo({ src, style, className, renderWidth = 240 }) {
       cancelled = true;
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [src, renderWidth]);
+  }, [src, renderWidth, keyColor, threshold, feather]);
 
   return (
     <>
@@ -800,95 +813,6 @@ function ChromaKeyVideo({ src, style, className, renderWidth = 240 }) {
   );
 }
 
-// کامپوننت کروماکی نوع دوم: برای ویدیوهایی که پس‌زمینه‌شان رنگ یک‌دست نیست (مثلاً بافت/گرادیان خاکستری) —
-// به‌جای مقایسه با یک رنگ ثابت، هر فریم را با یک «نمونه‌ی پاکِ پس‌زمینه» (که از میانگین ده‌ها فریم واقعی
-// این ویدیو ساخته شده) مقایسه می‌کند؛ هرجا فرقی نداشت یعنی پس‌زمینه است و شفاف می‌شود.
-function DifferenceKeyVideo({ src, bgSrc, style, className, renderWidth = 300, threshold = 26, feather = 30 }) {
-  const videoRef = React.useRef(null);
-  const canvasRef = React.useRef(null);
-  const bgDataRef = React.useRef(null);
-  const sizedRef = React.useRef(false); // نکته‌ی مهم: کانواس تازه به‌طور پیش‌فرض عرض ۳۰۰ دارد، نه صفر —
-  // پس نمی‌شود با «canvas.width === 0» فهمید آماده شده یا نه؛ یک پرچم جدا لازم است.
-
-  React.useEffect(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    let rafId;
-    let cancelled = false;
-    sizedRef.current = false;
-
-    const bgImg = new Image();
-    bgImg.crossOrigin = "anonymous";
-    bgImg.src = bgSrc;
-
-    function ensureReady() {
-      if (!sizedRef.current && video.videoWidth > 0 && bgImg.complete && bgImg.naturalWidth > 0) {
-        canvas.width = renderWidth;
-        canvas.height = Math.round((video.videoHeight / video.videoWidth) * renderWidth);
-        const bgCanvas = document.createElement("canvas");
-        bgCanvas.width = canvas.width;
-        bgCanvas.height = canvas.height;
-        const bgCtx = bgCanvas.getContext("2d");
-        bgCtx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
-        bgDataRef.current = bgCtx.getImageData(0, 0, canvas.width, canvas.height).data;
-        sizedRef.current = true;
-      }
-    }
-
-    function draw() {
-      if (cancelled) return;
-      if (video.readyState >= 2 && video.videoWidth > 0) {
-        ensureReady();
-        if (bgDataRef.current) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const data = frame.data;
-          const bgData = bgDataRef.current;
-          for (let i = 0; i < data.length; i += 4) {
-            const dr = data[i] - bgData[i];
-            const dg = data[i + 1] - bgData[i + 1];
-            const db = data[i + 2] - bgData[i + 2];
-            const dist = Math.sqrt(dr * dr + dg * dg + db * db);
-            if (dist < threshold) {
-              data[i + 3] = 0;
-            } else if (dist < threshold + feather) {
-              data[i + 3] = Math.round(255 * ((dist - threshold) / feather));
-            }
-          }
-          ctx.putImageData(frame, 0, 0);
-        }
-      }
-      rafId = requestAnimationFrame(draw);
-    }
-
-    video.play().catch(() => {});
-    rafId = requestAnimationFrame(draw);
-    return () => {
-      cancelled = true;
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, [src, renderWidth, threshold, feather]);
-
-  return (
-    <>
-      <video
-        ref={videoRef}
-        src={src}
-        muted
-        loop
-        playsInline
-        autoPlay
-        preload="auto"
-        style={{ display: "none" }}
-      />
-      <canvas ref={canvasRef} className={className} style={style} />
-    </>
-  );
-}
 
 function parseVariantsText(text) {
   if (!text || !text.trim()) return [];
@@ -1247,6 +1171,70 @@ export default function MaisonStore() {
     loadSettings();
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // تاریخچه‌ی ناوبری داخل سایت (برای دکمه‌ی برگشت گوشی/مرورگر)
+  // هر بار که کاربر به یک صفحه‌ی جدید می‌رود (دسته، زیرشاخه، محصول، منو، پنل مدیریت)، یک ورودی به
+  // تاریخچه‌ی مرورگر اضافه می‌شود. با زدن دکمه‌ی برگشت، به‌جای خروج از سایت، یک قدم به عقب
+  // (صفحه‌ی قبلی) برمی‌گردیم؛ فقط وقتی به صفحه‌ی اصلی برسیم، برگشت بعدی از سایت خارج می‌شود.
+  // ---------------------------------------------------------------------------
+  const HOME_STATE = {
+    view: "store",
+    categoryPageOpen: false,
+    activeCategory: "all",
+    activeSubcategory: "all",
+    activeType: "all",
+    activeBrand: "all",
+    searchTerm: "",
+    openProductId: null,
+    menuOpen: false,
+  };
+
+  function applySnapshot(snap) {
+    const s = snap || HOME_STATE;
+    setView(s.view || "store");
+    setCategoryPageOpen(!!s.categoryPageOpen);
+    setActiveCategory(s.activeCategory || "all");
+    setActiveSubcategory(s.activeSubcategory || "all");
+    setActiveType(s.activeType || "all");
+    setActiveBrand(s.activeBrand || "all");
+    setSearchTerm(s.searchTerm || "");
+    setSearchDraft(s.searchTerm || "");
+    setOpenProductId(s.openProductId || null);
+    setMenuOpen(!!s.menuOpen);
+    setActiveFacets({});
+    setMenuNav(null);
+    setCartOpen(false);
+    setAuthOpen(false);
+    setSearchOpen(false);
+    setBrandMenuOpen(false);
+  }
+
+  // برای رفتن به یک صفحه‌ی تازه (مثل انتخاب دسته‌بندی) که همه‌چیز از نو تنظیم می‌شود
+  function pushNav(overrides) {
+    const snap = { ...HOME_STATE, ...overrides };
+    window.history.pushState(snap, "");
+  }
+
+  // برای رفتن به یک صفحه‌ی جدید که باید زمینه‌ی فعلی (دسته/زیرشاخه‌ی باز) را حفظ کند
+  // (مثل باز کردن محصول یا منو روی همون صفحه‌ای که هستیم)
+  function pushNavPreserve(overrides) {
+    const snap = {
+      view, categoryPageOpen, activeCategory, activeSubcategory, activeType, activeBrand,
+      searchTerm, openProductId, menuOpen,
+      ...overrides,
+    };
+    window.history.pushState(snap, "");
+  }
+
+  useEffect(() => {
+    window.history.replaceState(HOME_STATE, "");
+    function onPopState(e) {
+      applySnapshot(e.state);
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   useEffect(() => {
     if (heroBanners.length < 2) return;
     const timer = setInterval(() => {
@@ -1470,6 +1458,7 @@ export default function MaisonStore() {
     setOpenProductId(null);
     setBrandMenuOpen(false);
     setMenuOpen(false);
+    pushNav({ activeBrand: brand });
     setTimeout(() => document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" }), 50);
   }
 
@@ -1526,6 +1515,7 @@ export default function MaisonStore() {
 
   function openProduct(id) {
     setOpenProductId(id);
+    pushNavPreserve({ openProductId: id });
   }
   function closeProduct() {
     setOpenProductId(null);
@@ -1544,6 +1534,7 @@ export default function MaisonStore() {
     setSearchOpen(false);
     setView("store");
     setOpenProductId(null);
+    pushNav({ searchTerm: q, categoryPageOpen: true });
   }
 
   function selectSubcategory(key) {
@@ -1574,6 +1565,7 @@ export default function MaisonStore() {
     if (c === "all" || !CATEGORIES[c]?.subcategories) {
       selectCategory(c);
       closeMenu();
+      pushNav({ activeCategory: c, categoryPageOpen: c !== "all" });
       return;
     }
     setMenuNav({ category: c });
@@ -1584,6 +1576,7 @@ export default function MaisonStore() {
     if (subKey === "all") {
       selectCategory(category);
       closeMenu();
+      pushNav({ activeCategory: category, categoryPageOpen: category !== "all" });
       return;
     }
     const types = subcategoryTypes(category, subKey);
@@ -1596,6 +1589,7 @@ export default function MaisonStore() {
     selectCategory(category);
     selectSubcategory(subKey);
     closeMenu();
+    pushNav({ activeCategory: category, activeSubcategory: subKey, categoryPageOpen: true });
   }
 
   // زدن روی یک نوع دقیق محصول (سطح سوم): فیلتر نهایی اعمال و منو بسته می‌شود.
@@ -1612,6 +1606,12 @@ export default function MaisonStore() {
       }
     }
     closeMenu();
+    pushNav({
+      activeCategory: category,
+      activeSubcategory: subKey,
+      activeType: category === "perfume" ? "all" : (typeKey !== "all" ? typeKey : "all"),
+      categoryPageOpen: true,
+    });
   }
 
   const activeSubcategories = activeCategory !== "all" && CATEGORIES[activeCategory]?.subcategories
@@ -1642,8 +1642,20 @@ export default function MaisonStore() {
       <header className="sticky z-30 bg-panel border-b border-hair" style={{ top: 28, backdropFilter: "blur(6px)" }}>
         <div className="flex items-center justify-between px-4 py-3 sm:px-8 lg:px-12 max-w-7xl mx-auto">
           <div className="flex items-center gap-3" style={{ minWidth: 0, flex: "1 1 auto" }}>
-            <button className="sm:hidden" onClick={() => { setMenuOpen((v) => !v); setMenuNav(null); }} aria-label="منو">
-              {menuOpen ? <X size={22} color="#241E3D" /> : <Menu size={22} color="#241E3D" />}
+            <button
+              className="sm:hidden"
+              onClick={() => {
+                if (menuOpen) {
+                  window.history.back();
+                } else {
+                  setMenuOpen(true);
+                  setMenuNav(null);
+                  pushNavPreserve({ menuOpen: true });
+                }
+              }}
+              aria-label="منو"
+            >
+              <Menu size={22} color="#241E3D" />
             </button>
           </div>
 
@@ -1651,7 +1663,7 @@ export default function MaisonStore() {
             {["all", ...CATEGORY_ORDER].map((c) => (
               <button
                 key={c}
-                onClick={() => selectCategory(c)}
+                onClick={() => { selectCategory(c); pushNav({ activeCategory: c, categoryPageOpen: c !== "all" }); }}
                 className={`nav-link hover:text-gold ${activeCategory === c && view === "store" ? "active text-gold" : ""}`}
               >
                 {c === "all" ? "همه محصولات" : CATEGORY_LABEL[c]}
@@ -1662,7 +1674,7 @@ export default function MaisonStore() {
           <div className="flex items-center gap-3">
             {isAdmin && (
               <button
-                onClick={() => setView(view === "admin" ? "store" : "admin")}
+                onClick={() => { if (view === "admin") { window.history.back(); } else { setView("admin"); pushNav({ view: "admin" }); } }}
                 className="btn-ghost hidden sm:flex items-center gap-2 px-3 py-2 rounded text-xs"
               >
                 <LayoutDashboard size={15} />
@@ -1702,21 +1714,44 @@ export default function MaisonStore() {
       </header>
 
         {menuOpen && (
-          <div
-            className="sm:hidden flex flex-col gap-1 text-sm text-muted"
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 50,
-              background: "#FFFCF7",
-              padding: "16px",
-              paddingTop: 20,
-              overflowY: "auto",
-            }}
-          >
+          <>
+            {/* پرده‌ی نیمه‌شفاف روی قسمت دیگر صفحه — لمس آن هم منو را می‌بندد */}
+            <div
+              className="sm:hidden"
+              onClick={() => window.history.back()}
+              style={{
+                position: "fixed",
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: "min(340px, 85vw)",
+                zIndex: 25,
+                background: "rgba(36,30,61,0.45)",
+              }}
+            />
+            {/* خودِ کشوی منو — فقط بخشی از عرض صفحه، هدر و بخشی از صفحه‌ی اصلی همچنان دیده می‌شوند */}
+            <div
+              className="sm:hidden flex flex-col gap-1 text-sm text-muted menu-drawer"
+              style={{
+                position: "fixed",
+                top: 0,
+                bottom: 0,
+                left: 0,
+                width: "min(340px, 85vw)",
+                zIndex: 26,
+                background: "#FFFCF7",
+                padding: "16px",
+                paddingTop: 16,
+                overflowY: "auto",
+                boxShadow: "8px 0 24px -8px rgba(36,30,61,0.25)",
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-display" style={{ fontSize: 16 }}>منو</span>
+                <button onClick={() => window.history.back()} aria-label="بستن منو">
+                  <X size={22} color="#241E3D" />
+                </button>
+              </div>
             {menuNav === null && (
               <>
                 <button onClick={() => onMenuCategoryClick("all")} className="text-right py-1">
@@ -1739,7 +1774,7 @@ export default function MaisonStore() {
                   انتخاب بر اساس برند
                 </button>
                 {isAdmin && (
-                  <button onClick={() => { setView(view === "admin" ? "store" : "admin"); closeMenu(); }} className="text-right py-1 text-gold">
+                  <button onClick={() => { if (view === "admin") { closeMenu(); window.history.back(); } else { setView("admin"); closeMenu(); pushNav({ view: "admin" }); } }} className="text-right py-1 text-gold">
                     {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
                   </button>
                 )}
@@ -1821,7 +1856,8 @@ export default function MaisonStore() {
                 )}
               </>
             )}
-          </div>
+            </div>
+          </>
         )}
 
       {/* پنل جستجوی محصول */}
@@ -1892,7 +1928,7 @@ export default function MaisonStore() {
       ) : openProductId ? (
         <ProductDetailPage
           product={products.find((p) => p.id === openProductId)}
-          onBack={closeProduct}
+          onBack={() => window.history.back()}
           onAdd={addToCart}
           globalDiscountPercent={globalDiscountPercent}
         />
@@ -1903,9 +1939,12 @@ export default function MaisonStore() {
           {/* تاج صفحه‌ی اصلی: لوگوی جدید در وسط، کلمات دسته‌ها از دو طرف با رقص به آن می‌رسند */}
           <section className="crest-section w-full flex items-center justify-center" style={{ height: "clamp(210px, 34vw, 340px)" }}>
             <div style={{ position: "relative", zIndex: 2 }}>
-              <DifferenceKeyVideo
+              <ChromaKeyVideo
                 src="/jordan-logo-new.mp4"
-                bgSrc="/jordan-logo-new-bg.jpg"
+                keyColor={[120, 111, 103]}
+                threshold={45}
+                feather={30}
+                renderWidth={340}
                 style={{ width: "min(400px, 66vw)", height: "auto", display: "block" }}
               />
             </div>
@@ -1994,7 +2033,7 @@ export default function MaisonStore() {
             {CATEGORY_ORDER.map((c) => (
               <button
                 key={c}
-                onClick={() => selectCategory(c)}
+                onClick={() => { selectCategory(c); pushNav({ activeCategory: c, categoryPageOpen: c !== "all" }); }}
                 className={`${CATEGORY_CARD_CLASS[c]} category-card rounded-xl p-5 flex items-center gap-4 border border-hair text-right`}
               >
                 <CategoryIcon category={c} size={42} />
@@ -2012,7 +2051,7 @@ export default function MaisonStore() {
 
           {categoryPageOpen && (
             <div className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto pt-6 pb-2">
-              <button onClick={backToStore} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-3">
+              <button onClick={() => window.history.back()} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-3">
                 <span>›</span> بازگشت به فروشگاه
               </button>
               <h1 className="font-display" style={{ fontSize: 22 }}>
