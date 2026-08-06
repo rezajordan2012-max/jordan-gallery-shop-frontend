@@ -267,7 +267,7 @@ const FONTS = `
   /* تاج صفحه‌ی اصلی: فقط لوگوی ویدیویی، وسط صفحه */
 
   @keyframes drawerSlideIn {
-    from { transform: translateX(-100%); }
+    from { transform: translateX(100%); }
     to { transform: translateX(0); }
   }
   .menu-drawer { animation: drawerSlideIn 0.25s ease-out; }
@@ -1716,28 +1716,30 @@ export default function MaisonStore() {
               style={{
                 position: "fixed",
                 top: 0,
-                right: 0,
+                left: 0,
                 bottom: 0,
-                left: "min(340px, 85vw)",
-                zIndex: 25,
+                right: "min(340px, 85vw)",
+                zIndex: 45,
                 background: "rgba(36,30,61,0.45)",
               }}
             />
-            {/* خودِ کشوی منو — فقط بخشی از عرض صفحه، هدر و بخشی از صفحه‌ی اصلی همچنان دیده می‌شوند */}
+            {/* خودِ کشوی منو — چسبیده به دیواره‌ی راست صفحه (متناسب با راست‌چین بودن سایت)،
+                فاصله‌ی خالی سمت چپ باقی می‌ماند. زدایش z-index بالاتر از هدر/نوار اعلان تضمین می‌کند
+                که ردیف بالای منو (عنوان «منو» + دکمه‌ی بستن ✕) همیشه دیده شود و پشت هدر پنهان نشود. */}
             <div
               className="sm:hidden flex flex-col gap-1 text-sm text-muted menu-drawer"
               style={{
                 position: "fixed",
                 top: 0,
                 bottom: 0,
-                left: 0,
+                right: 0,
                 width: "min(340px, 85vw)",
-                zIndex: 26,
+                zIndex: 46,
                 background: "#FFFCF7",
                 padding: "16px",
                 paddingTop: 16,
                 overflowY: "auto",
-                boxShadow: "8px 0 24px -8px rgba(36,30,61,0.25)",
+                boxShadow: "-8px 0 24px -8px rgba(36,30,61,0.25)",
               }}
             >
               <div className="flex items-center justify-between mb-3">
