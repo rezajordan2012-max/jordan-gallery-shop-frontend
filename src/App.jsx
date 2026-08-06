@@ -275,6 +275,42 @@ const FONTS = `
     .menu-drawer { animation: none; }
   }
 
+  /* راهنمای انیمیشنی «دست در حال لمس دکمه‌ی منو» — تا زمانی که مشتری متوجه نشود این دکمه
+     همان منوی اصلی انتخاب محصولات است، تکرار می‌شود. */
+  @keyframes menuHintGlowPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.55; }
+    50% { transform: translate(-50%, -50%) scale(1.25); opacity: 0.15; }
+  }
+  .menu-hint-glow {
+    animation: menuHintGlowPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes menuHintFingerTap {
+    0% { transform: translate(-50%, -50%) translate(10px, -12px) scale(1); opacity: 0; }
+    8% { opacity: 1; }
+    22% { transform: translate(-50%, -50%) translate(1px, 1px) scale(0.82); }
+    32% { transform: translate(-50%, -50%) translate(1px, 1px) scale(0.96); }
+    48% { transform: translate(-50%, -50%) translate(1px, 1px) scale(0.82); }
+    62% { transform: translate(-50%, -50%) translate(1px, 1px) scale(1); }
+    82% { transform: translate(-50%, -50%) translate(10px, -12px) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -50%) translate(10px, -12px) scale(1); opacity: 0; }
+  }
+  .menu-hint-finger {
+    animation: menuHintFingerTap 1.9s cubic-bezier(.3,.6,.3,1) infinite;
+    filter: drop-shadow(0 2px 5px rgba(36,30,61,0.35));
+  }
+  @keyframes menuHintRipple {
+    0%, 18% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+    30% { opacity: 0.65; }
+    62% { transform: translate(-50%, -50%) scale(1.9); opacity: 0; }
+    100% { opacity: 0; }
+  }
+  .menu-hint-ripple {
+    animation: menuHintRipple 1.9s ease-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .menu-hint-glow, .menu-hint-finger, .menu-hint-ripple { animation: none; opacity: 0; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .glint, .float-slow, .fade-in-up { animation: none; }
     .product-card, .product-card img, .category-card { transition: none; }
@@ -348,12 +384,6 @@ const CATEGORIES = {
   },
   sprayAndSplash: {
     label: "اسپری و بادی اسپلش",
-    subcategories: {
-      menSpray: "اسپری خوشبو‌کننده مردانه",
-      womenSpray: "اسپری خوشبو‌کننده زنانه",
-      menBodySplash: "بادی اسپلش مردانه",
-      womenBodySplash: "بادی اسپلش زنانه",
-    },
   },
   makeup: {
     label: "آرایشی",
@@ -496,7 +526,6 @@ const CATEGORIES = {
   },
   electronics: {
     label: "لوازم برقی شخصی",
-    subcategories: { hair: "مو", body: "بدن", face: "صورت" },
   },
 };
 
@@ -583,10 +612,36 @@ function effectiveDiscountPercent(product, globalDiscountPercent) {
   return 0;
 }
 
+// بنرهای صفحه‌ی اصلی ممکن است رشته (لینک عکس، فرمت قدیمی) یا شیء { type: 'image'|'video', url } باشند.
+// این تابع همیشه یک شیء استاندارد برمی‌گرداند تا کدهای بعدی مجبور نباشند دو حالت را جدا مدیریت کنند.
+function normalizeBanner(item) {
+  if (typeof item === "string") return { type: "image", url: item };
+  if (item && typeof item === "object" && item.url) return { type: item.type === "video" ? "video" : "image", url: item.url };
+  return { type: "image", url: "" };
+}
+
 function discountedPrice(product, globalDiscountPercent) {
   const pct = effectiveDiscountPercent(product, globalDiscountPercent);
   if (pct <= 0) return product.price;
   return Math.round((product.price * (1 - pct / 100)) / 10) * 10;
+}
+
+// تنظیمات دستی نمایش تصویر محصول (که در پنل مدیریت قابل تغییرند): حالت جا‌گیری (contain/cover)،
+// موقعیت افقی/عمودی تصویر داخل کادر و میزان بزرگ‌نمایی. اگر محصول این تنظیمات را نداشته باشد
+// (محصولات قدیمی)، مقادیر پیش‌فرض قبلی (contain، وسط‌چین، بدون زوم) اعمال می‌شود.
+function productImageStyle(product) {
+  const fit = product?.imageFit === "cover" ? "cover" : "contain";
+  const posX = Number.isFinite(Number(product?.imagePosX)) ? Number(product.imagePosX) : 50;
+  const posY = Number.isFinite(Number(product?.imagePosY)) ? Number(product.imagePosY) : 50;
+  const zoom = Number.isFinite(Number(product?.imageZoom)) && Number(product.imageZoom) > 0 ? Number(product.imageZoom) : 1;
+  return {
+    width: "100%",
+    height: "100%",
+    objectFit: fit,
+    objectPosition: `${posX}% ${posY}%`,
+    transform: zoom !== 1 ? `scale(${zoom})` : undefined,
+    transformOrigin: `${posX}% ${posY}%`,
+  };
 }
 
 // برای نمایش قیمت با جداکننده‌ی هزارگان (۳ رقم ۳ رقم) حین تایپ در پنل مدیریت
@@ -897,7 +952,7 @@ function ProductCard({ product, onOpen, globalDiscountPercent }) {
           <img
             src={displayImage}
             alt={product.name}
-            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            style={productImageStyle(product)}
             onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }}
           />
         ) : null}
@@ -908,7 +963,7 @@ function ProductCard({ product, onOpen, globalDiscountPercent }) {
       <div className="p-4 flex flex-col gap-1 flex-1">
         <div className="flex items-center justify-between">
           <span className="text-gold" style={{ fontSize: 11 }}>{product.brand}</span>
-          {product.subcategory && (
+          {subcategoryLabel(product.category, product.subcategory) && (
             <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px" }}>
               {subcategoryLabel(product.category, product.subcategory)}
               {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
@@ -965,7 +1020,11 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
           className={`${CATEGORY_CARD_CLASS[product.category]} rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-80 lg:h-[440px] lg:w-[380px] lg:flex-shrink-0`}
         >
           {displayImage ? (
-            <img src={displayImage} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            <img
+              src={displayImage}
+              alt={product.name}
+              style={selectedVariant && selectedVariant.image ? { width: "100%", height: "100%", objectFit: "contain" } : productImageStyle(product)}
+            />
           ) : (
             <CategoryIcon category={product.category} size={80} />
           )}
@@ -974,7 +1033,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
         <div className="lg:flex-1 lg:min-w-0">
           <div className="flex items-center justify-between mb-1">
             <span className="text-gold" style={{ fontSize: 12 }}>{product.brand}</span>
-            {product.subcategory && (
+            {subcategoryLabel(product.category, product.subcategory) && (
               <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px" }}>
                 {subcategoryLabel(product.category, product.subcategory)}
                 {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
@@ -1074,6 +1133,16 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
 export default function MaisonStore() {
   const [view, setView] = useState("store"); // store | admin
   const [menuOpen, setMenuOpen] = useState(false);
+  // راهنمای انیمیشنی روی دکمه‌ی منوی همبرگری («دست در حال لمس دکمه») تا زمانی که مشتری اولین بار
+  // منو را باز کند نمایش داده می‌شود؛ بعد از اولین بار باز کردن، برای همیشه (حتی در بازدیدهای بعدی
+  // همین مرورگر) پنهان می‌شود تا مزاحم استفاده‌ی عادی از سایت نشود.
+  const [menuHintSeen, setMenuHintSeen] = useState(() => {
+    try { return localStorage.getItem("maison_menu_hint_seen") === "1"; } catch (e) { return false; }
+  });
+  function dismissMenuHint() {
+    setMenuHintSeen(true);
+    try { localStorage.setItem("maison_menu_hint_seen", "1"); } catch (e) {}
+  }
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [menuNav, setMenuNav] = useState(null); // null | { category } | { category, subcategory }
   const [categoryPageOpen, setCategoryPageOpen] = useState(false);
@@ -1235,11 +1304,13 @@ export default function MaisonStore() {
 
   useEffect(() => {
     if (heroBanners.length < 2) return;
+    // بنر ویدیویی با پایان پخش خودش (onEnded) به بنر بعدی می‌رود؛ این تایمر فقط برای بنرهای عکس است.
+    if (normalizeBanner(heroBanners[bannerIndex]).type === "video") return;
     const timer = setInterval(() => {
       setBannerIndex((i) => (i + 1) % heroBanners.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [heroBanners]);
+  }, [heroBanners, bannerIndex]);
 
   // اگر کاربر خارج شد یا کاربر دیگری وارد شد، در صورتی که در پنل مدیریت بود، به فروشگاه برگردد.
   useEffect(() => {
@@ -1651,20 +1722,49 @@ export default function MaisonStore() {
                 <ChevronRight size={24} color="#241E3D" />
               </button>
             )}
-            <button
-              onClick={() => {
-                if (menuOpen) {
-                  window.history.back();
-                } else {
-                  setMenuOpen(true);
-                  setMenuNav(null);
-                  pushNavPreserve({ menuOpen: true });
-                }
-              }}
-              aria-label="منو"
-            >
-              <Menu size={22} color="#241E3D" />
-            </button>
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => {
+                  if (menuOpen) {
+                    window.history.back();
+                  } else {
+                    setMenuOpen(true);
+                    setMenuNav(null);
+                    pushNavPreserve({ menuOpen: true });
+                  }
+                  dismissMenuHint();
+                }}
+                aria-label="منو"
+                style={{ position: "relative", zIndex: 2 }}
+              >
+                <Menu size={22} color="#241E3D" />
+              </button>
+              {!menuOpen && !menuHintSeen && (
+                <>
+                  <span
+                    className="menu-hint-glow"
+                    style={{
+                      position: "absolute", top: "50%", left: "50%", width: 40, height: 40,
+                      borderRadius: "50%", pointerEvents: "none", zIndex: 0,
+                      background: "radial-gradient(circle, rgba(255,62,142,0.6), rgba(123,92,246,0.4) 55%, transparent 75%)",
+                    }}
+                  />
+                  <span
+                    className="menu-hint-ripple"
+                    style={{
+                      position: "absolute", top: "50%", left: "50%", width: 30, height: 30,
+                      borderRadius: "50%", border: "2px solid #FF3E8E", pointerEvents: "none", zIndex: 0,
+                    }}
+                  />
+                  <span
+                    className="menu-hint-finger"
+                    style={{ position: "absolute", top: "50%", left: "50%", fontSize: 22, pointerEvents: "none", zIndex: 3 }}
+                  >
+                    👆
+                  </span>
+                </>
+              )}
+            </div>
           </div>
 
           {/* لوگوی ویدیویی — دقیقاً وسط نوار ۱۲ میلی‌متری هدر */}
@@ -1934,13 +2034,35 @@ export default function MaisonStore() {
           <>
           {heroBanners.length > 0 && (
             <section className="relative w-full overflow-hidden" style={{ height: "clamp(320px, 62vh, 620px)" }}>
-              <img
-                key={bannerIndex}
-                src={heroBanners[bannerIndex]}
-                alt={`بنر تبلیغاتی ${bannerIndex + 1}`}
-                className="fade-in-up"
-                style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
-              />
+              {(() => {
+                const banner = normalizeBanner(heroBanners[bannerIndex]);
+                if (banner.type === "video") {
+                  return (
+                    <video
+                      key={bannerIndex}
+                      src={banner.url}
+                      autoPlay
+                      muted
+                      loop={heroBanners.length === 1}
+                      playsInline
+                      className="fade-in-up"
+                      style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                      onEnded={() => {
+                        if (heroBanners.length > 1) setBannerIndex((i) => (i + 1) % heroBanners.length);
+                      }}
+                    />
+                  );
+                }
+                return (
+                  <img
+                    key={bannerIndex}
+                    src={banner.url}
+                    alt={`بنر تبلیغاتی ${bannerIndex + 1}`}
+                    className="fade-in-up"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                  />
+                );
+              })()}
               {heroBanners.length > 1 && (
                 <div className="absolute flex items-center gap-1.5" style={{ bottom: 14, left: "50%", transform: "translateX(-50%)" }}>
                   {heroBanners.map((_, i) => (
@@ -2191,7 +2313,7 @@ export default function MaisonStore() {
               </div>
             )}
 
-            {brandsInCategory.length > 1 && (
+            {categoryPageOpen && (
               <div className="flex items-center gap-2 mb-6">
                 <span className="text-muted" style={{ fontSize: 12 }}>برند:</span>
                 <select
@@ -2396,7 +2518,7 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", image: "", variantsList: [] };
+  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
 function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
@@ -2476,7 +2598,7 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
 }
 
 function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount }) {
-  const [bannerDrafts, setBannerDrafts] = useState(heroBanners || []);
+  const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
   const [heroError, setHeroError] = useState("");
@@ -2540,8 +2662,10 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setHeroError("فایل انتخاب‌شده تصویر نیست");
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    if (!isImage && !isVideo) {
+      setHeroError("فایل انتخاب‌شده باید عکس یا کلیپ ویدئویی باشد");
       return;
     }
     setHeroError("");
@@ -2555,9 +2679,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         reader.readAsDataURL(file);
       });
       const url = await onUploadImage(base64);
-      setBannerDrafts((prev) => [...prev, url]);
+      setBannerDrafts((prev) => [...prev, { type: isVideo ? "video" : "image", url }]);
     } catch (err) {
-      setHeroError(err.message || "آپلود تصویر ناموفق بود");
+      setHeroError(err.message || "آپلود ناموفق بود");
     } finally {
       setHeroUploading(false);
     }
@@ -2596,7 +2720,19 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   function startEdit(p) {
     setEditingId(p.id);
     setFormError("");
-    setForm({ ...p, price: String(p.price), discountPercent: p.discountPercent ? String(p.discountPercent) : "", variantsList: (p.variants || []).map((v) => ({ ...v })), facets: p.facets || {}, properties: p.properties || "", ingredients: p.ingredients || "" });
+    setForm({
+      ...p,
+      price: String(p.price),
+      discountPercent: p.discountPercent ? String(p.discountPercent) : "",
+      variantsList: (p.variants || []).map((v) => ({ ...v })),
+      facets: p.facets || {},
+      properties: p.properties || "",
+      ingredients: p.ingredients || "",
+      imageFit: p.imageFit === "cover" ? "cover" : "contain",
+      imagePosX: Number.isFinite(Number(p.imagePosX)) ? Number(p.imagePosX) : 50,
+      imagePosY: Number.isFinite(Number(p.imagePosY)) ? Number(p.imagePosY) : 50,
+      imageZoom: Number.isFinite(Number(p.imageZoom)) && Number(p.imageZoom) > 0 ? Number(p.imageZoom) : 1,
+    });
   }
   function cancelEdit() {
     setEditingId(null);
@@ -2613,7 +2749,17 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     const discountPercentNum = form.discountPercent ? Number(form.discountPercent) : 0;
     const variants = (form.variantsList || []).filter((v) => v.label && v.label.trim());
     const { variantsList, id, ...rest } = form;
-    const payload = { ...rest, price: priceNum, discountPercent: discountPercentNum, facets: form.category === "perfume" ? form.facets : {}, ...(variants.length > 0 ? { variants } : { variants: undefined }) };
+    const payload = {
+      ...rest,
+      price: priceNum,
+      discountPercent: discountPercentNum,
+      facets: form.category === "perfume" ? form.facets : {},
+      imageFit: form.imageFit === "cover" ? "cover" : "contain",
+      imagePosX: Number(form.imagePosX) || 50,
+      imagePosY: Number(form.imagePosY) || 50,
+      imageZoom: Number(form.imageZoom) || 1,
+      ...(variants.length > 0 ? { variants } : { variants: undefined }),
+    };
     try {
       if (editingId) {
         await onUpdate(editingId, payload);
@@ -2701,20 +2847,31 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       <div className="bg-panel border border-hair rounded-lg p-4 mb-8">
         <h3 className="font-display mb-1" style={{ fontSize: 15 }}>بنرهای متحرک صفحه‌ی اصلی</h3>
         <p className="text-muted mb-3" style={{ fontSize: 11 }}>
-          چند عکس تبلیغاتی اضافه کن؛ روی صفحه‌ی اصلی هر ۵ ثانیه یکی بعد از دیگری نمایش داده می‌شوند (مثل اسلایدر).
+          چند عکس یا کلیپ ویدئویی تبلیغاتی اضافه کن؛ روی صفحه‌ی اصلی به‌ترتیب نمایش داده می‌شوند (مثل اسلایدر) — بنر عکس هر ۵ ثانیه و بنر ویدیویی بعد از پایان پخش خودش، به بنر بعدی می‌رود.
         </p>
 
         {bannerDrafts.length > 0 && (
           <div className="flex flex-col gap-2 mb-3">
-            {bannerDrafts.map((url, i) => (
+            {bannerDrafts.map((banner, i) => (
               <div key={i} className="flex items-center gap-2 bg-panel-2 border border-hair rounded p-2">
-                <img
-                  src={url}
-                  alt={`بنر ${i + 1}`}
-                  style={{ width: 56, height: 32, borderRadius: 4, objectFit: "cover" }}
-                  onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
-                />
-                <span className="text-muted" style={{ fontSize: 11, flex: 1 }}>بنر شماره {i + 1}</span>
+                {banner.type === "video" ? (
+                  <video
+                    src={banner.url}
+                    muted
+                    style={{ width: 56, height: 32, borderRadius: 4, objectFit: "cover", background: "#241E3D" }}
+                    onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
+                  />
+                ) : (
+                  <img
+                    src={banner.url}
+                    alt={`بنر ${i + 1}`}
+                    style={{ width: 56, height: 32, borderRadius: 4, objectFit: "cover" }}
+                    onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
+                  />
+                )}
+                <span className="text-muted" style={{ fontSize: 11, flex: 1 }}>
+                  بنر شماره {i + 1} {banner.type === "video" ? "(ویدیو)" : "(عکس)"}
+                </span>
                 <button type="button" onClick={() => moveBannerDraft(i, -1)} disabled={i === 0} className="btn-ghost rounded px-2 py-1 text-xs">▲</button>
                 <button type="button" onClick={() => moveBannerDraft(i, 1)} disabled={i === bannerDrafts.length - 1} className="btn-ghost rounded px-2 py-1 text-xs">▼</button>
                 <button type="button" onClick={() => removeBannerDraft(i)} className="btn-ghost rounded px-2 py-1 text-xs" style={{ color: "#D6336C" }}>حذف</button>
@@ -2729,8 +2886,8 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             style={{ cursor: heroUploading ? "default" : "pointer", opacity: heroUploading ? 0.6 : 1 }}
           >
             <Upload size={14} />
-            {heroUploading ? "در حال آپلود..." : "افزودن عکس از گالری"}
-            <input type="file" accept="image/*" onChange={handleHeroFile} disabled={heroUploading} style={{ display: "none" }} />
+            {heroUploading ? "در حال آپلود..." : "افزودن عکس یا کلیپ ویدئویی از گالری"}
+            <input type="file" accept="image/*,video/*" onChange={handleHeroFile} disabled={heroUploading} style={{ display: "none" }} />
           </label>
         </div>
 
@@ -2957,7 +3114,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           {form.image && (
             <div className="flex flex-col gap-1 mt-2">
               <p className="text-muted" style={{ fontSize: 11 }}>
-                پیش‌نمایش دقیق — دقیقاً همین‌طوری توی کارت محصول نمایش داده می‌شود (کادر خودش با هر سایز عکس هماهنگ می‌شود و چیزی از عکس بریده نمی‌شود):
+                پیش‌نمایش دقیق — دقیقاً همین‌طوری توی کارت محصول نمایش داده می‌شود:
               </p>
               <div
                 className={CATEGORY_CARD_CLASS[form.category]}
@@ -2975,10 +3132,103 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 <img
                   src={form.image}
                   alt="پیش‌نمایش"
-                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  style={productImageStyle({
+                    imageFit: form.imageFit,
+                    imagePosX: form.imagePosX,
+                    imagePosY: form.imagePosY,
+                    imageZoom: form.imageZoom,
+                  })}
                   onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement.dataset.broken = "1"; }}
                   onLoad={(e) => { delete e.currentTarget.parentElement.dataset.broken; e.currentTarget.style.display = "block"; }}
                 />
+              </div>
+
+              {/* تنظیمات دستی نمایش تصویر — حالت جاگیری، موقعیت و بزرگ‌نمایی */}
+              <div className="bg-panel-2 border border-hair rounded-lg p-3 mt-2 flex flex-col gap-3" style={{ maxWidth: 380 }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted" style={{ fontSize: 11 }}>تنظیمات دستی عکس</span>
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1 }))}
+                    className="btn-ghost rounded px-2 py-1 text-xs"
+                  >
+                    بازنشانی
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-muted" style={{ fontSize: 11, minWidth: 60 }}>حالت نمایش</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, imageFit: "contain" }))}
+                      className="btn-ghost rounded-full px-3 py-1 text-xs"
+                      style={form.imageFit !== "cover" ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : undefined}
+                    >
+                      کامل (بدون برش)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, imageFit: "cover" }))}
+                      className="btn-ghost rounded-full px-3 py-1 text-xs"
+                      style={form.imageFit === "cover" ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : undefined}
+                    >
+                      پر کردن قاب
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-muted" style={{ fontSize: 11, minWidth: 60 }}>بزرگ‌نمایی</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="2.5"
+                    step="0.05"
+                    value={form.imageZoom}
+                    onChange={(e) => setForm((f) => ({ ...f, imageZoom: Number(e.target.value) }))}
+                    style={{ flex: 1 }}
+                  />
+                  <span className="text-muted" style={{ fontSize: 11, minWidth: 34, textAlign: "left" }} dir="ltr">
+                    {Number(form.imageZoom).toFixed(2)}×
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-muted" style={{ fontSize: 11, minWidth: 60 }}>موقعیت افقی</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={form.imagePosX}
+                    onChange={(e) => setForm((f) => ({ ...f, imagePosX: Number(e.target.value) }))}
+                    style={{ flex: 1 }}
+                  />
+                  <span className="text-muted" style={{ fontSize: 11, minWidth: 34, textAlign: "left" }} dir="ltr">
+                    {form.imagePosX}%
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-muted" style={{ fontSize: 11, minWidth: 60 }}>موقعیت عمودی</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={form.imagePosY}
+                    onChange={(e) => setForm((f) => ({ ...f, imagePosY: Number(e.target.value) }))}
+                    style={{ flex: 1 }}
+                  />
+                  <span className="text-muted" style={{ fontSize: 11, minWidth: 34, textAlign: "left" }} dir="ltr">
+                    {form.imagePosY}%
+                  </span>
+                </div>
+
+                <p className="text-muted" style={{ fontSize: 10.5, lineHeight: 1.7 }}>
+                  «کامل» یعنی کل عکس بدون برش داخل قاب جا می‌شود (ممکن است حاشیه‌ی خالی داشته باشد). «پر کردن قاب» یعنی عکس کل کادر را پر می‌کند (ممکن است بخشی از لبه‌های عکس برش بخورد) — با بزرگ‌نمایی و موقعیت می‌توانی دقیقاً بخش دلخواه از عکس را داخل کادر قاب بگیری.
+                </p>
               </div>
             </div>
           )}
@@ -3045,7 +3295,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               <p style={{ fontSize: 14 }}>{p.name} <span className="text-muted" style={{ fontSize: 11 }}>— {p.brand}</span></p>
               <p className="text-muted" style={{ fontSize: 11 }}>
                 {CATEGORY_LABEL[p.category]}
-                {p.subcategory && ` (${subcategoryLabel(p.category, p.subcategory)}${p.type ? " - " + typeLabel(p.category, p.subcategory, p.type) : ""}${p.facets && facetsSummary(p.category, p.subcategory, p.facets) ? " - " + facetsSummary(p.category, p.subcategory, p.facets) : ""})`} · {fmtPrice(p.price)}
+                {subcategoryLabel(p.category, p.subcategory) && ` (${subcategoryLabel(p.category, p.subcategory)}${p.type ? " - " + typeLabel(p.category, p.subcategory, p.type) : ""}${p.facets && facetsSummary(p.category, p.subcategory, p.facets) ? " - " + facetsSummary(p.category, p.subcategory, p.facets) : ""})`} · {fmtPrice(p.price)}
                 {p.variants && p.variants.length > 0 && (
                   <span className="text-gold"> · {p.variants.length} طیف رنگ</span>
                 )}
