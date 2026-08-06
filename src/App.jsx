@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  ShoppingBag, X, Plus, Minus, Trash2, LayoutDashboard,
+  ShoppingBag, ShoppingCart, ChevronRight, X, Plus, Minus, Trash2, LayoutDashboard,
   Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock, Upload, Search
 } from "lucide-react";
 
@@ -1618,6 +1618,9 @@ export default function MaisonStore() {
 
   const activeTypes = activeSubcategory !== "all" ? subcategoryTypes(activeCategory, activeSubcategory) : null;
 
+  // مشخص می‌کند که آیا کاربر از صفحه‌ی اصلی فاصله گرفته تا فلش برگشت در هدر نمایش داده شود
+  const showBackButton = view === "admin" || categoryPageOpen || !!openProductId || menuOpen;
+
   return (
     <div dir="rtl" lang="fa" className="maison-root min-h-screen">
       <style>{FONTS}</style>
@@ -1643,8 +1646,12 @@ export default function MaisonStore() {
           style={{ height: "12mm", position: "relative" }}
         >
           <div className="flex items-center gap-3" style={{ minWidth: 0, flex: "1 1 auto" }}>
+            {showBackButton && (
+              <button onClick={() => window.history.back()} aria-label="بازگشت">
+                <ChevronRight size={24} color="#241E3D" />
+              </button>
+            )}
             <button
-              className="sm:hidden"
               onClick={() => {
                 if (menuOpen) {
                   window.history.back();
@@ -1680,33 +1687,12 @@ export default function MaisonStore() {
             />
           </div>
 
-          <nav className="hidden sm:flex items-center gap-6 text-sm text-muted">
-            {["all", ...CATEGORY_ORDER].map((c) => (
-              <button
-                key={c}
-                onClick={() => { selectCategory(c); pushNav({ activeCategory: c, categoryPageOpen: c !== "all" }); }}
-                className={`nav-link hover:text-gold ${activeCategory === c && view === "store" ? "active text-gold" : ""}`}
-              >
-                {c === "all" ? "همه محصولات" : CATEGORY_LABEL[c]}
-              </button>
-            ))}
-          </nav>
-
           <div className="flex items-center gap-3">
-            {isAdmin && (
-              <button
-                onClick={() => { if (view === "admin") { window.history.back(); } else { setView("admin"); pushNav({ view: "admin" }); } }}
-                className="btn-ghost hidden sm:flex items-center gap-2 px-3 py-2 rounded text-xs"
-              >
-                <LayoutDashboard size={15} />
-                {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
-              </button>
-            )}
             <button onClick={() => { setSearchOpen(true); setSearchDraft(searchTerm); }} aria-label="جستجوی محصول">
               <Search size={21} color="#241E3D" />
             </button>
             <button onClick={() => setCartOpen(true)} className={`relative ${cartBump ? "cart-bump" : ""}`} aria-label="سبد خرید">
-              <ShoppingBag size={22} color="#241E3D" />
+              <ShoppingCart size={22} color="#241E3D" />
               {cartCount > 0 && (
                 <span
                   className="absolute -top-2 -left-2 bg-gold rounded-full text-xs flex items-center justify-center"
@@ -1716,19 +1702,6 @@ export default function MaisonStore() {
                 </span>
               )}
             </button>
-
-            {user ? (
-              <button onClick={handleLogout} className="btn-ghost hidden sm:flex items-center gap-2 px-3 py-2 rounded text-xs" title="خروج">
-                <User size={14} />
-                {user.email}
-                <LogOut size={13} />
-              </button>
-            ) : (
-              <button onClick={() => setAuthOpen(true)} className="btn-ghost hidden sm:flex items-center gap-2 px-3 py-2 rounded text-xs">
-                <User size={14} />
-                ورود / ثبت‌نام
-              </button>
-            )}
           </div>
         </div>
 
