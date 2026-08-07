@@ -384,6 +384,12 @@ const CATEGORIES = {
   },
   sprayAndSplash: {
     label: "اسپری و بادی اسپلش",
+    subcategories: {
+      menSpray: "اسپری خوشبو‌کننده مردانه",
+      womenSpray: "اسپری خوشبو‌کننده زنانه",
+      menBodySplash: "بادی اسپلش مردانه",
+      womenBodySplash: "بادی اسپلش زنانه",
+    },
   },
   makeup: {
     label: "آرایشی",
@@ -526,8 +532,13 @@ const CATEGORIES = {
   },
   electronics: {
     label: "لوازم برقی شخصی",
+    subcategories: { hair: "مو", body: "بدن", face: "صورت" },
   },
 };
+
+// این دو شاخه از منوی کشویی (همبرگری) قابل ناوبری‌اند، اما تب‌های زیرشاخه روی خودِ صفحه‌ی
+// محصولات نمایش داده نمی‌شوند (طبق درخواست: زیرشاخه فقط از مسیر منو در دسترس باشد).
+const CATEGORIES_WITHOUT_PAGE_SUBCATEGORY_PILLS = ["sprayAndSplash", "electronics"];
 
 const CATEGORY_LABEL = Object.fromEntries(
   Object.entries(CATEGORIES).map(([k, v]) => [k, v.label])
@@ -1762,6 +1773,20 @@ export default function MaisonStore() {
                   >
                     👆
                   </span>
+                  {/* برچسب «menu» — با همان انیمیشن انگشت، هم‌زمان و هم‌جهت با آن جابه‌جا می‌شود */}
+                  <span
+                    className="menu-hint-finger"
+                    dir="ltr"
+                    style={{
+                      position: "absolute", top: "calc(50% - 34px)", left: "calc(50% + 2px)",
+                      whiteSpace: "nowrap", fontSize: 10, fontWeight: 800, letterSpacing: 0.5,
+                      color: "#FFFFFF", background: "linear-gradient(135deg, #FF3E8E, #7B5CF6)",
+                      padding: "2px 8px", borderRadius: 999, pointerEvents: "none", zIndex: 3,
+                      boxShadow: "0 3px 10px -3px rgba(255,62,142,0.6)",
+                    }}
+                  >
+                    menu
+                  </span>
                 </>
               )}
             </div>
@@ -2199,7 +2224,7 @@ export default function MaisonStore() {
               </div>
             )}
 
-            {activeSubcategories && (
+            {activeSubcategories && !CATEGORIES_WITHOUT_PAGE_SUBCATEGORY_PILLS.includes(activeCategory) && (
               (activeCategory === "perfume" && activeSubcategory === "all") ||
               (activeCategory !== "perfume" && activeType === "all")
             ) && (
