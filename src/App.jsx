@@ -311,6 +311,31 @@ const FONTS = `
     .menu-hint-glow, .menu-hint-finger, .menu-hint-ripple { animation: none; opacity: 0; }
   }
 
+  /* جلوه‌ی «تپش لمس» روی دکمه‌ی منو — هر بار که کاربر لمسش کند اجرا می‌شود (نه فقط بار اول):
+     کلمه‌ی menu با یه پرش بزرگ و کمی چرخش ظاهر می‌شود، لحظه‌ای می‌ایستد، سپس همراه با بزرگ‌تر
+     شدن محو می‌شود؛ هم‌زمان چند حلقه‌ی موج رنگی (صورتی/بنفش/فیروزه‌ای، هماهنگ با پالت سایت) از
+     دور دکمه بیرون می‌زنند و محو می‌شوند — دقیقاً مثل موجی که از یک لمس روی آب پخش می‌شود. */
+  @keyframes menuTapWordPop {
+    0% { transform: translate(-50%, -50%) scale(0.3) rotate(-10deg); opacity: 0; }
+    30% { transform: translate(-50%, -50%) scale(1.25) rotate(4deg); opacity: 1; }
+    45% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+    70% { transform: translate(-50%, -50%) scale(1.15) rotate(0deg); opacity: 0.85; }
+    100% { transform: translate(-50%, -50%) scale(1.9) rotate(0deg); opacity: 0; }
+  }
+  .menu-tap-word {
+    animation: menuTapWordPop 1s cubic-bezier(.28,1.55,.4,1) forwards;
+  }
+  @keyframes menuTapRippleWave {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.85; }
+    100% { transform: translate(-50%, -50%) scale(3.4); opacity: 0; }
+  }
+  .menu-tap-ripple {
+    animation: menuTapRippleWave 1s cubic-bezier(.1,.5,.4,1) forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .menu-tap-word, .menu-tap-ripple { animation: none; opacity: 0; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .glint, .float-slow, .fade-in-up { animation: none; }
     .product-card, .product-card img, .category-card { transition: none; }
@@ -713,21 +738,6 @@ function numberToPersianWords(value) {
 function isAdminUser(user) {
   return !!user && typeof user.email === "string" && user.email.toLowerCase() === ADMIN_EMAIL;
 }
-
-// روی صفحه‌ی اصلی که هدر بدون پس‌زمینه‌ی سفید روی خودِ بنر/پس‌زمینه‌ی صفحه شناور است، این استایل
-// یک بک‌دراپ دایره‌ای نیمه‌شفاف پشت هر آیکون (منو، جستجو، سبد خرید، بازگشت) اضافه می‌کند تا آیکون‌ها
-// روی هر رنگ یا تصویر پس‌زمینه‌ای هم به‌وضوح و برجسته دیده شوند.
-const ICON_HOME_BACKDROP_STYLE = {
-  background: "rgba(255,255,255,0.9)",
-  backdropFilter: "blur(6px)",
-  borderRadius: "50%",
-  width: 38,
-  height: 38,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  boxShadow: "0 3px 12px -2px rgba(36,30,61,0.35)",
-};
 
 const CATEGORY_ICON_COLOR = {
   perfume: "#FF3E8E",
@@ -1260,6 +1270,9 @@ export default function MaisonStore() {
     setMenuHintSeen(true);
     try { localStorage.setItem("maison_menu_hint_seen", "1"); } catch (e) {}
   }
+  // شمارنده‌ی جلوه‌ی «تپش لمس» روی دکمه‌ی منو — با هر کلیک یکی افزایش می‌یابد تا با تغییر key،
+  // انیمیشن کلمه‌ی menu + حلقه‌های موج از نو (حتی وسط اجرای قبلی) اجرا شود.
+  const [menuTapFxKey, setMenuTapFxKey] = useState(0);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [menuNav, setMenuNav] = useState(null); // null | { category } | { category, subcategory }
   const [categoryPageOpen, setCategoryPageOpen] = useState(false);
@@ -1808,9 +1821,6 @@ export default function MaisonStore() {
 
   // مشخص می‌کند که آیا کاربر از صفحه‌ی اصلی فاصله گرفته تا فلش برگشت در هدر نمایش داده شود
   const showBackButton = view === "admin" || categoryPageOpen || !!openProductId || menuOpen;
-  // صفحه‌ی اصلی خالص (نه داخل دسته‌بندی، نه صفحه‌ی محصول، نه پنل مدیریت) — روی این صفحه نوار
-  // سفید هدر حذف می‌شود تا لوگو محدودیت فضا نداشته باشد و مستقیم روی پس‌زمینه‌ی صفحه شناور بماند.
-  const isHome = view === "store" && !categoryPageOpen && !openProductId;
 
   return (
     <div dir="rtl" lang="fa" className="maison-root min-h-screen">
@@ -1831,25 +1841,14 @@ export default function MaisonStore() {
       </div>
 
       {/* Header */}
-      <header
-        className={isHome ? "z-30" : "sticky z-30 bg-panel border-b border-hair"}
-        style={
-          isHome
-            ? { position: "fixed", top: 28, left: 0, right: 0, backdropFilter: "none" }
-            : { position: "sticky", top: 28, backdropFilter: "blur(6px)" }
-        }
-      >
+      <header className="sticky z-30 bg-panel border-b border-hair" style={{ top: 28, backdropFilter: "blur(6px)" }}>
         <div
           className="flex items-center justify-between px-4 sm:px-8 lg:px-12 max-w-7xl mx-auto"
-          style={{ height: isHome ? "16mm" : "12mm", position: "relative" }}
+          style={{ height: "12mm", position: "relative" }}
         >
           <div className="flex items-center gap-3" style={{ minWidth: 0, flex: "1 1 auto" }}>
             {showBackButton && (
-              <button
-                onClick={() => window.history.back()}
-                aria-label="بازگشت"
-                style={isHome ? ICON_HOME_BACKDROP_STYLE : undefined}
-              >
+              <button onClick={() => window.history.back()} aria-label="بازگشت">
                 <ChevronRight size={24} color="#241E3D" />
               </button>
             )}
@@ -1864,9 +1863,10 @@ export default function MaisonStore() {
                     pushNavPreserve({ menuOpen: true });
                   }
                   dismissMenuHint();
+                  setMenuTapFxKey((k) => k + 1);
                 }}
                 aria-label="منو"
-                style={{ position: "relative", zIndex: 2, ...(isHome ? ICON_HOME_BACKDROP_STYLE : null) }}
+                style={{ position: "relative", zIndex: 2 }}
               >
                 <Menu size={22} color="#241E3D" />
               </button>
@@ -1909,11 +1909,33 @@ export default function MaisonStore() {
                   </span>
                 </>
               )}
+              {/* جلوه‌ی «تپش لمس» — هر بار که روی دکمه‌ی منو کلیک می‌شود (نه فقط اولین بار)، کلمه‌ی
+                  menu بزرگ و پررنگ ظاهر می‌شود و در دل چند حلقه‌ی موج رنگی محو می‌شود. با تغییر
+                  key در هر کلیک، انیمیشن از نو اجرا می‌شود حتی اگر کلیک قبلی هنوز تمام نشده باشد. */}
+              {menuTapFxKey > 0 && (
+                <span key={menuTapFxKey} style={{ position: "absolute", top: "50%", left: "50%", pointerEvents: "none", zIndex: 4 }}>
+                  <span className="menu-tap-ripple" style={{ position: "absolute", top: 0, left: 0, width: 26, height: 26, borderRadius: "50%", border: "2.5px solid #FF3E8E" }} />
+                  <span className="menu-tap-ripple" style={{ position: "absolute", top: 0, left: 0, width: 26, height: 26, borderRadius: "50%", border: "2.5px solid #7B5CF6", animationDelay: "0.12s" }} />
+                  <span className="menu-tap-ripple" style={{ position: "absolute", top: 0, left: 0, width: 26, height: 26, borderRadius: "50%", border: "2.5px solid #00C2CB", animationDelay: "0.24s" }} />
+                  <span
+                    className="menu-tap-word"
+                    dir="ltr"
+                    style={{
+                      position: "absolute", top: 0, left: 0, whiteSpace: "nowrap",
+                      fontSize: 19, fontWeight: 800, letterSpacing: 0.5,
+                      background: "linear-gradient(135deg, #FF3E8E, #7B5CF6, #00C2CB)",
+                      WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+                      filter: "drop-shadow(0 2px 6px rgba(123,92,246,0.45))",
+                    }}
+                  >
+                    menu
+                  </span>
+                </span>
+              )}
             </div>
           </div>
 
-          {/* لوگوی ویدیویی — دقیقاً وسط هدر. روی صفحه‌ی اصلی، نوار سفید پشتش برداشته شده و
-              خودش بزرگ‌تر و بدون محدودیت فضا، مستقیم روی پس‌زمینه‌ی صفحه شناور است. */}
+          {/* لوگوی ویدیویی — دقیقاً وسط نوار ۱۲ میلی‌متری هدر */}
           <div
             style={{
               position: "absolute",
@@ -1925,30 +1947,16 @@ export default function MaisonStore() {
           >
             <TrueAlphaVideo
               src="/jordan-logo-alpha.mp4"
-              renderWidth={isHome ? 600 : 300}
-              style={{
-                height: isHome ? "clamp(52px, 9vw, 108px)" : "9mm",
-                width: "auto",
-                display: "block",
-                filter: isHome ? "drop-shadow(0 2px 10px rgba(36,30,61,0.35))" : undefined,
-              }}
+              renderWidth={300}
+              style={{ height: "9mm", width: "auto", display: "block" }}
             />
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => { setSearchOpen(true); setSearchDraft(searchTerm); }}
-              aria-label="جستجوی محصول"
-              style={isHome ? ICON_HOME_BACKDROP_STYLE : undefined}
-            >
+            <button onClick={() => { setSearchOpen(true); setSearchDraft(searchTerm); }} aria-label="جستجوی محصول">
               <Search size={21} color="#241E3D" />
             </button>
-            <button
-              onClick={() => setCartOpen(true)}
-              className={`relative ${cartBump ? "cart-bump" : ""}`}
-              aria-label="سبد خرید"
-              style={isHome ? ICON_HOME_BACKDROP_STYLE : undefined}
-            >
+            <button onClick={() => setCartOpen(true)} className={`relative ${cartBump ? "cart-bump" : ""}`} aria-label="سبد خرید">
               <ShoppingCart size={22} color="#241E3D" />
               {cartCount > 0 && (
                 <span
@@ -1963,10 +1971,6 @@ export default function MaisonStore() {
         </div>
 
       </header>
-
-      {/* روی صفحه‌ی اصلی چون هدر position:fixed است و از جریان عادی صفحه خارج شده، این فاصله‌ی
-          خالی جایگزینش می‌شود تا محتوای زیرش (بنر/دسته‌بندی‌ها) به‌طور ناخواسته زیر آیکون‌ها نرود. */}
-      {isHome && <div style={{ height: "16mm" }} />}
 
         {menuOpen && (
           <>
