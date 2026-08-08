@@ -714,6 +714,21 @@ function isAdminUser(user) {
   return !!user && typeof user.email === "string" && user.email.toLowerCase() === ADMIN_EMAIL;
 }
 
+// روی صفحه‌ی اصلی که هدر بدون پس‌زمینه‌ی سفید روی خودِ بنر/پس‌زمینه‌ی صفحه شناور است، این استایل
+// یک بک‌دراپ دایره‌ای نیمه‌شفاف پشت هر آیکون (منو، جستجو، سبد خرید، بازگشت) اضافه می‌کند تا آیکون‌ها
+// روی هر رنگ یا تصویر پس‌زمینه‌ای هم به‌وضوح و برجسته دیده شوند.
+const ICON_HOME_BACKDROP_STYLE = {
+  background: "rgba(255,255,255,0.9)",
+  backdropFilter: "blur(6px)",
+  borderRadius: "50%",
+  width: 38,
+  height: 38,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxShadow: "0 3px 12px -2px rgba(36,30,61,0.35)",
+};
+
 const CATEGORY_ICON_COLOR = {
   perfume: "#FF3E8E",
   sprayAndSplash: "#FF6FA5",
@@ -859,6 +874,97 @@ function ChromaKeyVideo({ src, style, className, renderWidth = 240, keyColor = [
       if (rafId) cancelAnimationFrame(rafId);
     };
   }, [src, renderWidth, keyColor, threshold, feather]);
+
+  return (
+    <>
+      <video
+        ref={videoRef}
+        src={src}
+        muted
+        loop
+        playsInline
+        autoPlay
+        preload="auto"
+        style={{ display: "none" }}
+      />
+      <canvas ref={canvasRef} className={className} style={style} />
+    </>
+  );
+}
+
+// کامپوننت ویدیوی شفاف واقعی (بدون هیچ وابستگی به رنگ پس‌زمینه‌ی سایت): برخلاف کروماکی که
+// فقط رنگ‌های نزدیک به یک رنگ خاص را حدس می‌زند و حذف می‌کند، این کامپوننت از یک فایل ویدیوی
+// «دوبل» استفاده می‌کند که نیمه‌ی بالای هر فریمش رنگ واقعی (بدون پیش‌ضرب در آلفا) و نیمه‌ی
+// پایینش ماسک شفافیت واقعی (استخراج‌شده از کانال آلفای اصلی ویدیو) است. هر فریم روی یک کانواس
+// پنهان خوانده می‌شود، دو نیمه با هم ترکیب می‌شوند و یک تصویر با کانال آلفای واقعی و دقیق تولید
+// می‌شود — نتیجه هیچ هاله یا لکه‌ی تیره‌ای در لبه‌ها روی هیچ پس‌زمینه‌ای (هر رنگ یا گرادیانی) ندارد.
+function TrueAlphaVideo({ src, style, className, renderWidth = 300 }) {
+  const videoRef = React.useRef(null);
+  const canvasRef = React.useRef(null);
+  const tempCanvasRef = React.useRef(null);
+  const sizedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    if (!tempCanvasRef.current) tempCanvasRef.current = document.createElement("canvas");
+    const tempCanvas = tempCanvasRef.current;
+    const tempCtx = tempCanvas.getContext("2d", { willReadFrequently: true });
+    const ctx = canvas.getContext("2d");
+    tempCtx.imageSmoothingEnabled = true;
+    tempCtx.imageSmoothingQuality = "high";
+    let rafId;
+    let cancelled = false;
+    sizedRef.current = false;
+    let outWidth = 0;
+    let outHeight = 0;
+
+    function draw() {
+      if (cancelled) return;
+      if (video.readyState >= 2 && video.videoWidth > 0) {
+        if (!sizedRef.current) {
+          // منبع یک فریم دوبل است: کل ارتفاعش رو نیمه‌ی رنگ (بالا) + نیمه‌ی آلفا (پایین) تشکیل می‌ده
+          tempCanvas.width = renderWidth;
+          tempCanvas.height = Math.round((video.videoHeight / video.videoWidth) * renderWidth);
+          outWidth = tempCanvas.width;
+          outHeight = Math.round(tempCanvas.height / 2);
+          canvas.width = outWidth;
+          canvas.height = outHeight;
+          sizedRef.current = true;
+        }
+        tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+        const full = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+        const src8 = full.data;
+        const out = ctx.createImageData(outWidth, outHeight);
+        const dst8 = out.data;
+        const rowLen = outWidth * 4;
+        for (let y = 0; y < outHeight; y++) {
+          const colorRowStart = y * rowLen;
+          const alphaRowStart = (y + outHeight) * rowLen;
+          for (let x = 0; x < outWidth; x++) {
+            const ci = colorRowStart + x * 4;
+            const ai = alphaRowStart + x * 4;
+            const di = ci; // خروجی هم‌اندازه‌ی نیمه‌ی رنگ است، شاخص یکسان
+            dst8[di] = src8[ci];
+            dst8[di + 1] = src8[ci + 1];
+            dst8[di + 2] = src8[ci + 2];
+            // میانگین سه کانال ماسک آلفا برای کاهش خطای فشرده‌سازی رنگ (کروما ساب‌سمپلینگ)
+            dst8[di + 3] = (src8[ai] + src8[ai + 1] + src8[ai + 2]) / 3;
+          }
+        }
+        ctx.putImageData(out, 0, 0);
+      }
+      rafId = requestAnimationFrame(draw);
+    }
+
+    video.play().catch(() => {});
+    rafId = requestAnimationFrame(draw);
+    return () => {
+      cancelled = true;
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [src, renderWidth]);
 
   return (
     <>
@@ -1702,6 +1808,9 @@ export default function MaisonStore() {
 
   // مشخص می‌کند که آیا کاربر از صفحه‌ی اصلی فاصله گرفته تا فلش برگشت در هدر نمایش داده شود
   const showBackButton = view === "admin" || categoryPageOpen || !!openProductId || menuOpen;
+  // صفحه‌ی اصلی خالص (نه داخل دسته‌بندی، نه صفحه‌ی محصول، نه پنل مدیریت) — روی این صفحه نوار
+  // سفید هدر حذف می‌شود تا لوگو محدودیت فضا نداشته باشد و مستقیم روی پس‌زمینه‌ی صفحه شناور بماند.
+  const isHome = view === "store" && !categoryPageOpen && !openProductId;
 
   return (
     <div dir="rtl" lang="fa" className="maison-root min-h-screen">
@@ -1722,14 +1831,25 @@ export default function MaisonStore() {
       </div>
 
       {/* Header */}
-      <header className="sticky z-30 bg-panel border-b border-hair" style={{ top: 28, backdropFilter: "blur(6px)" }}>
+      <header
+        className={isHome ? "z-30" : "sticky z-30 bg-panel border-b border-hair"}
+        style={
+          isHome
+            ? { position: "fixed", top: 28, left: 0, right: 0, backdropFilter: "none" }
+            : { position: "sticky", top: 28, backdropFilter: "blur(6px)" }
+        }
+      >
         <div
           className="flex items-center justify-between px-4 sm:px-8 lg:px-12 max-w-7xl mx-auto"
-          style={{ height: "12mm", position: "relative" }}
+          style={{ height: isHome ? "16mm" : "12mm", position: "relative" }}
         >
           <div className="flex items-center gap-3" style={{ minWidth: 0, flex: "1 1 auto" }}>
             {showBackButton && (
-              <button onClick={() => window.history.back()} aria-label="بازگشت">
+              <button
+                onClick={() => window.history.back()}
+                aria-label="بازگشت"
+                style={isHome ? ICON_HOME_BACKDROP_STYLE : undefined}
+              >
                 <ChevronRight size={24} color="#241E3D" />
               </button>
             )}
@@ -1746,7 +1866,7 @@ export default function MaisonStore() {
                   dismissMenuHint();
                 }}
                 aria-label="منو"
-                style={{ position: "relative", zIndex: 2 }}
+                style={{ position: "relative", zIndex: 2, ...(isHome ? ICON_HOME_BACKDROP_STYLE : null) }}
               >
                 <Menu size={22} color="#241E3D" />
               </button>
@@ -1792,7 +1912,8 @@ export default function MaisonStore() {
             </div>
           </div>
 
-          {/* لوگوی ویدیویی — دقیقاً وسط نوار ۱۲ میلی‌متری هدر */}
+          {/* لوگوی ویدیویی — دقیقاً وسط هدر. روی صفحه‌ی اصلی، نوار سفید پشتش برداشته شده و
+              خودش بزرگ‌تر و بدون محدودیت فضا، مستقیم روی پس‌زمینه‌ی صفحه شناور است. */}
           <div
             style={{
               position: "absolute",
@@ -1802,21 +1923,32 @@ export default function MaisonStore() {
               pointerEvents: "none",
             }}
           >
-            <ChromaKeyVideo
-              src="/jordan-logo-new.mp4"
-              keyColor={[120, 111, 103]}
-              threshold={45}
-              feather={30}
-              renderWidth={300}
-              style={{ height: "9mm", width: "auto", display: "block" }}
+            <TrueAlphaVideo
+              src="/jordan-logo-alpha.mp4"
+              renderWidth={isHome ? 600 : 300}
+              style={{
+                height: isHome ? "clamp(52px, 9vw, 108px)" : "9mm",
+                width: "auto",
+                display: "block",
+                filter: isHome ? "drop-shadow(0 2px 10px rgba(36,30,61,0.35))" : undefined,
+              }}
             />
           </div>
 
           <div className="flex items-center gap-3">
-            <button onClick={() => { setSearchOpen(true); setSearchDraft(searchTerm); }} aria-label="جستجوی محصول">
+            <button
+              onClick={() => { setSearchOpen(true); setSearchDraft(searchTerm); }}
+              aria-label="جستجوی محصول"
+              style={isHome ? ICON_HOME_BACKDROP_STYLE : undefined}
+            >
               <Search size={21} color="#241E3D" />
             </button>
-            <button onClick={() => setCartOpen(true)} className={`relative ${cartBump ? "cart-bump" : ""}`} aria-label="سبد خرید">
+            <button
+              onClick={() => setCartOpen(true)}
+              className={`relative ${cartBump ? "cart-bump" : ""}`}
+              aria-label="سبد خرید"
+              style={isHome ? ICON_HOME_BACKDROP_STYLE : undefined}
+            >
               <ShoppingCart size={22} color="#241E3D" />
               {cartCount > 0 && (
                 <span
@@ -1831,6 +1963,10 @@ export default function MaisonStore() {
         </div>
 
       </header>
+
+      {/* روی صفحه‌ی اصلی چون هدر position:fixed است و از جریان عادی صفحه خارج شده، این فاصله‌ی
+          خالی جایگزینش می‌شود تا محتوای زیرش (بنر/دسته‌بندی‌ها) به‌طور ناخواسته زیر آیکون‌ها نرود. */}
+      {isHome && <div style={{ height: "16mm" }} />}
 
         {menuOpen && (
           <>
