@@ -1257,6 +1257,129 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
   );
 }
 
+const ORDER_STATUS_META = {
+  paid: { label: "پرداخت‌شده", color: "#0EA5A4", bg: "rgba(14,165,164,0.12)" },
+  pending: { label: "در انتظار پرداخت", color: "#D97706", bg: "rgba(217,119,6,0.12)" },
+  canceled: { label: "لغوشده", color: "#756E93", bg: "rgba(117,110,147,0.14)" },
+  failed: { label: "ناموفق", color: "#D6336C", bg: "rgba(214,51,108,0.12)" },
+};
+
+function fmtOrderDateTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const date = d.toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" });
+  const time = d.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
+  return `${date} — ساعت ${time}`;
+}
+
+// صفحه‌ی «حساب کاربری من»: پروفایل مشتری، آمار خرید، و تاریخچه‌ی کامل سفارش‌ها — مشابه
+// داشبورد شخصی در سایت‌های معتبر فروش آنلاین آرایشی-بهداشتی و عطر.
+function AccountPage({ user, orders, loading, error, onRetry, onLogout, onBack }) {
+  const paidOrders = orders.filter((o) => o.status === "paid");
+  const totalSpent = paidOrders.reduce((s, o) => s + (Number(o.amount) || 0), 0);
+  const lastOrder = orders.length > 0 ? orders[0] : null; // سرور همین حالا نزولی (جدیدترین اول) برمی‌گرداند
+  const memberSince = user.createdAt ? fmtOrderDateTime(user.createdAt) : "";
+
+  return (
+    <section className="px-4 sm:px-8 lg:px-12 max-w-3xl mx-auto py-6 pb-24">
+      <button onClick={onBack} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-4">
+        <span>›</span> بازگشت
+      </button>
+
+      {/* کارت پروفایل */}
+      <div className="bg-panel border border-hair rounded-2xl p-5 mb-5 flex items-center gap-4">
+        <div
+          className="flex items-center justify-center flex-shrink-0"
+          style={{ width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg, #FF3E8E, #7B5CF6)" }}
+        >
+          <User size={26} color="#FFFFFF" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-display" style={{ fontSize: 18 }}>
+            {user.fullName || "مشتری جردن"}
+          </h1>
+          <p className="text-muted" style={{ fontSize: 12.5, direction: "ltr", textAlign: "right" }}>{user.email}</p>
+          {memberSince && (
+            <p className="text-muted mt-1" style={{ fontSize: 11 }}>عضویت از {memberSince}</p>
+          )}
+        </div>
+        <button onClick={onLogout} className="btn-ghost rounded-full px-3 py-2 text-xs flex items-center gap-1.5 flex-shrink-0">
+          <LogOut size={13} /> خروج
+        </button>
+      </div>
+
+      {/* آمار خرید */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="bg-panel-2 border border-hair rounded-xl p-3 text-center">
+          <p className="font-display" style={{ fontSize: 20, color: "#FF3E8E" }}>{orders.length.toLocaleString("fa-IR")}</p>
+          <p className="text-muted" style={{ fontSize: 10.5, marginTop: 4 }}>تعداد سفارش</p>
+        </div>
+        <div className="bg-panel-2 border border-hair rounded-xl p-3 text-center">
+          <p className="font-display" style={{ fontSize: 20, color: "#7B5CF6" }}>{paidOrders.length.toLocaleString("fa-IR")}</p>
+          <p className="text-muted" style={{ fontSize: 10.5, marginTop: 4 }}>خرید موفق</p>
+        </div>
+        <div className="bg-panel-2 border border-hair rounded-xl p-3 text-center">
+          <p className="font-display" style={{ fontSize: 13, color: "#0EA5A4" }}>{fmtPrice(totalSpent)}</p>
+          <p className="text-muted" style={{ fontSize: 10.5, marginTop: 4 }}>مجموع خرید</p>
+        </div>
+      </div>
+
+      {/* تاریخچه‌ی سفارش‌ها */}
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles size={15} color="#FF3E8E" />
+        <h2 className="font-display" style={{ fontSize: 16 }}>تاریخچه‌ی خرید</h2>
+      </div>
+
+      {loading ? (
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="skeleton rounded-xl" style={{ height: 76 }} />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="rounded-xl p-4 text-center" style={{ background: "rgba(214,51,108,0.1)" }}>
+          <p style={{ fontSize: 12.5, color: "#D6336C", marginBottom: 8 }}>{error}</p>
+          <button onClick={onRetry} className="btn-ghost rounded-full px-4 py-1.5 text-xs">تلاش دوباره</button>
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="bg-panel-2 border border-hair rounded-xl p-6 text-center">
+          <p className="text-muted" style={{ fontSize: 13 }}>هنوز خریدی از فروشگاه نداشته‌ای.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {orders.map((order) => {
+            const meta = ORDER_STATUS_META[order.status] || ORDER_STATUS_META.pending;
+            return (
+              <div key={order.id} className="bg-panel border border-hair rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-muted" style={{ fontSize: 11.5 }}>{fmtOrderDateTime(order.created_at)}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: meta.color, background: meta.bg, borderRadius: 999, padding: "3px 10px" }}>
+                    {meta.label}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 mb-2">
+                  {(order.items || []).map((item, i) => (
+                    <p key={i} className="text-muted" style={{ fontSize: 12.5 }}>
+                      {item.name} <span style={{ color: "#756E93" }}>× {Number(item.qty).toLocaleString("fa-IR")}</span>
+                    </p>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-hair">
+                  <span style={{ fontSize: 13.5, fontWeight: 700 }}>{fmtPrice(order.amount)}</span>
+                  {order.ref_id && (
+                    <span className="text-muted" style={{ fontSize: 11 }} dir="ltr">کد پیگیری: {order.ref_id}</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function MaisonStore() {
   const [view, setView] = useState("store"); // store | admin
   const [menuOpen, setMenuOpen] = useState(false);
@@ -1313,6 +1436,12 @@ export default function MaisonStore() {
   const [authLoading, setAuthLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+
+  // سفارش‌های کاربر برای «حساب کاربری من» — فقط وقتی کاربر لاگین است و وارد صفحه‌ی حساب می‌شود
+  // (یا صفحه رفرش می‌شود درحالی‌که قبلاً در آن صفحه بوده) از سرور گرفته می‌شود.
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState("");
 
   const isAdmin = isAdminUser(user);
 
@@ -1442,12 +1571,45 @@ export default function MaisonStore() {
     return () => clearInterval(timer);
   }, [heroBanners, bannerIndex]);
 
-  // اگر کاربر خارج شد یا کاربر دیگری وارد شد، در صورتی که در پنل مدیریت بود، به فروشگاه برگردد.
+  // اگر کاربر خارج شد یا کاربر دیگری وارد شد، در صورتی که در پنل مدیریت یا حساب کاربری بود، به فروشگاه برگردد.
   useEffect(() => {
     if (view === "admin" && !isAdmin) {
       setView("store");
     }
-  }, [isAdmin, view]);
+    if (view === "account" && !user) {
+      setView("store");
+    }
+  }, [isAdmin, user, view]);
+
+  const loadOrders = async () => {
+    if (!token) return;
+    setOrdersLoading(true);
+    setOrdersError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/orders`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "دریافت سفارش‌ها ناموفق بود");
+      setOrders(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setOrdersError(
+        err.message === "Failed to fetch"
+          ? "اتصال به سرور برقرار نشد — لطفاً دوباره امتحان کن"
+          : err.message
+      );
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  // هر بار که کاربر وارد صفحه‌ی «حساب کاربری من» می‌شود (یا مستقیم با رفرش صفحه به آن می‌رسد)، سفارش‌ها گرفته می‌شوند.
+  useEffect(() => {
+    if (view === "account" && user && token) {
+      loadOrders();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, user, token]);
 
   async function addProduct(payload) {
     const res = await fetch(`${API_BASE_URL}/api/products`, {
@@ -1554,6 +1716,18 @@ export default function MaisonStore() {
     if (isAdminUser(user)) {
       setView("admin");
     }
+  }
+
+  // درخواست ورود به «حساب کاربری من»: اگر کاربر هنوز عضو نشده، فرم ثبت‌نام/ورود (رایگان) باز می‌شود؛
+  // اگر لاگین است، مستقیم به صفحه‌ی حساب کاربری‌اش می‌رود.
+  function requestAccountView() {
+    if (!user) {
+      setAuthMode("register");
+      setAuthOpen(true);
+      return;
+    }
+    setView("account");
+    pushNav({ view: "account" });
   }
 
   async function handleAuthSubmit(e) {
@@ -1820,7 +1994,7 @@ export default function MaisonStore() {
   const activeTypes = activeSubcategory !== "all" ? subcategoryTypes(activeCategory, activeSubcategory) : null;
 
   // مشخص می‌کند که آیا کاربر از صفحه‌ی اصلی فاصله گرفته تا فلش برگشت در هدر نمایش داده شود
-  const showBackButton = view === "admin" || categoryPageOpen || !!openProductId || menuOpen;
+  const showBackButton = view === "admin" || view === "account" || categoryPageOpen || !!openProductId || menuOpen;
 
   return (
     <div dir="rtl" lang="fa" className="maison-root min-h-screen">
@@ -1913,7 +2087,7 @@ export default function MaisonStore() {
                   menu بزرگ و پررنگ ظاهر می‌شود و در دل چند حلقه‌ی موج رنگی محو می‌شود. با تغییر
                   key در هر کلیک، انیمیشن از نو اجرا می‌شود حتی اگر کلیک قبلی هنوز تمام نشده باشد. */}
               {menuTapFxKey > 0 && (
-                <span key={menuTapFxKey} style={{ position: "absolute", top: "50%", left: "50%", pointerEvents: "none", zIndex: 4 }}>
+                <span key={menuTapFxKey} style={{ position: "absolute", top: "50%", left: "50%", pointerEvents: "none", zIndex: 6 }}>
                   <span className="menu-tap-ripple" style={{ position: "absolute", top: 0, left: 0, width: 26, height: 26, borderRadius: "50%", border: "2.5px solid #FF3E8E" }} />
                   <span className="menu-tap-ripple" style={{ position: "absolute", top: 0, left: 0, width: 26, height: 26, borderRadius: "50%", border: "2.5px solid #7B5CF6", animationDelay: "0.12s" }} />
                   <span className="menu-tap-ripple" style={{ position: "absolute", top: 0, left: 0, width: 26, height: 26, borderRadius: "50%", border: "2.5px solid #00C2CB", animationDelay: "0.24s" }} />
@@ -1922,10 +2096,10 @@ export default function MaisonStore() {
                     dir="ltr"
                     style={{
                       position: "absolute", top: 0, left: 0, whiteSpace: "nowrap",
-                      fontSize: 19, fontWeight: 800, letterSpacing: 0.5,
-                      background: "linear-gradient(135deg, #FF3E8E, #7B5CF6, #00C2CB)",
-                      WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
-                      filter: "drop-shadow(0 2px 6px rgba(123,92,246,0.45))",
+                      fontSize: 14, fontWeight: 800, letterSpacing: 0.5, lineHeight: 1,
+                      color: "#FFFFFF", background: "linear-gradient(135deg, #FF3E8E, #7B5CF6, #00C2CB)",
+                      padding: "6px 14px", borderRadius: 999,
+                      boxShadow: "0 4px 14px -2px rgba(123,92,246,0.55)",
                     }}
                   >
                     menu
@@ -1933,6 +2107,11 @@ export default function MaisonStore() {
                 </span>
               )}
             </div>
+            {/* دکمه‌ی «حساب کاربری من» — کنار دکمه‌ی منو. اگر عضو نباشد با کلیک، فرم ثبت‌نام رایگان
+                باز می‌شود؛ اگر عضو باشد مستقیم به داشبورد شخصی‌اش می‌رود. */}
+            <button onClick={requestAccountView} aria-label="حساب کاربری من" title="حساب کاربری من">
+              <User size={21} color="#241E3D" />
+            </button>
           </div>
 
           {/* لوگوی ویدیویی — دقیقاً وسط نوار ۱۲ میلی‌متری هدر */}
@@ -2037,6 +2216,14 @@ export default function MaisonStore() {
                 {isAdmin && (
                   <button onClick={() => { if (view === "admin") { closeMenu(); window.history.back(); } else { setView("admin"); closeMenu(); pushNav({ view: "admin" }); } }} className="text-right py-1 text-gold">
                     {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
+                  </button>
+                )}
+                {user && (
+                  <button
+                    onClick={() => { requestAccountView(); closeMenu(); }}
+                    className="text-right py-1 text-gold"
+                  >
+                    حساب کاربری من
                   </button>
                 )}
                 <button
@@ -2185,6 +2372,16 @@ export default function MaisonStore() {
           onUpdateHeroBanners={updateHeroBanners}
           globalDiscountPercent={globalDiscountPercent}
           onUpdateGlobalDiscount={updateGlobalDiscount}
+        />
+      ) : view === "account" && user ? (
+        <AccountPage
+          user={user}
+          orders={orders}
+          loading={ordersLoading}
+          error={ordersError}
+          onRetry={loadOrders}
+          onLogout={handleLogout}
+          onBack={() => window.history.back()}
         />
       ) : openProductId ? (
         <ProductDetailPage
