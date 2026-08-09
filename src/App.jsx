@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  ShoppingBag, ShoppingCart, ChevronRight, X, Plus, Minus, Trash2, LayoutDashboard,
+  ShoppingBag, ShoppingCart, X, Plus, Minus, Trash2, LayoutDashboard,
   Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock, Upload, Search
 } from "lucide-react";
 
@@ -1993,8 +1993,8 @@ export default function MaisonStore() {
 
   const activeTypes = activeSubcategory !== "all" ? subcategoryTypes(activeCategory, activeSubcategory) : null;
 
-  // مشخص می‌کند که آیا کاربر از صفحه‌ی اصلی فاصله گرفته تا فلش برگشت در هدر نمایش داده شود
-  const showBackButton = view === "admin" || view === "account" || categoryPageOpen || !!openProductId || menuOpen;
+  // آیا در صفحه‌ی اصلی روی بنر هستیم؟ (برای شناور بودن دکمه‌ها روی بنر، بدون فاصله‌ی هدر)
+  const isHomeHero = view === "store" && !categoryPageOpen && !openProductId;
 
   return (
     <div dir="rtl" lang="fa" className="maison-root min-h-screen">
@@ -2014,19 +2014,63 @@ export default function MaisonStore() {
         </div>
       </div>
 
-      {/* Header */}
-      <header className="sticky z-30 bg-panel border-b border-hair" style={{ top: 28, backdropFilter: "blur(6px)" }}>
+      {/* نوار شناور دکمه‌ها و لوگو — لوگو سمت چپ صفحه، خوشه‌ی ۴ دکمه (سبد خرید، حساب کاربری،
+          جستجو، منو) سمت راست صفحه. */}
+      <div className="fixed z-30 w-full" style={{ top: 28, pointerEvents: "none" }}>
         <div
           className="flex items-center justify-between px-4 sm:px-8 lg:px-12 max-w-7xl mx-auto"
-          style={{ height: "12mm", position: "relative" }}
+          style={{ height: "12mm" }}
         >
-          <div className="flex items-center gap-3" style={{ minWidth: 0, flex: "1 1 auto" }}>
-            {showBackButton && (
-              <button onClick={() => window.history.back()} aria-label="بازگشت">
-                <ChevronRight size={24} color="#241E3D" />
-              </button>
-            )}
-            <div style={{ position: "relative" }}>
+          {/* لوگوی ویدیویی — سمت چپ صفحه */}
+          <div style={{ pointerEvents: "none", flexShrink: 0, order: 2 }}>
+            <TrueAlphaVideo
+              src="/jordan-logo-alpha.mp4"
+              renderWidth={300}
+              style={{ height: "9mm", width: "auto", display: "block" }}
+            />
+          </div>
+
+          {/* خوشه‌ی آیکون‌ها — سبد خرید، حساب کاربری، جستجو، منو — همه کنار هم سمت راست صفحه */}
+          <div className="flex items-center gap-3" style={{ pointerEvents: "auto", flexShrink: 0, order: 1 }}>
+            <button
+              onClick={() => setCartOpen(true)}
+              className={`relative flex items-center justify-center ${cartBump ? "cart-bump" : ""}`}
+              aria-label="سبد خرید"
+              style={{ width: 36, height: 36, order: 4 }}
+            >
+              <ShoppingCart size={20} color="#FFFFFF" />
+              {cartCount > 0 && (
+                <span
+                  className="absolute -top-1.5 -left-1.5 bg-gold rounded-full text-xs flex items-center justify-center"
+                  style={{ width: 18, height: 18, color: "#FFFFFF", fontWeight: 700 }}
+                >
+                  {cartCount}
+                </span>
+              )}
+            </button>
+
+            {/* دکمه‌ی «حساب کاربری من» — اگر عضو نباشد با کلیک، فرم ثبت‌نام رایگان باز می‌شود؛
+                اگر عضو باشد مستقیم به داشبورد شخصی‌اش می‌رود. */}
+            <button
+              onClick={requestAccountView}
+              aria-label="حساب کاربری من"
+              title="حساب کاربری من"
+              className="flex items-center justify-center"
+              style={{ width: 36, height: 36, order: 3 }}
+            >
+              <User size={19} color="#FFFFFF" />
+            </button>
+
+            <button
+              onClick={() => { setSearchOpen(true); setSearchDraft(searchTerm); }}
+              aria-label="جستجوی محصول"
+              className="flex items-center justify-center"
+              style={{ width: 36, height: 36, order: 2 }}
+            >
+              <Search size={19} color="#FFFFFF" />
+            </button>
+
+            <div style={{ position: "relative", order: 1 }}>
               <button
                 onClick={() => {
                   if (menuOpen) {
@@ -2040,9 +2084,12 @@ export default function MaisonStore() {
                   setMenuTapFxKey((k) => k + 1);
                 }}
                 aria-label="منو"
-                style={{ position: "relative", zIndex: 2 }}
+                className="flex items-center justify-center"
+                style={{
+                  position: "relative", zIndex: 2, width: 36, height: 36,
+                }}
               >
-                <Menu size={22} color="#241E3D" />
+                <Menu size={20} color="#FFFFFF" />
               </button>
               {!menuOpen && !menuHintSeen && (
                 <>
@@ -2107,49 +2154,9 @@ export default function MaisonStore() {
                 </span>
               )}
             </div>
-            {/* دکمه‌ی «حساب کاربری من» — کنار دکمه‌ی منو. اگر عضو نباشد با کلیک، فرم ثبت‌نام رایگان
-                باز می‌شود؛ اگر عضو باشد مستقیم به داشبورد شخصی‌اش می‌رود. */}
-            <button onClick={requestAccountView} aria-label="حساب کاربری من" title="حساب کاربری من">
-              <User size={21} color="#241E3D" />
-            </button>
-          </div>
-
-          {/* لوگوی ویدیویی — دقیقاً وسط نوار ۱۲ میلی‌متری هدر */}
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              pointerEvents: "none",
-            }}
-          >
-            <TrueAlphaVideo
-              src="/jordan-logo-alpha.mp4"
-              renderWidth={300}
-              style={{ height: "9mm", width: "auto", display: "block" }}
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button onClick={() => { setSearchOpen(true); setSearchDraft(searchTerm); }} aria-label="جستجوی محصول">
-              <Search size={21} color="#241E3D" />
-            </button>
-            <button onClick={() => setCartOpen(true)} className={`relative ${cartBump ? "cart-bump" : ""}`} aria-label="سبد خرید">
-              <ShoppingCart size={22} color="#241E3D" />
-              {cartCount > 0 && (
-                <span
-                  className="absolute -top-2 -left-2 bg-gold rounded-full text-xs flex items-center justify-center"
-                  style={{ width: 18, height: 18, color: "#FFFFFF", fontWeight: 700 }}
-                >
-                  {cartCount}
-                </span>
-              )}
-            </button>
           </div>
         </div>
-
-      </header>
+      </div>
 
         {menuOpen && (
           <>
@@ -2360,6 +2367,8 @@ export default function MaisonStore() {
         </div>
       )}
 
+      {!isHomeHero && <div style={{ height: "12mm" }} />}
+
       {view === "admin" && isAdmin ? (
         <AdminPanel
           products={products}
@@ -2561,10 +2570,7 @@ export default function MaisonStore() {
               </div>
             )}
 
-            {activeSubcategories && !CATEGORIES_WITHOUT_PAGE_SUBCATEGORY_PILLS.includes(activeCategory) && (
-              (activeCategory === "perfume" && activeSubcategory === "all") ||
-              (activeCategory !== "perfume" && activeType === "all")
-            ) && (
+            {activeSubcategories && !CATEGORIES_WITHOUT_PAGE_SUBCATEGORY_PILLS.includes(activeCategory) && activeSubcategory === "all" && (
               <div className="flex flex-wrap gap-2 mb-4">
                 <button
                   onClick={() => selectSubcategory("all")}
