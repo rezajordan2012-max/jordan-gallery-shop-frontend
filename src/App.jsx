@@ -356,6 +356,7 @@ const PERFUME_FACETS = [
   {
     key: "concentration",
     group: "نوع",
+    multi: false, // یک ادکلن هم‌زمان نمی‌تواند از چند نوع باشد (مثلاً هم اکستریت هم ادوپرفیوم) — تک‌انتخابی
     options: {
       extraitDeParfum: "اکستریت د پرفیوم",
       parfum: "پرفیوم",
@@ -654,6 +655,16 @@ function normalizeBanner(item) {
   if (typeof item === "string") return { type: "image", url: item };
   if (item && typeof item === "object" && item.url) return { type: item.type === "video" ? "video" : "image", url: item.url };
   return { type: "image", url: "" };
+}
+
+// بنر یک زیرشاخه‌ی خاص را برمی‌گرداند؛ اگر آن زیرشاخه بنر اختصاصی نداشته باشد، بنر کل دسته
+// (در صورت وجود) به‌جایش برگردانده می‌شود؛ اگر هیچ‌کدام نباشد null برمی‌گردد (بدون بنر).
+function resolveCategoryBanner(categoryBanners, category, subcategory) {
+  if (!categoryBanners || !category || category === "all") return null;
+  const subKey = subcategory && subcategory !== "all" ? `${category}:${subcategory}` : null;
+  if (subKey && categoryBanners[subKey]) return normalizeBanner(categoryBanners[subKey]);
+  if (categoryBanners[category]) return normalizeBanner(categoryBanners[category]);
+  return null;
 }
 
 function discountedPrice(product, globalDiscountPercent) {
@@ -1417,6 +1428,10 @@ export default function MaisonStore() {
   const [heroBanners, setHeroBanners] = useState([]); // لیست عکس‌های بنر متحرک صفحه‌ی اصلی
   const [bannerIndex, setBannerIndex] = useState(0);
   const [globalDiscountPercent, setGlobalDiscountPercent] = useState(0); // تخفیف همگانی روی همه‌ی محصولات (مثلاً برای بلک فرایدی)
+  // بنر اختصاصی هر صفحه‌ی دسته‌بندی/زیرشاخه (مثل بنر بالای صفحه‌ی هر دسته در سایت‌های معتبر فروش آنلاین):
+  // { [key]: { type:'image'|'video', url } } — کلید یا فقط نام دسته است (برای کل آن دسته) یا "دسته:زیرشاخه"
+  // برای بنر اختصاصی همان زیرشاخه؛ اگر زیرشاخه بنر نداشته باشد، بنر کل دسته (در صورت وجود) نمایش داده می‌شود.
+  const [categoryBanners, setCategoryBanners] = useState({});
 
   // احراز هویت و پرداخت — توکن در localStorage نگه داشته می‌شود تا با رفرش صفحه
   // یا برگشت به تب مرورگر، ورود کاربر حفظ شود و فقط با زدن دکمه‌ی خروج پاک شود.
@@ -1486,6 +1501,9 @@ export default function MaisonStore() {
       }
       if (data && Number.isFinite(Number(data.globalDiscountPercent))) {
         setGlobalDiscountPercent(Number(data.globalDiscountPercent));
+      }
+      if (data && data.categoryBanners && typeof data.categoryBanners === "object") {
+        setCategoryBanners(data.categoryBanners);
       }
     } catch (e) {
       // بعد از چند بار تلاش هم سرور در دسترس نبود، همان طرح پیش‌فرض نمایش داده می‌شود.
@@ -1677,6 +1695,17 @@ export default function MaisonStore() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "ذخیره‌ی تخفیف همگانی ناموفق بود");
     setGlobalDiscountPercent(percent);
+  }
+
+  async function updateCategoryBanners(banners) {
+    const res = await fetch(`${API_BASE_URL}/api/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ categoryBanners: banners }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "ذخیره‌ی بنر دسته‌بندی ناموفق بود");
+    setCategoryBanners(banners);
   }
 
   function addToCart(product, variantId) {
@@ -1916,11 +1945,20 @@ export default function MaisonStore() {
     setActiveFacets({});
   }
 
-  function toggleFacet(key, value) {
+  // multi=true (پیش‌فرض): چندانتخابی — مثل دسته بویایی/طبع/رایحه که می‌توانند هم‌زمان چند مقدار داشته باشند.
+  // multi=false: تک‌انتخابی — مثل «نوع» ادکلن (اکستریت/پرفیوم/ادوپرفیوم و ...) که یک محصول فقط یکی از آن‌هاست.
+  // در هر دو حالت، کلیک دوباره روی گزینه‌ی از قبل انتخاب‌شده، همان گزینه را از انتخاب خارج می‌کند
+  // (برای اصلاح انتخاب اشتباه کاربر).
+  function toggleFacet(key, value, multi = true) {
     setActiveFacets((prev) => {
       const current = prev[key] || [];
       const exists = current.includes(value);
-      const nextArr = exists ? current.filter((v) => v !== value) : [...current, value];
+      let nextArr;
+      if (multi) {
+        nextArr = exists ? current.filter((v) => v !== value) : [...current, value];
+      } else {
+        nextArr = exists ? [] : [value];
+      }
       const next = { ...prev };
       if (nextArr.length === 0) delete next[key];
       else next[key] = nextArr;
@@ -1944,7 +1982,9 @@ export default function MaisonStore() {
     setMenuNav({ category: c });
   }
 
-  // زدن روی یک زیرشاخه توی منو: اگر خودش انواع دارد (مثل صورت/چشم/لب/ابزار) وارد آن می‌شویم، وگرنه فیلتر و بسته می‌شود.
+  // زدن روی یک زیرشاخه توی منو: اگر خودش انواع دارد (مثل صورت/چشم/لب/ابزار یا گروه‌های فیلتر ادکلن)
+  // وارد آن می‌شویم، وگرنه فیلتر و بسته می‌شود. همه‌ی زیرشاخه‌های دارای types (شامل ادکلن) یکسان
+  // رفتار می‌کنند: وارد صفحه‌ی سوم منو می‌شویم تا کاربر گروه‌های فیلتر را همان‌جا انتخاب کند.
   function onMenuSubcategoryClick(category, subKey) {
     if (subKey === "all") {
       selectCategory(category);
@@ -1953,36 +1993,44 @@ export default function MaisonStore() {
       return;
     }
     const types = subcategoryTypes(category, subKey);
-    if (types && !(isGroupedTypes(types) && category === "perfume")) {
+    if (types) {
+      // با ورود به صفحه‌ی فیلترها (چه ادکلن چه هر زیرشاخه‌ی دیگر با انواع)، بلافاصله دسته/زیرشاخه
+      // را روی حالت واقعی سایت تنظیم می‌کنیم (و فیلترهای قبلی پاک می‌شوند) تا از همین‌جا فیلتر کردن
+      // زنده باشد؛ منو باز می‌ماند تا کاربر بتواند چند فیلتر را پشت‌سرهم انتخاب کند.
+      selectCategory(category);
+      selectSubcategory(subKey);
       setMenuNav({ category, subcategory: subKey });
       return;
     }
-    // فقط ادکلن با گروه‌های موازی: مستقیم به صفحه‌ی اختصاصی همان زیرشاخه می‌رویم
-    // تا مشتری از همان‌جا بتواند هم‌زمان از چند گروه (طبع، رایحه، نوع و ...) انتخاب کند.
     selectCategory(category);
     selectSubcategory(subKey);
     closeMenu();
     pushNav({ activeCategory: category, activeSubcategory: subKey, categoryPageOpen: true });
   }
 
-  // زدن روی یک نوع دقیق محصول (سطح سوم): فیلتر نهایی اعمال و منو بسته می‌شود.
-  // برای ادکلن (چندانتخابی، groupKey مشخص است) یک فیلتر به مجموعه‌ی فیلترهای فعال اضافه می‌شود؛
-  // برای بقیه‌ی شاخه‌ها (تک‌انتخابی) با هر بار انتخاب، صفحه‌ی قبلی جایگزین می‌شود.
-  function onMenuTypeClick(category, subKey, typeKey, groupKey) {
+  // زدن روی یک نوع دقیق محصول (سطح سوم): 
+  // برای ادکلن، ۴ گروه فیلتر (دسته بویایی/نوع/طبع/رایحه) اجزای مرتبط و ترکیب‌پذیر یک محصول‌اند —
+  // مثلاً یک ادکلن می‌تواند هم‌زمان از دسته‌ی بویایی «شیرین» و از رایحه «گلی» باشد. به همین دلیل
+  // با هر کلیک فقط فیلتر toggle می‌شود و منو بسته نمی‌شود، تا کاربر بتواند از چند گروه هم‌زمان
+  // انتخاب کند؛ نتیجه هم بلافاصله (چون activeFacets state زنده است) قابل مشاهده است.
+  // برای بقیه‌ی شاخه‌ها (تک‌انتخابی) با هر بار انتخاب، صفحه‌ی قبلی جایگزین و منو بسته می‌شود.
+  function onMenuTypeClick(category, subKey, typeKey, groupKey, groupMulti) {
+    // ادکلن: فقط toggle می‌کنیم و منو باز می‌ماند — دسته/زیرشاخه از قبل (هنگام ورود به این
+    // زیرمنو در onMenuSubcategoryClick) تنظیم شده، پس نیازی به بازنشانی یا بستن منو نیست.
+    if (category === "perfume" && groupKey && typeKey !== "all") {
+      toggleFacet(groupKey, typeKey, groupMulti !== false);
+      return;
+    }
     selectCategory(category);
     selectSubcategory(subKey);
     if (typeKey !== "all") {
-      if (category === "perfume" && groupKey) {
-        toggleFacet(groupKey, typeKey);
-      } else {
-        setActiveType(typeKey);
-      }
+      setActiveType(typeKey);
     }
     closeMenu();
     pushNav({
       activeCategory: category,
       activeSubcategory: subKey,
-      activeType: category === "perfume" ? "all" : (typeKey !== "all" ? typeKey : "all"),
+      activeType: typeKey !== "all" ? typeKey : "all",
       categoryPageOpen: true,
     });
   }
@@ -2274,24 +2322,49 @@ export default function MaisonStore() {
                 <p className="font-display" style={{ fontSize: 15, color: "#241E3D", margin: "4px 0" }}>
                   {subcategoryLabel(menuNav.category, menuNav.subcategory)}
                 </p>
-                <button onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, "all")} className="text-right py-1">
+                <button
+                  onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, "all")}
+                  className="text-right py-1"
+                >
                   همه‌ی {subcategoryLabel(menuNav.category, menuNav.subcategory)}
                 </button>
+                {menuNav.category === "perfume" && Object.keys(activeFacets).length > 0 && (
+                  <div className="flex items-center gap-2 mb-1">
+                    <button
+                      onClick={() => setActiveFacets({})}
+                      className="btn-ghost rounded-full px-3 py-1 text-xs"
+                      style={{ borderColor: "#FF3E8E", color: "#FF3E8E" }}
+                    >
+                      پاک کردن همه‌ی فیلترها ✕
+                    </button>
+                  </div>
+                )}
                 {isGroupedTypes(subcategoryTypes(menuNav.category, menuNav.subcategory)) ? (
                   subcategoryTypes(menuNav.category, menuNav.subcategory).map((g) => (
                     <div key={g.group} className="mb-2">
-                      <p className="text-gold" style={{ fontSize: 12, margin: "6px 0 4px" }}>{g.group}</p>
+                      <p className="text-gold" style={{ fontSize: 12, margin: "6px 0 4px" }}>
+                        {g.group}
+                        {menuNav.category === "perfume" && (g.multi === false ? " (فقط یک گزینه)" : " (می‌توانی چند مورد انتخاب کنی)")}
+                      </p>
                       <div className="flex flex-col gap-1.5">
-                        {Object.entries(g.options).map(([typeKey, label]) => (
-                          <button
-                            key={typeKey}
-                            onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey, g.key)}
-                            className="btn-ghost text-right rounded-lg px-3 py-1.5"
-                            style={{ fontSize: 13 }}
-                          >
-                            {label}
-                          </button>
-                        ))}
+                        {Object.entries(g.options).map(([typeKey, label]) => {
+                          const isSelected = menuNav.category === "perfume" && (activeFacets[g.key] || []).includes(typeKey);
+                          return (
+                            <button
+                              key={typeKey}
+                              onClick={() => onMenuTypeClick(menuNav.category, menuNav.subcategory, typeKey, g.key, g.multi)}
+                              className="btn-ghost text-right rounded-lg px-3 py-1.5 flex items-center justify-between"
+                              style={
+                                isSelected
+                                  ? { fontSize: 13, borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" }
+                                  : { fontSize: 13 }
+                              }
+                            >
+                              <span>{label}</span>
+                              {isSelected && <Check size={13} color="#2563EB" />}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   ))
@@ -2308,6 +2381,14 @@ export default function MaisonStore() {
                       </button>
                     ))}
                   </div>
+                )}
+                {menuNav.category === "perfume" && (
+                  <button
+                    onClick={() => { closeMenu(); pushNav({ activeCategory: menuNav.category, activeSubcategory: menuNav.subcategory, categoryPageOpen: true }); }}
+                    className="btn-gold rounded-full px-4 py-2 text-xs mt-2 self-start"
+                  >
+                    نمایش نتایج
+                  </button>
                 )}
               </>
             )}
@@ -2381,6 +2462,8 @@ export default function MaisonStore() {
           onUpdateHeroBanners={updateHeroBanners}
           globalDiscountPercent={globalDiscountPercent}
           onUpdateGlobalDiscount={updateGlobalDiscount}
+          categoryBanners={categoryBanners}
+          onUpdateCategoryBanners={updateCategoryBanners}
         />
       ) : view === "account" && user ? (
         <AccountPage
@@ -2525,34 +2608,96 @@ export default function MaisonStore() {
           </>
           )}
 
-          {categoryPageOpen && (
-            <div className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto pt-6 pb-2">
-              <button onClick={() => window.history.back()} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-3">
-                <span>›</span> بازگشت به فروشگاه
-              </button>
-              <h1 className="font-display" style={{ fontSize: 22 }}>
-                {searchTerm ? (
-                  <>نتایج جستجو برای «{searchTerm}»</>
-                ) : (
+          {categoryPageOpen && (() => {
+            const categoryBanner = !searchTerm ? resolveCategoryBanner(categoryBanners, activeCategory, activeSubcategory) : null;
+            // مسیر (breadcrumb) دسته/زیرشاخه/نوع — کوچک و کم‌رنگ، شبیه مسیر ریز بالای صفحات دسته‌بندی
+            // در سایت‌های معتبر فروش آنلاین؛ عمداً برجسته و پررنگ نیست تا توجه را از محصولات نگیرد.
+            const breadcrumbColor = categoryBanner ? "rgba(255,255,255,0.85)" : "#756E93";
+            const breadcrumbContent = (
+              <>
+                <span>{CATEGORY_LABEL[activeCategory]}</span>
+                {activeSubcategory !== "all" && (
                   <>
-                    <span style={{ color: "#7B5CF6" }}>{CATEGORY_LABEL[activeCategory]}</span>
-                    {activeSubcategory !== "all" && (
-                      <>
-                        <span className="text-muted"> / </span>
-                        <span style={{ color: "#FF3E8E" }}>{subcategoryLabel(activeCategory, activeSubcategory)}</span>
-                      </>
-                    )}
-                    {activeCategory !== "perfume" && activeType !== "all" && (
-                      <>
-                        <span className="text-muted"> / </span>
-                        <span style={{ color: "#00A9A1" }}>{typeLabel(activeCategory, activeSubcategory, activeType)}</span>
-                      </>
-                    )}
+                    <span style={{ opacity: 0.6 }}> / </span>
+                    <span>{subcategoryLabel(activeCategory, activeSubcategory)}</span>
                   </>
                 )}
-              </h1>
-            </div>
-          )}
+                {activeCategory !== "perfume" && activeType !== "all" && (
+                  <>
+                    <span style={{ opacity: 0.6 }}> / </span>
+                    <span>{typeLabel(activeCategory, activeSubcategory, activeType)}</span>
+                  </>
+                )}
+              </>
+            );
+            return (
+              <>
+                {categoryBanner && (
+                  <section className="relative w-full overflow-hidden" style={{ height: "clamp(200px, 34vh, 340px)" }}>
+                    {categoryBanner.type === "video" ? (
+                      <video
+                        key={categoryBanner.url}
+                        src={categoryBanner.url}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                      />
+                    ) : (
+                      <img
+                        src={categoryBanner.url}
+                        alt={CATEGORY_LABEL[activeCategory]}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                      />
+                    )}
+                    <div
+                      style={{
+                        position: "absolute", inset: 0,
+                        background: "linear-gradient(0deg, rgba(36,30,61,0.6), rgba(36,30,61,0) 55%)",
+                      }}
+                    />
+                    <button
+                      onClick={() => window.history.back()}
+                      className="rounded-full px-3 py-1.5 text-xs flex items-center gap-1"
+                      style={{
+                        position: "absolute", top: 14, insetInlineStart: 14,
+                        background: "rgba(255,255,255,0.9)", color: "#241E3D", border: "none",
+                      }}
+                    >
+                      <span>›</span> بازگشت به فروشگاه
+                    </button>
+                    <div style={{ position: "absolute", bottom: 18, insetInlineStart: 18, insetInlineEnd: 18 }}>
+                      {searchTerm ? (
+                        <h1 className="font-display" style={{ fontSize: 22, color: "#FFFFFF" }}>نتایج جستجو برای «{searchTerm}»</h1>
+                      ) : (
+                        <>
+                          <p style={{ fontSize: 11.5, color: breadcrumbColor, marginBottom: 4 }}>{breadcrumbContent}</p>
+                          <h1 className="font-display" style={{ fontSize: 24, color: "#FFFFFF" }}>
+                            {subcategoryLabel(activeCategory, activeSubcategory) || CATEGORY_LABEL[activeCategory]}
+                          </h1>
+                        </>
+                      )}
+                    </div>
+                  </section>
+                )}
+                <div className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto pt-6 pb-2">
+                  {!categoryBanner && (
+                    <>
+                      <button onClick={() => window.history.back()} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-3">
+                        <span>›</span> بازگشت به فروشگاه
+                      </button>
+                      {searchTerm ? (
+                        <h1 className="font-display" style={{ fontSize: 22 }}>نتایج جستجو برای «{searchTerm}»</h1>
+                      ) : (
+                        <p style={{ fontSize: 11.5, color: breadcrumbColor }}>{breadcrumbContent}</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            );
+          })()}
 
           {/* Catalog */}
           <section id="catalog" className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto pb-20">
@@ -2592,38 +2737,9 @@ export default function MaisonStore() {
               </div>
             )}
 
-            {activeTypes && activeCategory === "perfume" && (
+            {activeTypes && activeCategory !== "perfume" && (
               <div className="mb-4">
-                {isGroupedTypes(activeTypes) && activeCategory === "perfume" ? (
-                  <>
-                    {Object.keys(activeFacets).length > 0 && (
-                      <button
-                        onClick={() => setActiveFacets({})}
-                        className="btn-ghost rounded-full px-3 py-1 text-xs mb-2"
-                        style={{ borderColor: "#FF3E8E", color: "#FF3E8E" }}
-                      >
-                        پاک کردن همه‌ی فیلترها ✕
-                      </button>
-                    )}
-                    {activeTypes.map((g) => (
-                      <div key={g.key} className="mb-2">
-                        <p className="text-muted" style={{ fontSize: 11, marginBottom: 4 }}>{g.group}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {Object.entries(g.options).map(([key, label]) => (
-                            <button
-                              key={key}
-                              onClick={() => toggleFacet(g.key, key)}
-                              className="btn-ghost rounded-full px-3 py-1 text-xs"
-                              style={(activeFacets[g.key] || []).includes(key) ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                ) : isGroupedTypes(activeTypes) ? (
+                {isGroupedTypes(activeTypes) ? (
                   <>
                     {/* غیر از ادکلن: فقط یک نوع قابل انتخاب است — با انتخاب نوع جدید، صفحه‌ی قبلی جایگزین می‌شود نه اینکه کنارش اضافه شود */}
                     <div className="flex flex-wrap gap-2 mb-2">
@@ -2965,12 +3081,20 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
   );
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
   const [heroError, setHeroError] = useState("");
   const [heroSaved, setHeroSaved] = useState(false);
+  // بنر اختصاصی هر صفحه‌ی دسته‌بندی — نسخه‌ی محلی قابل‌ویرایش از categoryBanners، تا وقتی «ذخیره» زده شود ارسال نمی‌شود.
+  const [catBannerDrafts, setCatBannerDrafts] = useState(categoryBanners || {});
+  const [catBannerCategory, setCatBannerCategory] = useState(CATEGORY_ORDER[0]);
+  const [catBannerSubcategory, setCatBannerSubcategory] = useState("");
+  const [catBannerUploading, setCatBannerUploading] = useState(false);
+  const [catBannerSaving, setCatBannerSaving] = useState(false);
+  const [catBannerError, setCatBannerError] = useState("");
+  const [catBannerSaved, setCatBannerSaved] = useState(false);
   const [discountDraft, setDiscountDraft] = useState(String(globalDiscountPercent || ""));
   const [discountSaving, setDiscountSaving] = useState(false);
   const [discountError, setDiscountError] = useState("");
@@ -3082,6 +3206,62 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       setHeroError(err.message || "ذخیره‌سازی ناموفق بود");
     } finally {
       setHeroSaving(false);
+    }
+  }
+
+  // کلید تنظیم فعلی در پنل: یا فقط نام دسته (بنر برای کل دسته) یا "دسته:زیرشاخه" (بنر اختصاصی همان زیرشاخه)
+  const catBannerKey = catBannerSubcategory ? `${catBannerCategory}:${catBannerSubcategory}` : catBannerCategory;
+  const catBannerCurrent = catBannerDrafts[catBannerKey] ? normalizeBanner(catBannerDrafts[catBannerKey]) : null;
+
+  async function handleCatBannerFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    if (!isImage && !isVideo) {
+      setCatBannerError("فایل انتخاب‌شده باید عکس یا کلیپ ویدئویی باشد");
+      return;
+    }
+    setCatBannerError("");
+    setCatBannerSaved(false);
+    setCatBannerUploading(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const url = await onUploadImage(base64);
+      setCatBannerDrafts((prev) => ({ ...prev, [catBannerKey]: { type: isVideo ? "video" : "image", url } }));
+    } catch (err) {
+      setCatBannerError(err.message || "آپلود ناموفق بود");
+    } finally {
+      setCatBannerUploading(false);
+    }
+  }
+
+  function removeCatBanner() {
+    setCatBannerDrafts((prev) => {
+      const next = { ...prev };
+      delete next[catBannerKey];
+      return next;
+    });
+    setCatBannerSaved(false);
+  }
+
+  async function saveCatBanners() {
+    setCatBannerError("");
+    setCatBannerSaved(false);
+    setCatBannerSaving(true);
+    try {
+      await onUpdateCategoryBanners(catBannerDrafts);
+      setCatBannerSaved(true);
+    } catch (err) {
+      setCatBannerError(err.message || "ذخیره‌سازی ناموفق بود");
+    } finally {
+      setCatBannerSaving(false);
     }
   }
 
@@ -3274,6 +3454,91 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             اگه هیچ بنری اضافه نکنی، همون طرح گرافیکی پیش‌فرض سایت نمایش داده می‌شود.
           </p>
         )}
+      </div>
+
+      {/* بنر اختصاصی هر صفحه‌ی دسته‌بندی — مثل بنر بالای صفحه‌ی هر دسته در سایت‌های معتبر فروش آنلاین */}
+      <div className="bg-panel border border-hair rounded-lg p-4 mb-8">
+        <h3 className="font-display mb-1" style={{ fontSize: 15 }}>بنر صفحات دسته‌بندی</h3>
+        <p className="text-muted mb-3" style={{ fontSize: 11 }}>
+          برای هر دسته (و در صورت نیاز هر زیرشاخه) یک عکس یا کلیپ ویدئویی تبلیغاتی جداگانه تنظیم کن — دقیقاً بالای صفحه‌ی همان دسته نمایش داده می‌شود. اگر زیرشاخه‌ای بنر مخصوص نداشته باشد، بنر کل دسته (در صورت وجود) به‌جایش نمایش داده می‌شود؛ اگر هیچ‌کدام تنظیم نشود، آن صفحه بدون بنر (به همان شکل قبلی) نمایش داده می‌شود.
+        </p>
+
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          <select
+            value={catBannerCategory}
+            onChange={(e) => { setCatBannerCategory(e.target.value); setCatBannerSubcategory(""); setCatBannerSaved(false); }}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D" }}
+          >
+            {CATEGORY_ORDER.map((k) => (
+              <option key={k} value={k}>{CATEGORY_LABEL[k]}</option>
+            ))}
+          </select>
+          {CATEGORIES[catBannerCategory]?.subcategories && (
+            <select
+              value={catBannerSubcategory}
+              onChange={(e) => { setCatBannerSubcategory(e.target.value); setCatBannerSaved(false); }}
+              className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+              style={{ color: "#241E3D" }}
+            >
+              <option value="">کل دسته (بدون زیرشاخه‌ی خاص)</option>
+              {Object.keys(CATEGORIES[catBannerCategory].subcategories).map((k) => (
+                <option key={k} value={k}>{subcategoryLabel(catBannerCategory, k)}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {catBannerCurrent && (
+          <div className="flex items-center gap-2 bg-panel-2 border border-hair rounded p-2 mb-3">
+            {catBannerCurrent.type === "video" ? (
+              <video
+                src={catBannerCurrent.url}
+                muted
+                style={{ width: 80, height: 44, borderRadius: 4, objectFit: "cover", background: "#241E3D" }}
+                onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
+              />
+            ) : (
+              <img
+                src={catBannerCurrent.url}
+                alt="بنر فعلی"
+                style={{ width: 80, height: 44, borderRadius: 4, objectFit: "cover" }}
+                onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
+              />
+            )}
+            <span className="text-muted" style={{ fontSize: 11, flex: 1 }}>
+              بنر فعلیِ {catBannerSubcategory ? subcategoryLabel(catBannerCategory, catBannerSubcategory) : CATEGORY_LABEL[catBannerCategory]} ({catBannerCurrent.type === "video" ? "ویدیو" : "عکس"})
+            </span>
+            <button type="button" onClick={removeCatBanner} className="btn-ghost rounded px-2 py-1 text-xs" style={{ color: "#D6336C" }}>حذف</button>
+          </div>
+        )}
+        {!catBannerCurrent && (
+          <p className="text-muted mb-3" style={{ fontSize: 11 }}>
+            فعلاً برای {catBannerSubcategory ? subcategoryLabel(catBannerCategory, catBannerSubcategory) : CATEGORY_LABEL[catBannerCategory]} بنری تنظیم نشده.
+          </p>
+        )}
+
+        <div className="flex items-center gap-3 flex-wrap mb-3">
+          <label
+            className="btn-ghost rounded px-3 py-2 text-xs flex items-center gap-2"
+            style={{ cursor: catBannerUploading ? "default" : "pointer", opacity: catBannerUploading ? 0.6 : 1 }}
+          >
+            <Upload size={14} />
+            {catBannerUploading ? "در حال آپلود..." : catBannerCurrent ? "تغییر عکس/ویدیوی این بنر" : "افزودن عکس یا کلیپ ویدئویی از گالری"}
+            <input type="file" accept="image/*,video/*" onChange={handleCatBannerFile} disabled={catBannerUploading} style={{ display: "none" }} />
+          </label>
+        </div>
+
+        <button
+          onClick={saveCatBanners}
+          disabled={catBannerSaving}
+          type="button"
+          className="btn-gold rounded px-4 py-2 text-sm"
+        >
+          {catBannerSaving ? "در حال ذخیره..." : "ذخیره‌ی بنرهای دسته‌بندی"}
+        </button>
+        {catBannerSaved && <span className="text-gold" style={{ fontSize: 12, marginRight: 10 }}>ذخیره شد ✓</span>}
+        {catBannerError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 6 }}>{catBannerError}</p>}
       </div>
 
       <form onSubmit={submit} className="bg-panel border border-hair rounded-lg p-4 mb-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
