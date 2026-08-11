@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
 import {
   ShoppingBag, ShoppingCart, X, Plus, Minus, Trash2, LayoutDashboard,
   Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock, Upload, Search
@@ -666,9 +666,19 @@ function effectiveDiscountPercent(product, globalDiscountPercent) {
 // بنرهای صفحه‌ی اصلی ممکن است رشته (لینک عکس، فرمت قدیمی) یا شیء { type: 'image'|'video', url } باشند.
 // این تابع همیشه یک شیء استاندارد برمی‌گرداند تا کدهای بعدی مجبور نباشند دو حالت را جدا مدیریت کنند.
 function normalizeBanner(item) {
-  if (typeof item === "string") return { type: "image", url: item };
-  if (item && typeof item === "object" && item.url) return { type: item.type === "video" ? "video" : "image", url: item.url };
-  return { type: "image", url: "" };
+  const base = { type: "image", url: "", imageFit: "cover", imagePosX: 50, imagePosY: 50, imageZoom: 1 };
+  if (typeof item === "string") return { ...base, url: item };
+  if (item && typeof item === "object" && item.url) {
+    return {
+      type: item.type === "video" ? "video" : "image",
+      url: item.url,
+      imageFit: item.imageFit === "contain" ? "contain" : "cover",
+      imagePosX: Number.isFinite(Number(item.imagePosX)) ? Number(item.imagePosX) : 50,
+      imagePosY: Number.isFinite(Number(item.imagePosY)) ? Number(item.imagePosY) : 50,
+      imageZoom: Number.isFinite(Number(item.imageZoom)) && Number(item.imageZoom) > 0 ? Number(item.imageZoom) : 1,
+    };
+  }
+  return base;
 }
 
 // بنر یک زیرشاخه‌ی خاص را برمی‌گرداند؛ اگر آن زیرشاخه بنر اختصاصی نداشته باشد، بنر کل دسته
@@ -1418,6 +1428,19 @@ function AccountPage({ user, orders, loading, error, onRetry, onLogout, onBack }
 export default function MaisonStore() {
   const [view, setView] = useState("store"); // store | admin
   const [menuOpen, setMenuOpen] = useState(false);
+  // ارتفاع واقعیِ اندازه‌گیری‌شده‌ی نوار اطلاعیه‌ی متحرک بالای صفحه — به‌جای یک عدد حدسی ثابت،
+  // هدر شناور (لوگو و آیکون‌ها) دقیقاً همین مقدار را به‌عنوان فاصله از بالای صفحه استفاده می‌کند
+  // تا همیشه بدون هیچ فاصله‌ی خالی، درست زیر نوار اطلاعیه بچسبد.
+  const marqueeRef = useRef(null);
+  const [marqueeHeight, setMarqueeHeight] = useState(28);
+  useLayoutEffect(() => {
+    function measure() {
+      if (marqueeRef.current) setMarqueeHeight(marqueeRef.current.offsetHeight);
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
   // راهنمای انیمیشنی روی دکمه‌ی منوی همبرگری («دست در حال لمس دکمه») تا زمانی که مشتری اولین بار
   // منو را باز کند نمایش داده می‌شود؛ بعد از اولین بار باز کردن، برای همیشه (حتی در بازدیدهای بعدی
   // همین مرورگر) پنهان می‌شود تا مزاحم استفاده‌ی عادی از سایت نشود.
@@ -1583,6 +1606,16 @@ export default function MaisonStore() {
     window.history.pushState(snap, "");
   }
 
+  // نسخه‌ی جایگزین‌کننده‌ی pushNav: به‌جای افزودن یک ورودی جدید به تاریخچه، ورودی فعلی (که معمولاً
+  // همان ورودی «منو باز است» است) را با مقصد جدید جایگزین می‌کند. استفاده از این تابع هنگام ناوبری
+  // از داخل منوی همبرگری به یک صفحه‌ی جدید (انتخاب دسته/زیرشاخه/نوع/برند و ...) ضروری است؛ در غیر
+  // این صورت ورودیِ «منو باز» به‌عنوان یک قدم اضافه در تاریخچه باقی می‌ماند و با هر بار دکمه‌ی
+  // بازگشت گوشی، منو دوباره و به‌طور ناخواسته باز می‌شود.
+  function replaceNav(overrides) {
+    const snap = { ...HOME_STATE, ...overrides };
+    window.history.replaceState(snap, "");
+  }
+
   // برای رفتن به یک صفحه‌ی جدید که باید زمینه‌ی فعلی (دسته/زیرشاخه‌ی باز) را حفظ کند
   // (مثل باز کردن محصول یا منو روی همون صفحه‌ای که هستیم)
   function pushNavPreserve(overrides) {
@@ -1592,6 +1625,17 @@ export default function MaisonStore() {
       ...overrides,
     };
     window.history.pushState(snap, "");
+  }
+
+  // نسخه‌ی جایگزین‌کننده‌ی pushNavPreserve — برای وقتی فقط می‌خواهیم یک پوششِ روی صفحه (مثل منو)
+  // را ببندیم بدون تغییر واقعی صفحه؛ ورودی فعلی تاریخچه به‌جای اضافه شدنِ ورودی نو، فقط به‌روزرسانی می‌شود.
+  function replaceNavPreserve(overrides) {
+    const snap = {
+      view, categoryPageOpen, activeCategory, activeSubcategory, activeType, activeBrand,
+      searchTerm, openProductId, menuOpen,
+      ...overrides,
+    };
+    window.history.replaceState(snap, "");
   }
 
   useEffect(() => {
@@ -1884,7 +1928,7 @@ export default function MaisonStore() {
     setOpenProductId(null);
     setBrandMenuOpen(false);
     setMenuOpen(false);
-    pushNav({ activeBrand: brand });
+    replaceNav({ activeBrand: brand });
     setTimeout(() => document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" }), 50);
   }
 
@@ -2000,7 +2044,7 @@ export default function MaisonStore() {
     if (c === "all" || !CATEGORIES[c]?.subcategories) {
       selectCategory(c);
       closeMenu();
-      pushNav({ activeCategory: c, categoryPageOpen: c !== "all" });
+      replaceNav({ activeCategory: c, categoryPageOpen: c !== "all" });
       return;
     }
     setMenuNav({ category: c });
@@ -2013,7 +2057,7 @@ export default function MaisonStore() {
     if (subKey === "all") {
       selectCategory(category);
       closeMenu();
-      pushNav({ activeCategory: category, categoryPageOpen: category !== "all" });
+      replaceNav({ activeCategory: category, categoryPageOpen: category !== "all" });
       return;
     }
     const types = subcategoryTypes(category, subKey);
@@ -2029,7 +2073,7 @@ export default function MaisonStore() {
     selectCategory(category);
     selectSubcategory(subKey);
     closeMenu();
-    pushNav({ activeCategory: category, activeSubcategory: subKey, categoryPageOpen: true });
+    replaceNav({ activeCategory: category, activeSubcategory: subKey, categoryPageOpen: true });
   }
 
   // زدن روی یک نوع دقیق محصول (سطح سوم): 
@@ -2051,7 +2095,7 @@ export default function MaisonStore() {
       setActiveType(typeKey);
     }
     closeMenu();
-    pushNav({
+    replaceNav({
       activeCategory: category,
       activeSubcategory: subKey,
       activeType: typeKey !== "all" ? typeKey : "all",
@@ -2071,7 +2115,7 @@ export default function MaisonStore() {
       <style>{FONTS}</style>
 
       {/* Announcement marquee */}
-      <div className="sticky top-0 z-40 overflow-hidden" style={{ background: "linear-gradient(90deg, #FF3E8E, #7B5CF6, #00C2CB, #FF3E8E)" }}>
+      <div ref={marqueeRef} className="sticky top-0 z-40 overflow-hidden" style={{ background: "linear-gradient(90deg, #FF3E8E, #7B5CF6, #00C2CB, #FF3E8E)" }}>
         <div className="marquee-track py-1.5" style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700 }}>
           {Array.from({ length: 2 }).map((_, i) => (
             <span key={i} className="flex items-center gap-10 px-6">
@@ -2086,7 +2130,7 @@ export default function MaisonStore() {
 
       {/* نوار شناور دکمه‌ها و لوگو — لوگو سمت چپ صفحه، خوشه‌ی ۴ دکمه (سبد خرید، حساب کاربری،
           جستجو، منو) سمت راست صفحه. */}
-      <div className="fixed z-30 w-full" style={{ top: 28, pointerEvents: "none" }}>
+      <div className="fixed z-30 w-full" style={{ top: marqueeHeight, pointerEvents: "none" }}>
         <div
           className="flex items-center justify-between px-4 sm:px-8 lg:px-12 max-w-7xl mx-auto"
           style={{ height: "12mm" }}
@@ -2283,7 +2327,7 @@ export default function MaisonStore() {
                   همه محصولات
                 </button>
                 <button
-                  onClick={() => { setBrandMenuOpen(true); setMenuOpen(false); }}
+                  onClick={() => { setBrandMenuOpen(true); setMenuOpen(false); replaceNavPreserve({ menuOpen: false }); }}
                   className="text-right py-1 text-gold"
                 >
                   انتخاب بر اساس برند
@@ -2299,20 +2343,25 @@ export default function MaisonStore() {
                   </button>
                 ))}
                 {isAdmin && (
-                  <button onClick={() => { if (view === "admin") { closeMenu(); window.history.back(); } else { setView("admin"); closeMenu(); pushNav({ view: "admin" }); } }} className="text-right py-1 text-gold">
+                  <button onClick={() => { if (view === "admin") { closeMenu(); window.history.back(); } else { setView("admin"); closeMenu(); replaceNav({ view: "admin" }); } }} className="text-right py-1 text-gold">
                     {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
                   </button>
                 )}
                 {user && (
                   <button
-                    onClick={() => { requestAccountView(); closeMenu(); }}
+                    onClick={() => { closeMenu(); setView("account"); replaceNav({ view: "account" }); }}
                     className="text-right py-1 text-gold"
                   >
                     حساب کاربری من
                   </button>
                 )}
                 <button
-                  onClick={() => { user ? handleLogout() : setAuthOpen(true); closeMenu(); }}
+                  onClick={() => {
+                    const wasLoggedIn = !!user;
+                    if (wasLoggedIn) { handleLogout(); } else { setAuthOpen(true); }
+                    closeMenu();
+                    replaceNavPreserve({ menuOpen: false, ...(wasLoggedIn ? { view: "store" } : {}) });
+                  }}
                   className="text-right py-1"
                 >
                   {user ? `خروج (${user.email})` : "ورود / ثبت‌نام"}
@@ -2414,7 +2463,7 @@ export default function MaisonStore() {
                 )}
                 {menuNav.category === "perfume" && (
                   <button
-                    onClick={() => { closeMenu(); pushNav({ activeCategory: menuNav.category, activeSubcategory: menuNav.subcategory, categoryPageOpen: true }); }}
+                    onClick={() => { closeMenu(); replaceNav({ activeCategory: menuNav.category, activeSubcategory: menuNav.subcategory, categoryPageOpen: true }); }}
                     className="btn-gold pulse-glow rounded-full mt-3 self-start relative overflow-hidden flex items-center justify-center"
                     style={{ padding: "16px 40px", fontSize: 16, fontWeight: 800, letterSpacing: 0.3 }}
                   >
@@ -2680,13 +2729,13 @@ export default function MaisonStore() {
                         muted
                         loop
                         playsInline
-                        style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                        style={{ ...productImageStyle(categoryBanner), position: "absolute", inset: 0 }}
                       />
                     ) : (
                       <img
                         src={categoryBanner.url}
                         alt={destinationLabel}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                        style={{ ...productImageStyle(categoryBanner), position: "absolute", inset: 0 }}
                       />
                     )}
                     <div
@@ -3235,6 +3284,18 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     setCatBannerSaved(false);
   }
 
+  // تنظیمات دستی نمایش بنر فعلی (حالت جاگیری/بزرگ‌نمایی/موقعیت) را روی همان کلید انتخاب‌شده
+  // (catBannerKey) ذخیره می‌کند — دقیقاً همان مکانیزمی که برای عکس اصلی محصول استفاده می‌شود.
+  function updateCatBannerField(field, value) {
+    setCatBannerDrafts((prev) => {
+      const existingRaw = prev[catBannerKey];
+      if (!existingRaw) return prev;
+      const normalized = normalizeBanner(existingRaw);
+      return { ...prev, [catBannerKey]: { ...normalized, [field]: value } };
+    });
+    setCatBannerSaved(false);
+  }
+
   async function saveCatBanners() {
     setCatBannerError("");
     setCatBannerSaved(false);
@@ -3526,6 +3587,138 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             <input type="file" accept="image/*,video/*" onChange={handleCatBannerFile} disabled={catBannerUploading} style={{ display: "none" }} />
           </label>
         </div>
+
+        {catBannerCurrent && (
+          <div className="flex flex-col gap-1 mb-3">
+            <p className="text-muted" style={{ fontSize: 11 }}>
+              پیش‌نمایش دقیق — دقیقاً همین‌طوری بالای صفحه‌ی دسته‌بندی نمایش داده می‌شود:
+            </p>
+            <div
+              style={{
+                height: 168,
+                borderRadius: 10,
+                border: "1px solid rgba(123,92,246,0.3)",
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                maxWidth: 320,
+                background: "rgba(123,92,246,0.08)",
+              }}
+            >
+              {catBannerCurrent.type === "video" ? (
+                <video
+                  key={catBannerCurrent.url}
+                  src={catBannerCurrent.url}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  style={productImageStyle(catBannerCurrent)}
+                />
+              ) : (
+                <img
+                  src={catBannerCurrent.url}
+                  alt="پیش‌نمایش بنر"
+                  style={productImageStyle(catBannerCurrent)}
+                />
+              )}
+            </div>
+
+            {/* تنظیمات دستی نمایش بنر — همان مکانیزم تنظیمات دستی عکس اصلی محصول: حالت جاگیری، موقعیت و بزرگ‌نمایی */}
+            <div className="bg-panel-2 border border-hair rounded-lg p-3 mt-2 flex flex-col gap-3" style={{ maxWidth: 380 }}>
+              <div className="flex items-center justify-between">
+                <span className="text-muted" style={{ fontSize: 11 }}>تنظیمات دستی بنر</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateCatBannerField("imageFit", "cover");
+                    updateCatBannerField("imagePosX", 50);
+                    updateCatBannerField("imagePosY", 50);
+                    updateCatBannerField("imageZoom", 1);
+                  }}
+                  className="btn-ghost rounded px-2 py-1 text-xs"
+                >
+                  بازنشانی
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 60 }}>حالت نمایش</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => updateCatBannerField("imageFit", "contain")}
+                    className="btn-ghost rounded-full px-3 py-1 text-xs"
+                    style={catBannerCurrent.imageFit !== "cover" ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : undefined}
+                  >
+                    کامل (بدون برش)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateCatBannerField("imageFit", "cover")}
+                    className="btn-ghost rounded-full px-3 py-1 text-xs"
+                    style={catBannerCurrent.imageFit === "cover" ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : undefined}
+                  >
+                    پر کردن قاب
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 60 }}>بزرگ‌نمایی</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="2.5"
+                  step="0.05"
+                  value={catBannerCurrent.imageZoom}
+                  onChange={(e) => updateCatBannerField("imageZoom", Number(e.target.value))}
+                  style={{ flex: 1 }}
+                />
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 34, textAlign: "left" }} dir="ltr">
+                  {Number(catBannerCurrent.imageZoom).toFixed(2)}×
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 60 }}>موقعیت افقی</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={catBannerCurrent.imagePosX}
+                  onChange={(e) => updateCatBannerField("imagePosX", Number(e.target.value))}
+                  style={{ flex: 1 }}
+                />
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 34, textAlign: "left" }} dir="ltr">
+                  {catBannerCurrent.imagePosX}%
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 60 }}>موقعیت عمودی</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={catBannerCurrent.imagePosY}
+                  onChange={(e) => updateCatBannerField("imagePosY", Number(e.target.value))}
+                  style={{ flex: 1 }}
+                />
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 34, textAlign: "left" }} dir="ltr">
+                  {catBannerCurrent.imagePosY}%
+                </span>
+              </div>
+
+              <p className="text-muted" style={{ fontSize: 10.5, lineHeight: 1.7 }}>
+                «کامل» یعنی کل عکس/ویدیو بدون برش داخل بنر جا می‌شود (ممکن است حاشیه‌ی خالی داشته باشد). «پر کردن قاب» یعنی کل عرض بنر را پر می‌کند (ممکن است بخشی از لبه‌ها برش بخورد) — با بزرگ‌نمایی و موقعیت می‌توانی دقیقاً بخش دلخواه را داخل بنر قاب بگیری.
+              </p>
+            </div>
+          </div>
+        )}
 
         <button
           onClick={saveCatBanners}
