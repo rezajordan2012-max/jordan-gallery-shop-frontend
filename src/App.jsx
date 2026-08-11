@@ -1278,11 +1278,49 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
               <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.properties}</p>
             </div>
           )}
-          {product.ingredients && (
-            <div className="mb-7">
-              <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ترکیبات</h2>
-              <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.ingredients}</p>
-            </div>
+          {product.category === "perfume" ? (
+            (product.topNotes || product.middleNotes || product.baseNotes) && (
+              <div className="mb-7">
+                <h2 className="font-display" style={{ fontSize: 14, marginBottom: 10 }}>ترکیبات رایحه</h2>
+                {[
+                  { label: "Top Notes — نت‌های آغازین", value: product.topNotes },
+                  { label: "Middle Notes — نت‌های میانی", value: product.middleNotes },
+                  { label: "Base Notes — نت‌های پایه", value: product.baseNotes },
+                ].map(
+                  (accord) =>
+                    accord.value && (
+                      <div key={accord.label} className="mb-4">
+                        <p className="text-gold" style={{ fontSize: 12, marginBottom: 6 }}>{accord.label}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {accord.value
+                            .split(/[,،]/)
+                            .map((n) => n.trim())
+                            .filter(Boolean)
+                            .map((noteName, i) => (
+                              <span
+                                key={i}
+                                className="card-perfume"
+                                style={{
+                                  fontSize: 12.5, borderRadius: 999, padding: "6px 14px",
+                                  border: "1px solid rgba(123,92,246,0.25)", color: "#241E3D",
+                                }}
+                              >
+                                {noteName}
+                              </span>
+                            ))}
+                        </div>
+                      </div>
+                    )
+                )}
+              </div>
+            )
+          ) : (
+            product.ingredients && (
+              <div className="mb-7">
+                <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ترکیبات</h2>
+                <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.ingredients}</p>
+              </div>
+            )
           )}
 
           <button
@@ -3018,7 +3056,7 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", nameEn: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
+  return { id: null, name: "", nameEn: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
 function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
@@ -3322,6 +3360,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       facets: p.facets || {},
       properties: p.properties || "",
       ingredients: p.ingredients || "",
+      topNotes: p.topNotes || "",
+      middleNotes: p.middleNotes || "",
+      baseNotes: p.baseNotes || "",
       imageFit: p.imageFit === "cover" ? "cover" : "contain",
       imagePosX: Number.isFinite(Number(p.imagePosX)) ? Number(p.imagePosX) : 50,
       imagePosY: Number.isFinite(Number(p.imagePosY)) ? Number(p.imagePosY) : 50,
@@ -3905,18 +3946,56 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             style={{ color: "#241E3D", minHeight: 70 }}
           />
         </div>
-        <div className="sm:col-span-2 flex flex-col gap-1">
-          <label className="text-muted" style={{ fontSize: 12 }}>
-            ترکیبات (اختیاری — در صفحه‌ی اختصاصی محصول نمایش داده می‌شود)
-          </label>
-          <textarea
-            placeholder="مثال: آب، گلیسیرین، روغن آرگان، ویتامین E ..."
-            value={form.ingredients}
-            onChange={(e) => setForm({ ...form, ingredients: e.target.value })}
-            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-            style={{ color: "#241E3D", minHeight: 70 }}
-          />
-        </div>
+        {form.category === "perfume" ? (
+          <div className="sm:col-span-2 flex flex-col gap-3">
+            <label className="text-muted" style={{ fontSize: 12 }}>
+              ترکیبات رایحه (نت‌ها) — هر آکورد را با ویرگول جدا از هم بنویس، مثلاً: هل، زعفران، جوز هندی
+            </label>
+            <div className="flex flex-col gap-1">
+              <label className="text-gold" style={{ fontSize: 11.5 }}>Top Notes — نت‌های آغازین</label>
+              <input
+                placeholder="مثال: هل، عنبر، زعفران، جوز هندی"
+                value={form.topNotes}
+                onChange={(e) => setForm({ ...form, topNotes: e.target.value })}
+                className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+                style={{ color: "#241E3D" }}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-gold" style={{ fontSize: 11.5 }}>Middle Notes — نت‌های میانی</label>
+              <input
+                placeholder="مثال: چوب گایاک، میوه‌های قرمز، عثمانتوس، یاس، صندل"
+                value={form.middleNotes}
+                onChange={(e) => setForm({ ...form, middleNotes: e.target.value })}
+                className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+                style={{ color: "#241E3D" }}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-gold" style={{ fontSize: 11.5 }}>Base Notes — نت‌های پایه</label>
+              <input
+                placeholder="مثال: تنباکو، عنبر، نت‌های بالزامیک، وانیل، سدر"
+                value={form.baseNotes}
+                onChange={(e) => setForm({ ...form, baseNotes: e.target.value })}
+                className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+                style={{ color: "#241E3D" }}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="sm:col-span-2 flex flex-col gap-1">
+            <label className="text-muted" style={{ fontSize: 12 }}>
+              ترکیبات (اختیاری — در صفحه‌ی اختصاصی محصول نمایش داده می‌شود)
+            </label>
+            <textarea
+              placeholder="مثال: آب، گلیسیرین، روغن آرگان، ویتامین E ..."
+              value={form.ingredients}
+              onChange={(e) => setForm({ ...form, ingredients: e.target.value })}
+              className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+              style={{ color: "#241E3D", minHeight: 70 }}
+            />
+          </div>
+        )}
         <div className="sm:col-span-2 flex flex-col gap-1">
           <label className="text-muted" style={{ fontSize: 12 }}>
             تصویر اصلی محصول
