@@ -1186,7 +1186,10 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
               </span>
             )}
           </div>
-          <h1 className="font-display" style={{ fontSize: 24, marginBottom: 6 }}>{product.name}</h1>
+          <h1 className="font-display" style={{ fontSize: 24, marginBottom: product.nameEn ? 2 : 6 }}>{product.name}</h1>
+          {product.nameEn && (
+            <p className="text-muted" style={{ fontSize: 13, marginBottom: 10 }} dir="ltr">{product.nameEn}</p>
+          )}
           <p style={{ marginBottom: 16 }}>
             {discountPct > 0 && (
               <span className="text-muted" style={{ fontSize: 13, textDecoration: "line-through", marginInlineEnd: 8 }}>
@@ -2257,6 +2260,12 @@ export default function MaisonStore() {
                 <button onClick={() => onMenuCategoryClick("all")} className="text-right py-1">
                   همه محصولات
                 </button>
+                <button
+                  onClick={() => { setBrandMenuOpen(true); setMenuOpen(false); }}
+                  className="text-right py-1 text-gold"
+                >
+                  انتخاب بر اساس برند
+                </button>
                 {CATEGORY_ORDER.map((c) => (
                   <button
                     key={c}
@@ -2267,12 +2276,6 @@ export default function MaisonStore() {
                     {CATEGORIES[c]?.subcategories && <span className="text-gold">‹</span>}
                   </button>
                 ))}
-                <button
-                  onClick={() => { setBrandMenuOpen(true); setMenuOpen(false); }}
-                  className="text-right py-1 text-gold"
-                >
-                  انتخاب بر اساس برند
-                </button>
                 {isAdmin && (
                   <button onClick={() => { if (view === "admin") { closeMenu(); window.history.back(); } else { setView("admin"); closeMenu(); pushNav({ view: "admin" }); } }} className="text-right py-1 text-gold">
                     {view === "admin" ? "بازگشت به فروشگاه" : "پنل مدیریت"}
@@ -2390,11 +2393,13 @@ export default function MaisonStore() {
                 {menuNav.category === "perfume" && (
                   <button
                     onClick={() => { closeMenu(); pushNav({ activeCategory: menuNav.category, activeSubcategory: menuNav.subcategory, categoryPageOpen: true }); }}
-                    className="btn-gold pulse-glow rounded-full mt-3 self-start relative overflow-hidden"
-                    style={{ padding: "16px 40px", fontSize: 16, fontWeight: 800 }}
+                    className="btn-gold pulse-glow rounded-full mt-3 self-start relative overflow-hidden flex items-center justify-center"
+                    style={{ padding: "16px 40px", fontSize: 16, fontWeight: 800, letterSpacing: 0.3 }}
                   >
                     <span className="glint" />
-                    نمایش نتایج
+                    <span style={{ position: "relative", textShadow: "0 1px 0 rgba(255,255,255,0.35), 0 2px 5px rgba(123,92,246,0.55)" }}>
+                      نمایش نتایج
+                    </span>
                   </button>
                 )}
               </>
@@ -2595,7 +2600,7 @@ export default function MaisonStore() {
           )}
 
           {/* Category strip */}
-          <section className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
+          <section className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-y-4 gap-x-0 mb-12">
             {CATEGORY_ORDER.map((c) => (
               <button
                 key={c}
@@ -2942,7 +2947,7 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
+  return { id: null, name: "", nameEn: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
 function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
@@ -3228,6 +3233,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     setForm({
       ...p,
       price: String(p.price),
+      nameEn: p.nameEn || "",
       discountPercent: p.discountPercent ? String(p.discountPercent) : "",
       variantsList: (p.variants || []).map((v) => ({ ...v })),
       facets: p.facets || {},
@@ -3512,13 +3518,23 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       </div>
 
       <form onSubmit={submit} className="bg-panel border border-hair rounded-lg p-4 mb-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <input
-          placeholder="نام محصول"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
-          style={{ color: "#241E3D" }}
-        />
+        <div className="flex flex-col gap-2">
+          <input
+            placeholder="نام محصول (فارسی)"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D" }}
+          />
+          <input
+            placeholder="نام محصول به انگلیسی (اختیاری — اگر خالی بماند در صفحه‌ی محصول نمایش داده نمی‌شود)"
+            value={form.nameEn}
+            onChange={(e) => setForm({ ...form, nameEn: e.target.value })}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+            style={{ color: "#241E3D" }}
+            dir="ltr"
+          />
+        </div>
         <input
           placeholder="برند"
           value={form.brand}
