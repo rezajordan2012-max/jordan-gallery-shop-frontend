@@ -369,7 +369,7 @@ const PERFUME_FACETS = [
   },
   {
     key: "concentration",
-    group: "نوع",
+    group: "غلظت مواد معطر",
     multi: false, // یک ادکلن هم‌زمان نمی‌تواند از چند نوع باشد (مثلاً هم اکستریت هم ادوپرفیوم) — تک‌انتخابی
     options: {
       extraitDeParfum: "اکستریت د پرفیوم",
@@ -1218,19 +1218,12 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
         </div>
 
         <div className="lg:flex-1 lg:min-w-0">
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center mb-1">
             <span className="text-gold" style={{ fontSize: 12 }}>{product.brand}</span>
-            {subcategoryLabel(product.category, product.subcategory) && (
-              <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px" }}>
-                {subcategoryLabel(product.category, product.subcategory)}
-                {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
-                {product.facets && facetsSummary(product.category, product.subcategory, product.facets) && ` · ${facetsSummary(product.category, product.subcategory, product.facets)}`}
-              </span>
-            )}
           </div>
           <h1 className="font-display" style={{ fontSize: 24, marginBottom: product.nameEn ? 2 : 6 }}>{product.name}</h1>
           {product.nameEn && (
-            <p className="text-muted" style={{ fontSize: 13, marginBottom: 10 }} dir="ltr">{product.nameEn}</p>
+            <p className="text-muted" style={{ fontSize: 24, marginBottom: 10 }} dir="ltr">{product.nameEn}</p>
           )}
           <p style={{ marginBottom: 16 }}>
             {discountPct > 0 && (
@@ -1287,7 +1280,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
           {product.category === "perfume" && (() => {
             const specs = [
               { label: "برند", value: product.brand },
-              { label: "نوع", value: facetGroupValues(product.category, product.subcategory, "concentration", product.facets) },
+              { label: "غلظت مواد معطر", value: facetGroupValues(product.category, product.subcategory, "concentration", product.facets) },
               { label: "ماندگاری", value: PERFUME_LONGEVITY_OPTIONS[product.longevity] },
               { label: "پخش بو", value: PERFUME_SILLAGE_OPTIONS[product.sillage] },
               { label: "نوع رایحه", value: facetGroupValues(product.category, product.subcategory, "fragranceNote", product.facets) },
@@ -1340,9 +1333,14 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
                 ].map(
                   (accord) =>
                     accord.value && (
-                      <div key={accord.label} className="mb-4">
-                        <p className="text-gold" style={{ fontSize: 12, marginBottom: 6 }}>{accord.label}</p>
-                        <div className="flex flex-wrap gap-2">
+                      <div key={accord.label} className="mb-5">
+                        <p
+                          className="font-display"
+                          style={{ fontSize: 16, fontWeight: 800, color: "#FF3E8E", marginBottom: 10, textAlign: "center" }}
+                        >
+                          {accord.label}
+                        </p>
+                        <div className="flex flex-wrap justify-center gap-2">
                           {accord.value
                             .split(/[,،]/)
                             .map((n) => n.trim())
