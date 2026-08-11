@@ -407,6 +407,11 @@ const PERFUME_FACETS = [
   },
 ];
 
+// ماندگاری و پخش بوی ادکلن — هر کدام یک مقدار تک‌انتخابی از این سه گزینه (نه بخشی از PERFUME_FACETS
+// چون این‌ها فیلتر جستجو نیستند، بلکه فقط مشخصات نمایشی هر محصول‌اند)
+const PERFUME_LONGEVITY_OPTIONS = { low: "کم", medium: "متوسط", high: "زیاد" };
+const PERFUME_SILLAGE_OPTIONS = { low: "کم", medium: "متوسط", high: "زیاد" };
+
 const CATEGORIES = {
   perfume: {
     label: "ادکلن",
@@ -648,6 +653,19 @@ function facetsSummary(category, subcategory, facets) {
     })
     .filter(Boolean)
     .join(" · ");
+}
+
+// برچسب‌های انتخاب‌شده‌ی فقط یک گروه فیلتر خاص (مثلاً فقط «طبع») را برمی‌گرداند — برای نمایش
+// جداگانه‌ی هر مشخصه در صفحه‌ی اختصاصی محصول (برخلاف facetsSummary که همه‌ی گروه‌ها را با هم می‌چسباند)
+function facetGroupValues(category, subcategory, groupKey, facets) {
+  const types = subcategoryTypes(category, subcategory);
+  if (!types || !isGroupedTypes(types) || !facets) return "";
+  const group = types.find((g) => g.key === groupKey);
+  if (!group) return "";
+  const vals = facets[groupKey];
+  if (!vals) return "";
+  const arr = Array.isArray(vals) ? vals : [vals];
+  return arr.map((v) => group.options[v]).filter(Boolean).join("، ");
 }
 
 function fmtPrice(n) {
@@ -1265,6 +1283,39 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
               </div>
             </div>
           )}
+
+          {product.category === "perfume" && (() => {
+            const specs = [
+              { label: "برند", value: product.brand },
+              { label: "نوع", value: facetGroupValues(product.category, product.subcategory, "concentration", product.facets) },
+              { label: "ماندگاری", value: PERFUME_LONGEVITY_OPTIONS[product.longevity] },
+              { label: "پخش بو", value: PERFUME_SILLAGE_OPTIONS[product.sillage] },
+              { label: "نوع رایحه", value: facetGroupValues(product.category, product.subcategory, "fragranceNote", product.facets) },
+              { label: "طبع", value: facetGroupValues(product.category, product.subcategory, "temperament", product.facets) },
+              { label: "دسته بویایی", value: facetGroupValues(product.category, product.subcategory, "scentFamily", product.facets) },
+              { label: "عطار", value: product.perfumer },
+              { label: "کشور سازنده", value: product.countryOfOrigin },
+              { label: "سال ساخت", value: product.yearMade },
+            ].filter((s) => s.value);
+            if (specs.length === 0) return null;
+            return (
+              <div className="mb-6">
+                <h2 className="font-display" style={{ fontSize: 14, marginBottom: 8 }}>مشخصات</h2>
+                <div className="rounded-xl border border-hair overflow-hidden" style={{ background: "rgba(123,92,246,0.05)" }}>
+                  {specs.map((s, i) => (
+                    <div
+                      key={s.label}
+                      className="flex items-center justify-between px-4 py-2.5"
+                      style={i < specs.length - 1 ? { borderBottom: "1px solid rgba(123,92,246,0.14)" } : undefined}
+                    >
+                      <span className="text-muted" style={{ fontSize: 12.5 }}>{s.label}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#241E3D" }}>{s.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {product.description && (
             <div className="mb-5">
@@ -3056,7 +3107,7 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", nameEn: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
+  return { id: null, name: "", nameEn: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", longevity: "", sillage: "", perfumer: "", countryOfOrigin: "", yearMade: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
 function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
@@ -3363,6 +3414,11 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       topNotes: p.topNotes || "",
       middleNotes: p.middleNotes || "",
       baseNotes: p.baseNotes || "",
+      longevity: p.longevity || "",
+      sillage: p.sillage || "",
+      perfumer: p.perfumer || "",
+      countryOfOrigin: p.countryOfOrigin || "",
+      yearMade: p.yearMade || "",
       imageFit: p.imageFit === "cover" ? "cover" : "contain",
       imagePosX: Number.isFinite(Number(p.imagePosX)) ? Number(p.imagePosX) : 50,
       imagePosY: Number.isFinite(Number(p.imagePosY)) ? Number(p.imagePosY) : 50,
@@ -3994,6 +4050,70 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
               style={{ color: "#241E3D", minHeight: 70 }}
             />
+          </div>
+        )}
+        {form.category === "perfume" && (
+          <div className="sm:col-span-2 flex flex-col gap-3 bg-panel-2 border border-hair rounded-lg p-3">
+            <label className="text-muted" style={{ fontSize: 12 }}>مشخصات ادکلن</label>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-gold" style={{ fontSize: 11.5 }}>ماندگاری</label>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(PERFUME_LONGEVITY_OPTIONS).map(([k, v]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setForm({ ...form, longevity: form.longevity === k ? "" : k })}
+                    className="btn-ghost rounded-full px-3 py-1 text-xs"
+                    style={form.longevity === k ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-gold" style={{ fontSize: 11.5 }}>پخش بو</label>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(PERFUME_SILLAGE_OPTIONS).map(([k, v]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setForm({ ...form, sillage: form.sillage === k ? "" : k })}
+                    className="btn-ghost rounded-full px-3 py-1 text-xs"
+                    style={form.sillage === k ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input
+                placeholder="عطار (اختیاری)"
+                value={form.perfumer}
+                onChange={(e) => setForm({ ...form, perfumer: e.target.value })}
+                className="bg-panel border border-hair rounded px-3 py-2 text-sm"
+                style={{ color: "#241E3D" }}
+              />
+              <input
+                placeholder="کشور سازنده (اختیاری)"
+                value={form.countryOfOrigin}
+                onChange={(e) => setForm({ ...form, countryOfOrigin: e.target.value })}
+                className="bg-panel border border-hair rounded px-3 py-2 text-sm"
+                style={{ color: "#241E3D" }}
+              />
+              <input
+                placeholder="سال ساخت (اختیاری)"
+                value={form.yearMade}
+                onChange={(e) => setForm({ ...form, yearMade: e.target.value })}
+                className="bg-panel border border-hair rounded px-3 py-2 text-sm"
+                style={{ color: "#241E3D" }}
+                dir="ltr"
+              />
+            </div>
           </div>
         )}
         <div className="sm:col-span-2 flex flex-col gap-1">
