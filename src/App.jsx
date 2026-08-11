@@ -264,6 +264,20 @@ const FONTS = `
   }
   .pulse-glow { animation: pulseGlow 2.2s ease-in-out infinite; }
 
+  /* موج نور طلایی روی آیکون‌های هدر (سبد خرید، حساب کاربری، جستجو، منو) — هر چند ثانیه یک‌بار
+     رنگ آیکون از سفید به طلایی (هم‌رنگ لوگو) و برعکس تغییر می‌کند تا روی بنرها و پس‌زمینه‌های
+     روشن هم گم نشوند. با تأخیرهای متفاوت روی هر آیکون، حس یک موج رد شونده از میان آن‌ها ایجاد می‌شود. */
+  @keyframes iconGoldWave {
+    0%, 80%, 100% { color: #FFFFFF; filter: none; transform: scale(1); }
+    87% { color: #FFD23F; filter: drop-shadow(0 0 7px rgba(255,210,63,0.95)); transform: scale(1.14); }
+    94% { color: #FFFFFF; filter: none; transform: scale(1); }
+  }
+  .icon-gold-wave {
+    display: inline-flex;
+    color: #FFFFFF;
+    animation: iconGoldWave 7s ease-in-out infinite;
+  }
+
   /* تاج صفحه‌ی اصلی: فقط لوگوی ویدیویی، وسط صفحه */
 
   @keyframes drawerSlideIn {
@@ -339,7 +353,7 @@ const FONTS = `
   @media (prefers-reduced-motion: reduce) {
     .glint, .float-slow, .fade-in-up { animation: none; }
     .product-card, .product-card img, .category-card { transition: none; }
-    .marquee-track, .cart-bump, .skeleton, .sparkle, .pulse-glow { animation: none; }
+    .marquee-track, .cart-bump, .skeleton, .sparkle, .pulse-glow, .icon-gold-wave { animation: none; }
     .mist-puff, .wave-flow, .ripple-ring { animation: none; }
     .ray-burst, .hero-halo { animation: none; }
   }
@@ -2094,7 +2108,9 @@ export default function MaisonStore() {
               aria-label="سبد خرید"
               style={{ width: 36, height: 36, order: 4 }}
             >
-              <ShoppingCart size={20} color="#FFFFFF" />
+              <span className="icon-gold-wave" style={{ animationDelay: "5.25s" }}>
+                <ShoppingCart size={20} />
+              </span>
               {cartCount > 0 && (
                 <span
                   className="absolute -top-1.5 -left-1.5 bg-gold rounded-full text-xs flex items-center justify-center"
@@ -2114,7 +2130,9 @@ export default function MaisonStore() {
               className="flex items-center justify-center"
               style={{ width: 36, height: 36, order: 3 }}
             >
-              <User size={19} color="#FFFFFF" />
+              <span className="icon-gold-wave" style={{ animationDelay: "3.5s" }}>
+                <User size={19} />
+              </span>
             </button>
 
             <button
@@ -2123,7 +2141,9 @@ export default function MaisonStore() {
               className="flex items-center justify-center"
               style={{ width: 36, height: 36, order: 2 }}
             >
-              <Search size={19} color="#FFFFFF" />
+              <span className="icon-gold-wave" style={{ animationDelay: "1.75s" }}>
+                <Search size={19} />
+              </span>
             </button>
 
             <div style={{ position: "relative", order: 1 }}>
@@ -2145,7 +2165,9 @@ export default function MaisonStore() {
                   position: "relative", zIndex: 2, width: 36, height: 36,
                 }}
               >
-                <Menu size={20} color="#FFFFFF" />
+                <span className="icon-gold-wave">
+                  <Menu size={20} />
+                </span>
               </button>
               {!menuOpen && !menuHintSeen && (
                 <>
