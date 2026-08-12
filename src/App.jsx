@@ -268,13 +268,13 @@ const FONTS = `
      رنگ آیکون از سفید به طلایی (هم‌رنگ لوگو) و برعکس تغییر می‌کند تا روی بنرها و پس‌زمینه‌های
      روشن هم گم نشوند. با تأخیرهای متفاوت روی هر آیکون، حس یک موج رد شونده از میان آن‌ها ایجاد می‌شود. */
   @keyframes iconGoldWave {
-    0%, 80%, 100% { color: #FFFFFF; filter: none; transform: scale(1); }
-    87% { color: #FFD23F; filter: drop-shadow(0 0 7px rgba(255,210,63,0.95)); transform: scale(1.14); }
-    94% { color: #FFFFFF; filter: none; transform: scale(1); }
+    0%, 80%, 100% { color: #FFD23F; filter: none; transform: scale(1); }
+    87% { color: #FFF3C4; filter: drop-shadow(0 0 8px rgba(255,210,63,0.95)); transform: scale(1.14); }
+    94% { color: #FFD23F; filter: none; transform: scale(1); }
   }
   .icon-gold-wave {
     display: inline-flex;
-    color: #FFFFFF;
+    color: #FFD23F;
     animation: iconGoldWave 7s ease-in-out infinite;
   }
 
@@ -403,6 +403,8 @@ const PERFUME_FACETS = [
       aquatic: "آکوآتیک",
       resinous: "رزینی",
       scentStick: "سنستیک",
+      smoky: "دودی",
+      earthy: "خاکی",
     },
   },
 ];
@@ -1277,100 +1279,129 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
             </div>
           )}
 
-          {product.category === "perfume" && (() => {
-            const specs = [
-              { label: "برند", value: product.brand },
-              { label: "غلظت مواد معطر", value: facetGroupValues(product.category, product.subcategory, "concentration", product.facets) },
-              { label: "ماندگاری", value: PERFUME_LONGEVITY_OPTIONS[product.longevity] },
-              { label: "پخش بو", value: PERFUME_SILLAGE_OPTIONS[product.sillage] },
-              { label: "نوع رایحه", value: facetGroupValues(product.category, product.subcategory, "fragranceNote", product.facets) },
-              { label: "طبع", value: facetGroupValues(product.category, product.subcategory, "temperament", product.facets) },
-              { label: "دسته بویایی", value: facetGroupValues(product.category, product.subcategory, "scentFamily", product.facets) },
-              { label: "عطار", value: product.perfumer },
-              { label: "کشور سازنده", value: product.countryOfOrigin },
-              { label: "سال ساخت", value: product.yearMade },
-            ].filter((s) => s.value);
-            if (specs.length === 0) return null;
-            return (
-              <div className="mb-6">
-                <h2 className="font-display" style={{ fontSize: 14, marginBottom: 8 }}>مشخصات</h2>
-                <div className="rounded-xl border border-hair overflow-hidden" style={{ background: "rgba(123,92,246,0.05)" }}>
-                  {specs.map((s, i) => (
-                    <div
-                      key={s.label}
-                      className="flex items-center justify-between px-4 py-2.5"
-                      style={i < specs.length - 1 ? { borderBottom: "1px solid rgba(123,92,246,0.14)" } : undefined}
-                    >
-                      <span className="text-muted" style={{ fontSize: 12.5 }}>{s.label}</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#241E3D" }}>{s.value}</span>
+          {(() => {
+            const specsBlock =
+              product.category === "perfume" &&
+              (() => {
+                const specs = [
+                  { label: "برند", value: product.brand },
+                  { label: "غلظت مواد معطر", value: facetGroupValues(product.category, product.subcategory, "concentration", product.facets) },
+                  { label: "ماندگاری", value: PERFUME_LONGEVITY_OPTIONS[product.longevity] },
+                  { label: "پخش بو", value: PERFUME_SILLAGE_OPTIONS[product.sillage] },
+                  { label: "نوع رایحه", value: facetGroupValues(product.category, product.subcategory, "fragranceNote", product.facets) },
+                  { label: "طبع", value: facetGroupValues(product.category, product.subcategory, "temperament", product.facets) },
+                  { label: "دسته بویایی", value: facetGroupValues(product.category, product.subcategory, "scentFamily", product.facets) },
+                  { label: "عطار", value: product.perfumer },
+                  { label: "کشور سازنده", value: product.countryOfOrigin },
+                  { label: "سال ساخت", value: product.yearMade },
+                  { label: "امتیاز کاربران فرگرانتیکا", value: product.fragranticaRating ? `${product.fragranticaRating} از ۱۰` : "" },
+                ].filter((s) => s.value);
+                if (specs.length === 0) return null;
+                return (
+                  <div className="mb-6">
+                    <h2 className="font-display" style={{ fontSize: 14, marginBottom: 8 }}>مشخصات</h2>
+                    <div className="rounded-xl border border-hair overflow-hidden" style={{ background: "rgba(123,92,246,0.05)" }}>
+                      {specs.map((s, i) => (
+                        <div
+                          key={s.label}
+                          className="flex items-center justify-between px-4 py-2.5"
+                          style={i < specs.length - 1 ? { borderBottom: "1px solid rgba(123,92,246,0.14)" } : undefined}
+                        >
+                          <span className="text-muted" style={{ fontSize: 12.5 }}>{s.label}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#241E3D" }}>{s.value}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                );
+              })();
+
+            const descriptionBlock = product.description && (
+              <div className="mb-5">
+                <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>معرفی محصول</h2>
+                <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.description}</p>
               </div>
             );
-          })()}
 
-          {product.description && (
-            <div className="mb-5">
-              <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>معرفی محصول</h2>
-              <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.description}</p>
-            </div>
-          )}
-          {product.properties && (
-            <div className="mb-5">
-              <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ویژگی‌ها و خواص</h2>
-              <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.properties}</p>
-            </div>
-          )}
-          {product.category === "perfume" ? (
-            (product.topNotes || product.middleNotes || product.baseNotes) && (
-              <div className="mb-7">
-                <h2 className="font-display" style={{ fontSize: 14, marginBottom: 10 }}>ترکیبات رایحه</h2>
-                {[
-                  { label: "Top Notes — نت‌های آغازین", value: product.topNotes },
-                  { label: "Middle Notes — نت‌های میانی", value: product.middleNotes },
-                  { label: "Base Notes — نت‌های پایه", value: product.baseNotes },
-                ].map(
-                  (accord) =>
-                    accord.value && (
-                      <div key={accord.label} className="mb-5">
-                        <p
-                          className="font-display"
-                          style={{ fontSize: 16, fontWeight: 800, color: "#FF3E8E", marginBottom: 10, textAlign: "center" }}
-                        >
-                          {accord.label}
-                        </p>
-                        <div className="flex flex-wrap justify-center gap-2">
-                          {accord.value
-                            .split(/[,،]/)
-                            .map((n) => n.trim())
-                            .filter(Boolean)
-                            .map((noteName, i) => (
-                              <span
-                                key={i}
-                                className="card-perfume"
-                                style={{
-                                  fontSize: 12.5, borderRadius: 999, padding: "6px 14px",
-                                  border: "1px solid rgba(123,92,246,0.25)", color: "#241E3D",
-                                }}
-                              >
-                                {noteName}
-                              </span>
-                            ))}
-                        </div>
-                      </div>
-                    )
-                )}
+            const propertiesBlock = product.properties && (
+              <div className="mb-5">
+                <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ویژگی‌ها و خواص</h2>
+                <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.properties}</p>
               </div>
-            )
-          ) : (
-            product.ingredients && (
-              <div className="mb-7">
-                <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ترکیبات</h2>
-                <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.ingredients}</p>
-              </div>
-            )
-          )}
+            );
+
+            const notesOrIngredientsBlock =
+              product.category === "perfume" ? (
+                (product.topNotes || product.middleNotes || product.baseNotes) && (
+                  <div className="mb-7">
+                    <h2 className="font-display" style={{ fontSize: 14, marginBottom: 10 }}>ترکیبات رایحه</h2>
+                    {[
+                      { label: "Top Notes — نت‌های آغازین", value: product.topNotes },
+                      { label: "Middle Notes — نت‌های میانی", value: product.middleNotes },
+                      { label: "Base Notes — نت‌های پایه", value: product.baseNotes },
+                    ].map(
+                      (accord) =>
+                        accord.value && (
+                          <div key={accord.label} className="mb-5">
+                            <p
+                              className="font-display"
+                              style={{ fontSize: 16, fontWeight: 800, color: "#FF3E8E", marginBottom: 10, textAlign: "center" }}
+                            >
+                              {accord.label}
+                            </p>
+                            <div className="flex flex-wrap justify-center gap-2">
+                              {accord.value
+                                .split(/[,،]/)
+                                .map((n) => n.trim())
+                                .filter(Boolean)
+                                .map((noteName, i) => (
+                                  <span
+                                    key={i}
+                                    className="card-perfume"
+                                    style={{
+                                      fontSize: 12.5, borderRadius: 999, padding: "6px 14px",
+                                      border: "1px solid rgba(123,92,246,0.25)", color: "#241E3D",
+                                    }}
+                                  >
+                                    {noteName}
+                                  </span>
+                                ))}
+                            </div>
+                          </div>
+                        )
+                    )}
+                  </div>
+                )
+              ) : (
+                product.ingredients && (
+                  <div className="mb-7">
+                    <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ترکیبات</h2>
+                    <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.ingredients}</p>
+                  </div>
+                )
+              );
+
+            // ترتیب درخواستی برای صفحات ادکلن: ترکیبات رایحه ← ویژگی‌ها و خواص ← مشخصات ← معرفی محصول
+            // (ترکیبات رایحه و مشخصات جای هم را عوض کردند، و معرفی محصول درست زیر مشخصات آمده)
+            if (product.category === "perfume") {
+              return (
+                <>
+                  {notesOrIngredientsBlock}
+                  {propertiesBlock}
+                  {specsBlock}
+                  {descriptionBlock}
+                </>
+              );
+            }
+            // برای بقیه‌ی دسته‌ها ترتیب قبلی دست‌نخورده باقی می‌ماند
+            return (
+              <>
+                {descriptionBlock}
+                {propertiesBlock}
+                {notesOrIngredientsBlock}
+              </>
+            );
+          })()}
 
           <button
             onClick={() => onAdd(product, variantId || undefined)}
@@ -3105,7 +3136,7 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", nameEn: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", longevity: "", sillage: "", perfumer: "", countryOfOrigin: "", yearMade: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
+  return { id: null, name: "", nameEn: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", longevity: "", sillage: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
 function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
@@ -3417,6 +3448,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       perfumer: p.perfumer || "",
       countryOfOrigin: p.countryOfOrigin || "",
       yearMade: p.yearMade || "",
+      fragranticaRating: p.fragranticaRating || "",
       imageFit: p.imageFit === "cover" ? "cover" : "contain",
       imagePosX: Number.isFinite(Number(p.imagePosX)) ? Number(p.imagePosX) : 50,
       imagePosY: Number.isFinite(Number(p.imagePosY)) ? Number(p.imagePosY) : 50,
@@ -4088,7 +4120,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <input
                 placeholder="عطار (اختیاری)"
                 value={form.perfumer}
@@ -4111,6 +4143,27 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 style={{ color: "#241E3D" }}
                 dir="ltr"
               />
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  placeholder="امتیاز فرگرانتیکا (مثلاً 6.3)"
+                  value={form.fragranticaRating}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const n = Number(v);
+                    if (v === "" || (Number.isFinite(n) && n >= 0 && n <= 10)) {
+                      setForm({ ...form, fragranticaRating: v });
+                    }
+                  }}
+                  className="bg-panel border border-hair rounded px-3 py-2 text-sm flex-1"
+                  style={{ color: "#241E3D" }}
+                  dir="ltr"
+                />
+                <span className="text-muted" style={{ fontSize: 11 }}>از ۱۰</span>
+              </div>
             </div>
           </div>
         )}
