@@ -364,8 +364,29 @@ const FONTS = `
 const PERFUME_FACETS = [
   {
     key: "scentFamily",
-    group: "دسته بویایی",
-    options: { bitter: "تلخ", sharp: "تند", sweet: "شیرین", sour: "ترش" },
+    group: "حس رایحه",
+    options: {
+      sweet: "شیرین",
+      bitter: "تلخ",
+      sour: "ترش",
+      sharp: "تند",
+      fresh: "تازه",
+      clean: "تمیز",
+      soapy: "صابونی",
+      powdery: "پودری",
+      creamy: "کرمی",
+      soft: "نرم",
+      dry: "خشک",
+      smoky: "دودی",
+      earthy: "خاکی",
+      resinous: "رزینی",
+      herbal: "گیاهی",
+      leathery: "چرمی",
+      musky: "مُشکی",
+      aquatic: "دریایی",
+      mossy: "خزه‌ای",
+      incense: "بخوری",
+    },
   },
   {
     key: "concentration",
@@ -388,23 +409,22 @@ const PERFUME_FACETS = [
   },
   {
     key: "fragranceNote",
-    group: "رایحه",
+    group: "گروه بویایی",
     options: {
-      woody: "چوبی",
       floral: "گلی",
-      citrusy1: "مرکباتی",
-      citrusy2: "سیتروسی",
-      aldehydic: "آلدهیدی",
-      tobacco: "تنباکویی",
-      oud: "عودی",
-      vanilla: "وانیلی",
+      woody: "چوبی",
+      amber: "آمبری",
+      citrusy: "مرکباتی",
+      fruity: "میوه‌ای",
+      aromatic: "آروماتیک",
       spicy: "ادویه‌ای",
-      greenMossy: "سبز و خزه‌ای",
-      aquatic: "آکوآتیک",
-      resinous: "رزینی",
-      scentStick: "سنستیک",
-      smoky: "دودی",
-      earthy: "خاکی",
+      gourmand: "گورماند",
+      green: "سبز",
+      aquatic: "دریایی",
+      leather: "چرمی",
+      chypre: "شیپر(شیپغ)",
+      fougere: "فوژه",
+      tobacco: "تنباکویی",
     },
   },
 ];
@@ -1193,20 +1213,15 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
     return (
       <section className="px-4 sm:px-8 max-w-3xl mx-auto py-16 text-center">
         <p className="text-muted mb-4">این محصول یافت نشد یا حذف شده است.</p>
-        <button onClick={onBack} className="btn-ghost rounded-full px-4 py-2 text-sm">بازگشت</button>
       </section>
     );
   }
 
   return (
     <section className="px-4 sm:px-8 lg:px-12 max-w-3xl lg:max-w-5xl mx-auto py-6 pb-24">
-      <button onClick={onBack} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-4">
-        <span>›</span> بازگشت
-      </button>
-
       <div className="lg:flex lg:items-start lg:gap-10">
         <div
-          className={`${CATEGORY_CARD_CLASS[product.category]} rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-80 lg:h-[440px] lg:w-[380px] lg:flex-shrink-0`}
+          className={`${CATEGORY_CARD_CLASS[product.category]} rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-96 lg:h-[520px] lg:w-[420px] lg:flex-shrink-0`}
         >
           {displayImage ? (
             <img
@@ -1288,13 +1303,21 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
                   { label: "غلظت مواد معطر", value: facetGroupValues(product.category, product.subcategory, "concentration", product.facets) },
                   { label: "ماندگاری", value: PERFUME_LONGEVITY_OPTIONS[product.longevity] },
                   { label: "پخش بو", value: PERFUME_SILLAGE_OPTIONS[product.sillage] },
-                  { label: "نوع رایحه", value: facetGroupValues(product.category, product.subcategory, "fragranceNote", product.facets) },
+                  { label: "گروه بویایی", value: facetGroupValues(product.category, product.subcategory, "fragranceNote", product.facets) },
                   { label: "طبع", value: facetGroupValues(product.category, product.subcategory, "temperament", product.facets) },
-                  { label: "دسته بویایی", value: facetGroupValues(product.category, product.subcategory, "scentFamily", product.facets) },
+                  { label: "حس رایحه", value: facetGroupValues(product.category, product.subcategory, "scentFamily", product.facets) },
                   { label: "عطار", value: product.perfumer },
                   { label: "کشور سازنده", value: product.countryOfOrigin },
                   { label: "سال ساخت", value: product.yearMade },
-                  { label: "امتیاز کاربران فرگرانتیکا", value: product.fragranticaRating ? `${product.fragranticaRating} از ۱۰` : "" },
+                  {
+                    label: "امتیاز کاربران فرگرانتیکا",
+                    value: product.fragranticaRating ? (
+                      <>
+                        <span style={{ color: "#2563EB" }}>{product.fragranticaRating}</span>
+                        <span style={{ color: "#000000" }}> از ۱۰</span>
+                      </>
+                    ) : "",
+                  },
                 ].filter((s) => s.value);
                 if (specs.length === 0) return null;
                 return (
@@ -1334,7 +1357,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
               product.category === "perfume" ? (
                 (product.topNotes || product.middleNotes || product.baseNotes) && (
                   <div className="mb-7">
-                    <h2 className="font-display" style={{ fontSize: 14, marginBottom: 10 }}>ترکیبات رایحه</h2>
+                    <h2 className="font-display" style={{ fontSize: 14, marginBottom: 10 }}>نت‌های رایحه</h2>
                     {[
                       { label: "Top Notes — نت‌های آغازین", value: product.topNotes },
                       { label: "Middle Notes — نت‌های میانی", value: product.middleNotes },
@@ -1446,10 +1469,6 @@ function AccountPage({ user, orders, loading, error, onRetry, onLogout, onBack }
 
   return (
     <section className="px-4 sm:px-8 lg:px-12 max-w-3xl mx-auto py-6 pb-24">
-      <button onClick={onBack} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-4">
-        <span>›</span> بازگشت
-      </button>
-
       {/* کارت پروفایل */}
       <div className="bg-panel border border-hair rounded-2xl p-5 mb-5 flex items-center gap-4">
         <div
@@ -2838,7 +2857,7 @@ export default function MaisonStore() {
             return (
               <>
                 {categoryBanner && (
-                  <section className="relative w-full overflow-hidden" style={{ height: "clamp(200px, 34vh, 340px)" }}>
+                  <section className="relative w-full overflow-hidden" style={{ height: "clamp(240px, 42vh, 420px)" }}>
                     {categoryBanner.type === "video" ? (
                       <video
                         key={categoryBanner.url}
@@ -2862,27 +2881,12 @@ export default function MaisonStore() {
                         background: "linear-gradient(0deg, rgba(36,30,61,0.6), rgba(36,30,61,0) 55%)",
                       }}
                     />
-                    <button
-                      onClick={() => window.history.back()}
-                      className="rounded-full px-3 py-1.5 text-xs flex items-center gap-1"
-                      style={{
-                        position: "absolute", top: 14, insetInlineStart: 14,
-                        background: "rgba(255,255,255,0.9)", color: "#241E3D", border: "none",
-                      }}
-                    >
-                      <span>›</span> بازگشت به فروشگاه
-                    </button>
                     <div style={{ position: "absolute", bottom: 18, insetInlineStart: 18, insetInlineEnd: 18 }}>
                       <h1 className="font-display" style={{ fontSize: 24, color: "#FFFFFF" }}>{destinationLabel}</h1>
                     </div>
                   </section>
                 )}
                 <div className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto pt-6 pb-2">
-                  {!categoryBanner && (
-                    <button onClick={() => window.history.back()} className="btn-ghost rounded-full px-3 py-1.5 text-xs flex items-center gap-1 mb-3">
-                      <span>›</span> بازگشت به فروشگاه
-                    </button>
-                  )}
                   {searchTerm ? (
                     <h1 className="font-display" style={{ fontSize: 22 }}>نتایج جستجو برای «{searchTerm}»</h1>
                   ) : (
@@ -4035,7 +4039,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         {form.category === "perfume" ? (
           <div className="sm:col-span-2 flex flex-col gap-3">
             <label className="text-muted" style={{ fontSize: 12 }}>
-              ترکیبات رایحه (نت‌ها) — هر آکورد را با ویرگول جدا از هم بنویس، مثلاً: هل، زعفران، جوز هندی
+              نت‌های رایحه — هر آکورد را با ویرگول جدا از هم بنویس، مثلاً: هل، زعفران، جوز هندی
             </label>
             <div className="flex flex-col gap-1">
               <label className="text-gold" style={{ fontSize: 11.5 }}>Top Notes — نت‌های آغازین</label>
