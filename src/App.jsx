@@ -38,11 +38,7 @@ const FONTS = `
 
   .maison-root {
     font-family: 'Vazirmatn', sans-serif;
-    background:
-      radial-gradient(1100px 550px at 12% -8%, rgba(255,62,142,0.16), transparent 60%),
-      radial-gradient(900px 500px at 100% 0%, rgba(123,92,246,0.16), transparent 55%),
-      radial-gradient(900px 500px at 50% 105%, rgba(0,209,178,0.14), transparent 55%),
-      #FFFCF7;
+    background: #FFFFFF;
     color: #241E3D;
     -webkit-font-smoothing: antialiased;
   }
@@ -111,6 +107,7 @@ const FONTS = `
   .btn-ghost:hover { border-color: #FF3E8E; color: #FF3E8E; background: rgba(255,62,142,0.08); }
 
   .card-perfume { background: linear-gradient(160deg, #FFD9EC, #FFF3F9); }
+  .card-perfume-blue { background: linear-gradient(160deg, #CFE8FF, #F1F8FF); }
   .card-beauty { background: linear-gradient(160deg, #FFF0AE, #FFFBEA); }
   .card-hygiene { background: linear-gradient(160deg, #BDF3EA, #EEFFFC); }
   .card-electronics { background: linear-gradient(160deg, #E2D4FF, #F8F2FF); }
@@ -434,6 +431,154 @@ const PERFUME_FACETS = [
 const PERFUME_LONGEVITY_OPTIONS = { low: "کم", medium: "متوسط", high: "زیاد" };
 const PERFUME_SILLAGE_OPTIONS = { low: "کم", medium: "متوسط", high: "زیاد" };
 
+// ---------------------------------------------------------------------------------
+// پایگاه‌دانشِ نت‌های عطر — هر نت به سه دسته نگاشت شده: حس رایحه (scentFamily)،
+// طبع (temperament) و گروه بویایی (fragranceGroup). این نگاشت بر پایه‌ی طبقه‌بندی رایج
+// در منابع معتبر عطرشناسی (مثل Fragrantica و Basenotes) از خانواده‌ها و آکوردهای هر نت
+// ساخته شده و مبنای «پیشنهاد خودکار» در پنل مدیریت است. کلیدهای هر دسته باید دقیقاً با
+// کلیدهای گزینه‌های PERFUME_FACETS یکی باشند.
+// ---------------------------------------------------------------------------------
+const NOTE_FACET_KNOWLEDGE = {
+  // — مرکبات و نت‌های تازه —
+  "برگاموت": { scentFamily: ["fresh", "sour"], temperament: ["cool"], fragranceGroup: ["citrusy"] },
+  "لیمو": { scentFamily: ["fresh", "sour"], temperament: ["cool"], fragranceGroup: ["citrusy"] },
+  "پرتقال": { scentFamily: ["fresh", "sweet"], temperament: ["cool"], fragranceGroup: ["citrusy"] },
+  "نارنج": { scentFamily: ["fresh", "bitter"], temperament: ["cool"], fragranceGroup: ["citrusy"] },
+  "گریپ‌فروت": { scentFamily: ["fresh", "sour"], temperament: ["cool"], fragranceGroup: ["citrusy"] },
+  "گریپ فروت": { scentFamily: ["fresh", "sour"], temperament: ["cool"], fragranceGroup: ["citrusy"] },
+  "ماندارین": { scentFamily: ["fresh", "sweet"], temperament: ["cool"], fragranceGroup: ["citrusy"] },
+  "نرولی": { scentFamily: ["fresh", "soft"], temperament: ["cool"], fragranceGroup: ["floral", "citrusy"] },
+  "گل نارنج": { scentFamily: ["fresh", "soft"], temperament: ["cool"], fragranceGroup: ["floral", "citrusy"] },
+  // — آروماتیک و گیاهی —
+  "نعنا": { scentFamily: ["fresh", "clean"], temperament: ["cool"], fragranceGroup: ["aromatic"] },
+  "ریحان": { scentFamily: ["fresh", "herbal"], temperament: ["cool"], fragranceGroup: ["aromatic"] },
+  "اسطوخودوس": { scentFamily: ["fresh", "clean", "herbal"], temperament: ["cool"], fragranceGroup: ["aromatic", "fougere"] },
+  "لوندر": { scentFamily: ["fresh", "clean", "herbal"], temperament: ["cool"], fragranceGroup: ["aromatic", "fougere"] },
+  "مریم‌گلی": { scentFamily: ["herbal", "dry"], temperament: ["moderate"], fragranceGroup: ["aromatic"] },
+  "چای سبز": { scentFamily: ["fresh", "herbal"], temperament: ["cool"], fragranceGroup: ["green", "aromatic"] },
+  "برگ سبز": { scentFamily: ["fresh", "herbal"], temperament: ["cool"], fragranceGroup: ["green"] },
+  "علف": { scentFamily: ["fresh", "herbal"], temperament: ["cool"], fragranceGroup: ["green"] },
+  "خیار": { scentFamily: ["fresh", "clean"], temperament: ["cool"], fragranceGroup: ["green", "aquatic"] },
+  "شمعدانی": { scentFamily: ["herbal"], temperament: ["moderate"], fragranceGroup: ["floral", "green"] },
+  // — ادویه‌ای —
+  "هل": { scentFamily: ["sharp", "fresh"], temperament: ["warm"], fragranceGroup: ["spicy"] },
+  "زنجبیل": { scentFamily: ["sharp", "dry"], temperament: ["warm"], fragranceGroup: ["spicy"] },
+  "فلفل صورتی": { scentFamily: ["sharp"], temperament: ["warm"], fragranceGroup: ["spicy"] },
+  "فلفل سیاه": { scentFamily: ["sharp", "dry"], temperament: ["warm"], fragranceGroup: ["spicy"] },
+  "دارچین": { scentFamily: ["sharp", "sweet"], temperament: ["warm"], fragranceGroup: ["spicy"] },
+  "میخک": { scentFamily: ["sharp"], temperament: ["warm"], fragranceGroup: ["spicy"] },
+  "زیره": { scentFamily: ["earthy", "bitter"], temperament: ["warm"], fragranceGroup: ["spicy"] },
+  "زعفران": { scentFamily: ["earthy", "leathery"], temperament: ["warm"], fragranceGroup: ["spicy"] },
+  "جوز هندی": { scentFamily: ["sharp"], temperament: ["warm"], fragranceGroup: ["spicy"] },
+  // — میوه‌ای —
+  "میوه‌های قرمز": { scentFamily: ["sweet", "fresh"], temperament: ["cool"], fragranceGroup: ["fruity"] },
+  "توت فرنگی": { scentFamily: ["sweet"], temperament: ["moderate"], fragranceGroup: ["fruity"] },
+  "هلو": { scentFamily: ["sweet", "soft"], temperament: ["moderate"], fragranceGroup: ["fruity"] },
+  "سیب": { scentFamily: ["fresh", "sweet"], temperament: ["cool"], fragranceGroup: ["fruity"] },
+  "گلابی": { scentFamily: ["sweet", "soft"], temperament: ["moderate"], fragranceGroup: ["fruity"] },
+  "آناناس": { scentFamily: ["sweet", "fresh"], temperament: ["cool"], fragranceGroup: ["fruity"] },
+  "انبه": { scentFamily: ["sweet", "creamy"], temperament: ["warm"], fragranceGroup: ["fruity"] },
+  "انار": { scentFamily: ["sweet", "sour"], temperament: ["cool"], fragranceGroup: ["fruity"] },
+  // — گلی —
+  "گل رز": { scentFamily: ["sweet", "soft"], temperament: ["moderate"], fragranceGroup: ["floral"] },
+  "رز": { scentFamily: ["sweet", "soft"], temperament: ["moderate"], fragranceGroup: ["floral"] },
+  "یاس": { scentFamily: ["sweet", "soft"], temperament: ["moderate"], fragranceGroup: ["floral"] },
+  "عثمانتوس": { scentFamily: ["sweet", "soft"], temperament: ["moderate"], fragranceGroup: ["floral", "fruity"] },
+  "یلانگ یلانگ": { scentFamily: ["sweet", "creamy"], temperament: ["warm"], fragranceGroup: ["floral"] },
+  "گاردنیا": { scentFamily: ["creamy", "soft"], temperament: ["moderate"], fragranceGroup: ["floral"] },
+  "نیلوفر آبی": { scentFamily: ["clean", "fresh", "soft"], temperament: ["cool"], fragranceGroup: ["floral", "aquatic"] },
+  "لوتوس": { scentFamily: ["clean", "fresh", "soft"], temperament: ["cool"], fragranceGroup: ["floral", "aquatic"] },
+  "بنفشه": { scentFamily: ["powdery", "soft"], temperament: ["moderate"], fragranceGroup: ["floral"] },
+  "ماگنولیا": { scentFamily: ["fresh", "soft"], temperament: ["moderate"], fragranceGroup: ["floral"] },
+  // — چوبی —
+  "صندل": { scentFamily: ["creamy", "soft", "musky"], temperament: ["warm"], fragranceGroup: ["woody"] },
+  "چوب صندل": { scentFamily: ["creamy", "soft", "musky"], temperament: ["warm"], fragranceGroup: ["woody"] },
+  "چوب گایاک": { scentFamily: ["smoky", "dry", "resinous"], temperament: ["warm"], fragranceGroup: ["woody"] },
+  "سدر": { scentFamily: ["dry", "resinous"], temperament: ["moderate"], fragranceGroup: ["woody"] },
+  "وتیور": { scentFamily: ["earthy", "dry"], temperament: ["moderate"], fragranceGroup: ["woody"] },
+  "عود": { scentFamily: ["smoky", "resinous", "earthy"], temperament: ["warm"], fragranceGroup: ["woody", "amber"] },
+  "پچولی": { scentFamily: ["earthy", "dry"], temperament: ["warm"], fragranceGroup: ["woody", "chypre"] },
+  "بلوط": { scentFamily: ["dry", "resinous"], temperament: ["moderate"], fragranceGroup: ["woody"] },
+  // — عنبری و رزینی —
+  "عنبر": { scentFamily: ["sweet", "resinous", "musky"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  "کهربا": { scentFamily: ["sweet", "resinous", "musky"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  "نت‌های بالزامیک": { scentFamily: ["resinous", "sweet"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  "بالزامیک": { scentFamily: ["resinous", "sweet"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  "بنزوئین": { scentFamily: ["sweet", "resinous"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  "لابدانوم": { scentFamily: ["resinous", "leathery"], temperament: ["warm"], fragranceGroup: ["amber", "chypre"] },
+  "کندر": { scentFamily: ["resinous", "smoky"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  "مورّ": { scentFamily: ["resinous", "bitter"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  // — گورماند و شیرین —
+  "وانیل": { scentFamily: ["sweet", "creamy"], temperament: ["warm"], fragranceGroup: ["gourmand"] },
+  "شکلات": { scentFamily: ["sweet", "creamy"], temperament: ["warm"], fragranceGroup: ["gourmand"] },
+  "قهوه": { scentFamily: ["bitter", "smoky"], temperament: ["warm"], fragranceGroup: ["gourmand"] },
+  "عسل": { scentFamily: ["sweet", "soft"], temperament: ["warm"], fragranceGroup: ["gourmand"] },
+  "کارامل": { scentFamily: ["sweet", "creamy"], temperament: ["warm"], fragranceGroup: ["gourmand"] },
+  "بادام": { scentFamily: ["sweet", "creamy"], temperament: ["moderate"], fragranceGroup: ["gourmand"] },
+  "نارگیل": { scentFamily: ["creamy", "sweet"], temperament: ["warm"], fragranceGroup: ["gourmand", "aquatic"] },
+  // — مشکی، چرمی، توتون —
+  "مشک": { scentFamily: ["musky", "soft"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  "تنباکو": { scentFamily: ["sweet", "smoky"], temperament: ["warm"], fragranceGroup: ["tobacco"] },
+  "توتون": { scentFamily: ["sweet", "smoky"], temperament: ["warm"], fragranceGroup: ["tobacco"] },
+  "چرم": { scentFamily: ["leathery", "smoky"], temperament: ["warm"], fragranceGroup: ["leather"] },
+  // — دریایی —
+  "نت‌های دریایی": { scentFamily: ["aquatic", "fresh"], temperament: ["cool"], fragranceGroup: ["aquatic"] },
+  "نمک دریا": { scentFamily: ["aquatic", "fresh"], temperament: ["cool"], fragranceGroup: ["aquatic"] },
+  "باران": { scentFamily: ["fresh", "clean"], temperament: ["cool"], fragranceGroup: ["aquatic"] },
+  // — خزه‌ای و صابونی —
+  "خزه بلوط": { scentFamily: ["mossy", "earthy"], temperament: ["moderate"], fragranceGroup: ["chypre"] },
+  "آلدهید": { scentFamily: ["soapy", "clean"], temperament: ["cool"], fragranceGroup: ["aromatic"] },
+};
+
+// نام هر نت را با فرم‌های نوشتاری رایج آن مطابقت می‌دهد (فاصله‌های اضافه و «ی»/«ي» عربی را یکسان می‌کند)
+function normalizeNoteName(name) {
+  return name.trim().replace(/\s+/g, " ").replace(/ي/g, "ی").replace(/ك/g, "ک");
+}
+
+// از روی نت‌های آغازین/میانی/پایه‌ی وارد‌شده، محتمل‌ترین گزینه‌های «حس رایحه»، «طبع» و
+// «گروه بویایی» را با شمارش فراوانی برچسب‌های نگاشت‌شده‌ی هر نت پیشنهاد می‌دهد. نتیجه هرگز چیزی
+// را قفل نمی‌کند — فقط مقدار اولیه‌ی facets را پر می‌کند و مدیر می‌تواند هر گزینه را دستی عوض کند.
+function inferPerfumeFacetsFromNotes(topNotes, middleNotes, baseNotes) {
+  const allNotes = [topNotes, middleNotes, baseNotes]
+    .filter(Boolean)
+    .join("،")
+    .split(/[,،]/)
+    .map((n) => normalizeNoteName(n))
+    .filter(Boolean);
+
+  const matched = [];
+  const unmatched = [];
+  const counts = { scentFamily: {}, temperament: {}, fragranceGroup: {} };
+
+  allNotes.forEach((note) => {
+    const entry = NOTE_FACET_KNOWLEDGE[note];
+    if (!entry) {
+      unmatched.push(note);
+      return;
+    }
+    matched.push(note);
+    (entry.scentFamily || []).forEach((k) => { counts.scentFamily[k] = (counts.scentFamily[k] || 0) + 1; });
+    (entry.temperament || []).forEach((k) => { counts.temperament[k] = (counts.temperament[k] || 0) + 1; });
+    (entry.fragranceGroup || []).forEach((k) => { counts.fragranceGroup[k] = (counts.fragranceGroup[k] || 0) + 1; });
+  });
+
+  function topKeys(countObj, max) {
+    return Object.entries(countObj)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, max)
+      .map(([k]) => k);
+  }
+
+  return {
+    scentFamily: topKeys(counts.scentFamily, 4),
+    temperament: topKeys(counts.temperament, 2),
+    fragranceNote: topKeys(counts.fragranceGroup, 4),
+    matchedCount: matched.length,
+    totalCount: allNotes.length,
+    unmatched,
+  };
+}
+
 const CATEGORIES = {
   perfume: {
     label: "ادکلن",
@@ -614,7 +759,7 @@ const CATEGORY_LABEL = Object.fromEntries(
 const CATEGORY_ORDER = Object.keys(CATEGORIES);
 
 const CATEGORY_CARD_CLASS = {
-  perfume: "card-perfume",
+  perfume: "card-perfume-blue",
   sprayAndSplash: "card-perfume",
   makeup: "card-beauty",
   hygiene: "card-hygiene",
@@ -3243,6 +3388,22 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [uploading, setUploading] = useState(false);
+  // نتیجه‌ی آخرین «پیشنهاد خودکار» از روی نت‌ها — برای نمایش خلاصه‌ی اینکه چند نت شناسایی شد
+  const [noteSuggestResult, setNoteSuggestResult] = useState(null);
+
+  function applyNoteSuggestion() {
+    const result = inferPerfumeFacetsFromNotes(form.topNotes, form.middleNotes, form.baseNotes);
+    setForm((f) => ({
+      ...f,
+      facets: {
+        ...f.facets,
+        scentFamily: result.scentFamily,
+        temperament: result.temperament,
+        fragranceNote: result.fragranceNote,
+      },
+    }));
+    setNoteSuggestResult(result);
+  }
 
   async function saveGlobalDiscount() {
     const pct = Number(discountDraft) || 0;
@@ -4070,6 +4231,28 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
                 style={{ color: "#241E3D" }}
               />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={applyNoteSuggestion}
+                className="btn-gold rounded-full px-4 py-2 text-xs self-start flex items-center gap-1.5"
+              >
+                <Sparkles size={13} /> پیشنهاد خودکار حس رایحه / طبع / گروه بویایی از روی نت‌ها
+              </button>
+              <p className="text-muted" style={{ fontSize: 10.5, lineHeight: 1.7 }}>
+                بر اساس نت‌های بالا، سه گروه فیلتر «حس رایحه»، «طبع» و «گروه بویایی» را پایین‌تر همین فرم به‌طور خودکار پر می‌کند —
+                نتیجه فقط یک پیشنهاد است و هر گزینه را می‌توانی دستی هم اضافه یا حذف کنی.
+              </p>
+              {noteSuggestResult && (
+                <p style={{ fontSize: 11, color: noteSuggestResult.matchedCount > 0 ? "#0EA5A4" : "#D6336C" }}>
+                  {noteSuggestResult.matchedCount} از {noteSuggestResult.totalCount} نت شناسایی شد.
+                  {noteSuggestResult.unmatched.length > 0 && (
+                    <> نت‌های ناشناخته (برای این‌ها فیلترها را دستی انتخاب کن): {noteSuggestResult.unmatched.join("، ")}</>
+                  )}
+                </p>
+              )}
             </div>
           </div>
         ) : (
