@@ -1541,16 +1541,16 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
                   <div className="mb-7">
                     <h2 className="font-display" style={{ fontSize: 14, marginBottom: 10 }}>نت‌های رایحه</h2>
                     {[
-                      { label: "Top Notes — نت‌های آغازین", value: product.topNotes },
-                      { label: "Middle Notes — نت‌های میانی", value: product.middleNotes },
-                      { label: "Base Notes — نت‌های پایه", value: product.baseNotes },
+                      { label: "Top Notes — نت‌های آغازین", value: product.topNotes, color: "#2563EB", cardClass: "card-perfume-blue" },
+                      { label: "Middle Notes — نت‌های میانی", value: product.middleNotes, color: "#D97706", cardClass: "card-beauty" },
+                      { label: "Base Notes — نت‌های پایه", value: product.baseNotes, color: "#16A34A", cardClass: "card-hairstyling" },
                     ].map(
                       (accord) =>
                         accord.value && (
                           <div key={accord.label} className="mb-5">
                             <p
                               className="font-display"
-                              style={{ fontSize: 16, fontWeight: 800, color: "#FF3E8E", marginBottom: 10, textAlign: "center" }}
+                              style={{ fontSize: 16, fontWeight: 800, color: accord.color, marginBottom: 10, textAlign: "center" }}
                             >
                               {accord.label}
                             </p>
@@ -1562,10 +1562,10 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
                                 .map((noteName, i) => (
                                   <span
                                     key={i}
-                                    className="card-perfume"
+                                    className={accord.cardClass}
                                     style={{
                                       fontSize: 12.5, borderRadius: 999, padding: "6px 14px",
-                                      border: "1px solid rgba(123,92,246,0.25)", color: "#241E3D",
+                                      border: `1px solid ${accord.color}40`, color: "#241E3D",
                                     }}
                                   >
                                     {noteName}
@@ -2902,7 +2902,7 @@ export default function MaisonStore() {
                       loop={heroBanners.length === 1}
                       playsInline
                       className="fade-in-up"
-                      style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                      style={{ ...productImageStyle(banner), position: "absolute", inset: 0 }}
                       onEnded={() => {
                         if (heroBanners.length > 1) setBannerIndex((i) => (i + 1) % heroBanners.length);
                       }}
@@ -2915,7 +2915,7 @@ export default function MaisonStore() {
                     src={banner.url}
                     alt={`بنر تبلیغاتی ${bannerIndex + 1}`}
                     className="fade-in-up"
-                    style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                    style={{ ...productImageStyle(banner), position: "absolute", inset: 0 }}
                   />
                 );
               })()}
@@ -3532,6 +3532,19 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     setHeroSaved(false);
   }
 
+  // تنظیمات دستی نمایش یک بنر مشخص از اسلایدر صفحه‌ی اصلی (حالت جاگیری/بزرگ‌نمایی/موقعیت) —
+  // پیش‌فرض هر بنر تازه «پر کردن قاب» است (دقیقاً مثل رفتار قبلی)، پس تا وقتی این تنظیمات دستی
+  // لمس نشوند، هر عکس یا ویدیوی جدید خودکار و بدون کشیدگی داخل قاب بنر جا می‌گیرد.
+  function updateHeroBannerField(index, field, value) {
+    setBannerDrafts((prev) => {
+      const next = [...prev];
+      const normalized = normalizeBanner(next[index]);
+      next[index] = { ...normalized, [field]: value };
+      return next;
+    });
+    setHeroSaved(false);
+  }
+
   async function saveHeroBanners() {
     setHeroError("");
     setHeroSaved(false);
@@ -3770,36 +3783,81 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       <div className="bg-panel border border-hair rounded-lg p-4 mb-8">
         <h3 className="font-display mb-1" style={{ fontSize: 15 }}>بنرهای متحرک صفحه‌ی اصلی</h3>
         <p className="text-muted mb-3" style={{ fontSize: 11 }}>
-          چند عکس یا کلیپ ویدئویی تبلیغاتی اضافه کن؛ روی صفحه‌ی اصلی به‌ترتیب نمایش داده می‌شوند (مثل اسلایدر) — بنر عکس هر ۵ ثانیه و بنر ویدیویی بعد از پایان پخش خودش، به بنر بعدی می‌رود.
+          چند عکس یا کلیپ ویدئویی تبلیغاتی اضافه کن؛ روی صفحه‌ی اصلی به‌ترتیب نمایش داده می‌شوند (مثل اسلایدر) — بنر عکس هر ۵ ثانیه و بنر ویدیویی بعد از پایان پخش خودش، به بنر بعدی می‌رود. قاب بنر عرضش همیشه کل صفحه است ولی ارتفاعش بسته به گوشی کمی فرق می‌کند (تقریباً بین نسبت ۴:۵ تا ۹:۱۶)، پس یک نسبت ثابت واحد وجود ندارد؛ برای بهترین نتیجه، عکس یا ویدیو را با نسبت تقریبی ۴:۵ (مثلاً ۱۰۸۰×۱۳۵۰ پیکسل) و موضوع اصلی نزدیک وسط کادر آماده کن. با این حال لازم نیست خودت دقیق اندازه بزنی — هر فایلی که آپلود کنی به‌طور خودکار و بدون کشیدگی داخل قاب جا می‌شود («پر کردن قاب»، پیش‌فرض)؛ اگر خواستی جای دقیق‌تری از تصویر دیده شود، از تنظیمات جاگیری/زوم/موقعیت زیر هر بنر استفاده کن.
         </p>
 
         {bannerDrafts.length > 0 && (
           <div className="flex flex-col gap-2 mb-3">
-            {bannerDrafts.map((banner, i) => (
-              <div key={i} className="flex items-center gap-2 bg-panel-2 border border-hair rounded p-2">
-                {banner.type === "video" ? (
-                  <video
-                    src={banner.url}
-                    muted
-                    style={{ width: 56, height: 32, borderRadius: 4, objectFit: "cover", background: "#241E3D" }}
-                    onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
-                  />
-                ) : (
-                  <img
-                    src={banner.url}
-                    alt={`بنر ${i + 1}`}
-                    style={{ width: 56, height: 32, borderRadius: 4, objectFit: "cover" }}
-                    onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
-                  />
-                )}
-                <span className="text-muted" style={{ fontSize: 11, flex: 1 }}>
-                  بنر شماره {i + 1} {banner.type === "video" ? "(ویدیو)" : "(عکس)"}
-                </span>
-                <button type="button" onClick={() => moveBannerDraft(i, -1)} disabled={i === 0} className="btn-ghost rounded px-2 py-1 text-xs">▲</button>
-                <button type="button" onClick={() => moveBannerDraft(i, 1)} disabled={i === bannerDrafts.length - 1} className="btn-ghost rounded px-2 py-1 text-xs">▼</button>
-                <button type="button" onClick={() => removeBannerDraft(i)} className="btn-ghost rounded px-2 py-1 text-xs" style={{ color: "#D6336C" }}>حذف</button>
-              </div>
-            ))}
+            {bannerDrafts.map((bannerRaw, i) => {
+              const banner = normalizeBanner(bannerRaw);
+              return (
+                <div key={i} className="bg-panel-2 border border-hair rounded p-2 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    {banner.type === "video" ? (
+                      <video
+                        src={banner.url}
+                        muted
+                        style={{ width: 56, height: 32, borderRadius: 4, objectFit: "cover", background: "#241E3D" }}
+                        onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
+                      />
+                    ) : (
+                      <img
+                        src={banner.url}
+                        alt={`بنر ${i + 1}`}
+                        style={{ width: 56, height: 32, borderRadius: 4, objectFit: "cover" }}
+                        onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
+                      />
+                    )}
+                    <span className="text-muted" style={{ fontSize: 11, flex: 1 }}>
+                      بنر شماره {i + 1} {banner.type === "video" ? "(ویدیو)" : "(عکس)"}
+                    </span>
+                    <button type="button" onClick={() => moveBannerDraft(i, -1)} disabled={i === 0} className="btn-ghost rounded px-2 py-1 text-xs">▲</button>
+                    <button type="button" onClick={() => moveBannerDraft(i, 1)} disabled={i === bannerDrafts.length - 1} className="btn-ghost rounded px-2 py-1 text-xs">▼</button>
+                    <button type="button" onClick={() => removeBannerDraft(i)} className="btn-ghost rounded px-2 py-1 text-xs" style={{ color: "#D6336C" }}>حذف</button>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-muted" style={{ fontSize: 10.5 }}>جاگیری:</span>
+                    <button
+                      type="button"
+                      onClick={() => updateHeroBannerField(i, "imageFit", "contain")}
+                      className="btn-ghost rounded-full px-2.5 py-0.5 text-xs"
+                      style={banner.imageFit !== "cover" ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : undefined}
+                    >
+                      کامل
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateHeroBannerField(i, "imageFit", "cover")}
+                      className="btn-ghost rounded-full px-2.5 py-0.5 text-xs"
+                      style={banner.imageFit === "cover" ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : undefined}
+                    >
+                      پر کردن قاب
+                    </button>
+                    <span className="text-muted" style={{ fontSize: 10.5, marginRight: 6 }}>زوم</span>
+                    <input
+                      type="range" min="1" max="2.5" step="0.05"
+                      value={banner.imageZoom}
+                      onChange={(e) => updateHeroBannerField(i, "imageZoom", Number(e.target.value))}
+                      style={{ width: 70 }}
+                    />
+                    <span className="text-muted" style={{ fontSize: 10.5 }}>افقی</span>
+                    <input
+                      type="range" min="0" max="100" step="1"
+                      value={banner.imagePosX}
+                      onChange={(e) => updateHeroBannerField(i, "imagePosX", Number(e.target.value))}
+                      style={{ width: 70 }}
+                    />
+                    <span className="text-muted" style={{ fontSize: 10.5 }}>عمودی</span>
+                    <input
+                      type="range" min="0" max="100" step="1"
+                      value={banner.imagePosY}
+                      onChange={(e) => updateHeroBannerField(i, "imagePosY", Number(e.target.value))}
+                      style={{ width: 70 }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
