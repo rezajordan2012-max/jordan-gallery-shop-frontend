@@ -318,9 +318,6 @@ const FONTS = `
   .menu-hint-ripple {
     animation: menuHintRipple 1.9s ease-out infinite;
   }
-  @media (prefers-reduced-motion: reduce) {
-    .menu-hint-glow, .menu-hint-finger, .menu-hint-ripple { animation: none; opacity: 0; }
-  }
 
   /* جلوه‌ی «تپش لمس» روی دکمه‌ی منو — هر بار که کاربر لمسش کند اجرا می‌شود (نه فقط بار اول):
      کلمه‌ی menu با یه پرش بزرگ و کمی چرخش ظاهر می‌شود، لحظه‌ای می‌ایستد، سپس همراه با بزرگ‌تر
@@ -350,7 +347,7 @@ const FONTS = `
   @media (prefers-reduced-motion: reduce) {
     .glint, .float-slow, .fade-in-up { animation: none; }
     .product-card, .product-card img, .category-card { transition: none; }
-    .marquee-track, .cart-bump, .skeleton, .sparkle, .pulse-glow, .icon-gold-wave { animation: none; }
+    .marquee-track, .cart-bump, .skeleton, .sparkle, .pulse-glow { animation: none; }
     .mist-puff, .wave-flow, .ripple-ring { animation: none; }
     .ray-burst, .hero-halo { animation: none; }
   }
@@ -574,6 +571,21 @@ const NOTE_ALIAS_MAP = NOTE_ENTRIES.reduce((map, entry) => {
 // محتمل‌ترین گزینه‌های «حس رایحه»، «طبع» و «گروه بویایی» را با شمارش فراوانی برچسب‌های
 // نگاشت‌شده‌ی هر نت پیشنهاد می‌دهد. نتیجه هرگز چیزی را قفل نمی‌کند — فقط مقدار اولیه‌ی facets
 // را پر می‌کند و مدیر می‌تواند هر گزینه را دستی عوض کند.
+// رشته‌ی آزاد «غلظت» که هوش مصنوعی برمی‌گرداند (مثلاً "Eau de Parfum") را به کلید داخلی
+// گزینه‌های PERFUME_FACETS.concentration نگاشت می‌کند.
+function mapConcentrationLabelToKey(label) {
+  if (!label) return null;
+  const s = label.trim().toLowerCase();
+  if (s.includes("extrait")) return "extraitDeParfum";
+  if (s.includes("eau de parfum intense") || s.includes("edp intense")) return "eauDeParfumIntense";
+  if (s.includes("eau de parfum") || s === "edp") return "eauDeParfum";
+  if (s.includes("eau de toilette") || s === "edt") return "eauDeToilette";
+  if (s.includes("eau de cologne") || s === "edc") return "eauDeCologne";
+  if (s.includes("eau fraiche") || s.includes("eau fraîche")) return "eauFraiche";
+  if (s.includes("parfum")) return "parfum";
+  return null;
+}
+
 function inferPerfumeFacetsFromNotes(topNotes, middleNotes, baseNotes) {
   const allNotes = [topNotes, middleNotes, baseNotes]
     .filter(Boolean)
@@ -669,6 +681,7 @@ const CATEGORIES = {
               glitter: "اکلیل",
               mascara: "ریمل",
               eyeliner: "خط چشم",
+              eyePencil: "مداد چشم",
             },
           },
           {
@@ -2061,6 +2074,19 @@ export default function MaisonStore() {
     return data.url;
   }
 
+  // ویژگی «تشخیص هوشمند از روی عکس»: عکس را به سرور می‌فرستد، سرور با هوش مصنوعی بینایی تحلیلش می‌کند
+  // و یک شیء با فیلدهای قابل‌تشخیص محصول (نام، برند، نت‌ها و ...) برمی‌گرداند.
+  async function extractProductInfo(imageBase64) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/extract-product`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ imageBase64 }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "تشخیص هوشمند ناموفق بود");
+    return data;
+  }
+
   async function updateHeroBanners(banners) {
     const res = await fetch(`${API_BASE_URL}/api/settings`, {
       method: "PUT",
@@ -2532,7 +2558,7 @@ export default function MaisonStore() {
                   <Menu size={20} />
                 </span>
               </button>
-              {!menuOpen && !menuHintSeen && (
+              {!menuOpen && (
                 <>
                   <span
                     className="menu-hint-glow"
@@ -2866,6 +2892,7 @@ export default function MaisonStore() {
           onUpdateGlobalDiscount={updateGlobalDiscount}
           categoryBanners={categoryBanners}
           onUpdateCategoryBanners={updateCategoryBanners}
+          onExtractProductInfo={extractProductInfo}
         />
       ) : view === "account" && user ? (
         <AccountPage
@@ -3401,7 +3428,7 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
   );
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, onExtractProductInfo }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -3427,6 +3454,70 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [uploading, setUploading] = useState(false);
   // نتیجه‌ی آخرین «پیشنهاد خودکار» از روی نت‌ها — برای نمایش خلاصه‌ی اینکه چند نت شناسایی شد
   const [noteSuggestResult, setNoteSuggestResult] = useState(null);
+
+  // ویژگی «تشخیص هوشمند از روی عکس» — عکس جعبه/برچسب/صفحه‌ی مرجع محصول را می‌گیرد و با هوش
+  // مصنوعی، فیلدهای فرم را خودکار پر می‌کند. همیشه قابل ویرایش دستی باقی می‌ماند.
+  const [aiExtracting, setAiExtracting] = useState(false);
+  const [aiExtractError, setAiExtractError] = useState("");
+  const [aiExtractResult, setAiExtractResult] = useState(null);
+
+  async function handleAiExtractFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setAiExtractError("فایل انتخاب‌شده تصویر نیست");
+      return;
+    }
+    setAiExtractError("");
+    setAiExtractResult(null);
+    setAiExtracting(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const info = await onExtractProductInfo(base64);
+
+      setForm((f) => {
+        const next = { ...f };
+        if (info.name) next.name = info.name;
+        if (info.nameEn) next.nameEn = info.nameEn;
+        if (info.brand) next.brand = info.brand;
+        if (info.description) next.description = info.description;
+        if (f.category === "perfume") {
+          if (info.topNotes) next.topNotes = info.topNotes;
+          if (info.middleNotes) next.middleNotes = info.middleNotes;
+          if (info.baseNotes) next.baseNotes = info.baseNotes;
+          if (info.perfumer) next.perfumer = info.perfumer;
+          if (info.countryOfOrigin) next.countryOfOrigin = info.countryOfOrigin;
+          if (info.yearMade) next.yearMade = info.yearMade;
+
+          const concKey = mapConcentrationLabelToKey(info.concentration);
+          const finalTop = info.topNotes || f.topNotes;
+          const finalMiddle = info.middleNotes || f.middleNotes;
+          const finalBase = info.baseNotes || f.baseNotes;
+          const suggestion = inferPerfumeFacetsFromNotes(finalTop, finalMiddle, finalBase);
+          next.facets = {
+            ...f.facets,
+            ...(concKey ? { concentration: [concKey] } : {}),
+            scentFamily: suggestion.scentFamily,
+            temperament: suggestion.temperament,
+            fragranceNote: suggestion.fragranceNote,
+          };
+          setNoteSuggestResult(suggestion);
+        }
+        return next;
+      });
+      setAiExtractResult(info);
+    } catch (err) {
+      setAiExtractError(err.message || "تشخیص هوشمند ناموفق بود");
+    } finally {
+      setAiExtracting(false);
+    }
+  }
 
   function applyNoteSuggestion() {
     const result = inferPerfumeFacetsFromNotes(form.topNotes, form.middleNotes, form.baseNotes);
@@ -4117,6 +4208,29 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         </button>
         {catBannerSaved && <span className="text-gold" style={{ fontSize: 12, marginRight: 10 }}>ذخیره شد ✓</span>}
         {catBannerError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 6 }}>{catBannerError}</p>}
+      </div>
+
+      <div className="bg-panel border border-hair rounded-lg p-4 mb-4">
+        <h3 className="font-display mb-1 flex items-center gap-1.5" style={{ fontSize: 15 }}>
+          <Sparkles size={15} color="#7B5CF6" /> تشخیص هوشمند از روی عکس (هوش مصنوعی)
+        </h3>
+        <p className="text-muted mb-3" style={{ fontSize: 11 }}>
+          عکسی از جعبه، برچسب، بطری محصول یا حتی اسکرین‌شات یک سایت مرجع بگیر یا آپلود کن — نام، برند و (برای ادکلن) نت‌ها/غلظت/عطار/کشور سازنده را تا جایی که از روی عکس قابل تشخیص باشد خودکار در فرم پایین پر می‌کند. هیچ‌چیزی حدس زده نمی‌شود؛ هرچه در عکس واضح نباشد خالی می‌ماند، و همه‌ی فیلدها بعداً کاملاً قابل ویرایش دستی‌اند.
+        </p>
+        <label
+          className="btn-gold rounded px-4 py-2 text-sm inline-flex items-center gap-2"
+          style={{ cursor: aiExtracting ? "default" : "pointer", opacity: aiExtracting ? 0.6 : 1 }}
+        >
+          <Upload size={14} />
+          {aiExtracting ? "در حال تحلیل تصویر..." : "آپلود عکس محصول برای تشخیص خودکار"}
+          <input type="file" accept="image/*" onChange={handleAiExtractFile} disabled={aiExtracting} style={{ display: "none" }} />
+        </label>
+        {aiExtractError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 8 }}>{aiExtractError}</p>}
+        {aiExtractResult && !aiExtractError && (
+          <p style={{ fontSize: 12, color: "#0EA5A4", marginTop: 8 }}>
+            فرم پایین با اطلاعات تشخیص‌داده‌شده پر شد — لطفاً همه‌ی فیلدها را قبل از ذخیره بازبینی کن.
+          </p>
+        )}
       </div>
 
       <form onSubmit={submit} className="bg-panel border border-hair rounded-lg p-4 mb-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
