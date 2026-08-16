@@ -571,6 +571,51 @@ const NOTE_ALIAS_MAP = NOTE_ENTRIES.reduce((map, entry) => {
 // محتمل‌ترین گزینه‌های «حس رایحه»، «طبع» و «گروه بویایی» را با شمارش فراوانی برچسب‌های
 // نگاشت‌شده‌ی هر نت پیشنهاد می‌دهد. نتیجه هرگز چیزی را قفل نمی‌کند — فقط مقدار اولیه‌ی facets
 // را پر می‌کند و مدیر می‌تواند هر گزینه را دستی عوض کند.
+// نام‌های رایج برندهای عطر به فارسی (آوانویسی رایج) — برای وقتی داده از fraganty.ai (انگلیسی) می‌آید.
+// اگر برندی در این لیست نباشد، همان نام انگلیسی به‌عنوان جایگزین نگه داشته می‌شود.
+const BRAND_FA_MAP = {
+  chanel: "شنل", dior: "دیور", "christian dior": "دیور", gucci: "گوچی", versace: "ورساچه",
+  armani: "آرمانی", "giorgio armani": "جورجو آرمانی", "yves saint laurent": "ایو سن لوران", ysl: "ایو سن لوران",
+  lalique: "لالیک", "tom ford": "تام فورد", prada: "پرادا", burberry: "بربری", hermes: "هرمس",
+  "hermès": "هرمس", dolce: "دولچه و گابانا", "dolce & gabbana": "دولچه و گابانا", d_g: "دولچه و گابانا",
+  lancome: "لانکوم", "lancôme": "لانکوم", guerlain: "گرلن", givenchy: "ژیوانشی", bvlgari: "بولگاری",
+  bulgari: "بولگاری", "calvin klein": "کلوین کلاین", ck: "کلوین کلاین", montblanc: "مون‌بلان",
+  paco: "پاکو رابان", "paco rabanne": "پاکو رابان", valentino: "والنتینو", jimmy: "جیمی چو",
+  "jimmy choo": "جیمی چو", "jean paul gaultier": "ژان پل گوتیه", "narciso rodriguez": "نارسیسو رودریگز",
+  azzaro: "آزارو", carolina: "کارولینا هررا", "carolina herrera": "کارولینا هررا", chloe: "کلویی",
+  "chloé": "کلویی", davidoff: "داویدوف", elie: "الی صعب", "elie saab": "الی صعب", cartier: "کارتیه",
+  hugoboss: "هوگو باس", "hugo boss": "هوگو باس", lacoste: "لاگوست", montale: "مونتاله",
+  "mancera": "مانسرا", "xerjoff": "زرجوف", "creed": "کرید", "amouage": "آمواج", "parfums de marly": "پارفومز دو مارلی",
+  "maison francis kurkdjian": "مزون فرانسیس کرکجان", mfk: "مزون فرانسیس کرکجان",
+  "initio": "اینیشیو", "byredo": "بایردو", "acqua di parma": "آکوا دی پارما", "diptyque": "دیپتیک",
+  "victoria's secret": "ویکتوریا سکرت", zara: "زارا", rasasi: "رصاصی", "lattafa": "لطافه",
+  "afnan": "افنان", ajmal: "اجمل", "al haramain": "الحرمین",
+};
+
+// نام برند انگلیسی که از fraganty.ai می‌آید را در صورت وجود در لیست بالا، به فارسی برمی‌گرداند؛
+// وگرنه همان نام اصلی را نگه می‌دارد (بهتر از خالی‌گذاشتن است، مدیر خودش دستی اصلاح می‌کند).
+function translateBrandToFa(brandEn) {
+  if (!brandEn) return "";
+  const key = brandEn.trim().toLowerCase();
+  return BRAND_FA_MAP[key] || brandEn;
+}
+
+// نام یک نت که از fraganty.ai به انگلیسی می‌آید را با پایگاه‌دانش نت‌های خودمان (NOTE_ALIAS_MAP)
+// به فارسی ترجمه می‌کند — از میان تمام نام‌های مترادفِ ثبت‌شده برای همان نت، اولین موردی که فارسی
+// باشد انتخاب می‌شود. اگر نت در پایگاه‌دانش نباشد، همان نام انگلیسی اصلی نگه داشته می‌شود.
+function translateNoteToFa(noteNameEn) {
+  const entry = NOTE_ALIAS_MAP[normalizeNoteName(noteNameEn)];
+  if (!entry) return noteNameEn;
+  const faAlias = entry.aliases.find((a) => /[\u0600-\u06FF]/.test(a));
+  return faAlias || noteNameEn;
+}
+
+// آرایه‌ای از نت‌های fraganty.ai (مثل [{name:"Lemon"}, ...]) را به یک رشته‌ی فارسی با ویرگول جدا می‌کند.
+function translateNotesArrayToFa(notesArr) {
+  if (!Array.isArray(notesArr) || notesArr.length === 0) return "";
+  return notesArr.map((n) => translateNoteToFa(n.name || n)).join("، ");
+}
+
 // رشته‌ی آزاد «غلظت» که هوش مصنوعی برمی‌گرداند (مثلاً "Eau de Parfum") را به کلید داخلی
 // گزینه‌های PERFUME_FACETS.concentration نگاشت می‌کند.
 function mapConcentrationLabelToKey(label) {
@@ -2087,6 +2132,26 @@ export default function MaisonStore() {
     return data;
   }
 
+  // جستجوی ادکلن بر اساس نام (fraganty.ai) — مرحله‌ی اول: لیست کوتاهی از محصولات محتمل
+  async function searchPerfumeByName(query) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/search-perfume?q=${encodeURIComponent(query)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "جستجو ناموفق بود");
+    return data.data || [];
+  }
+
+  // مرحله‌ی دوم: بعد از انتخاب مدیر از لیست، جزئیات کامل همان محصول
+  async function getPerfumeDetails(slug) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/perfume-details?slug=${encodeURIComponent(slug)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "دریافت جزئیات ناموفق بود");
+    return data;
+  }
+
   async function updateHeroBanners(banners) {
     const res = await fetch(`${API_BASE_URL}/api/settings`, {
       method: "PUT",
@@ -2893,6 +2958,8 @@ export default function MaisonStore() {
           categoryBanners={categoryBanners}
           onUpdateCategoryBanners={updateCategoryBanners}
           onExtractProductInfo={extractProductInfo}
+          onSearchPerfume={searchPerfumeByName}
+          onGetPerfumeDetails={getPerfumeDetails}
         />
       ) : view === "account" && user ? (
         <AccountPage
@@ -3428,7 +3495,7 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
   );
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, onExtractProductInfo }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, onExtractProductInfo, onSearchPerfume, onGetPerfumeDetails }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -3455,67 +3522,72 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   // نتیجه‌ی آخرین «پیشنهاد خودکار» از روی نت‌ها — برای نمایش خلاصه‌ی اینکه چند نت شناسایی شد
   const [noteSuggestResult, setNoteSuggestResult] = useState(null);
 
-  // ویژگی «تشخیص هوشمند از روی عکس» — عکس جعبه/برچسب/صفحه‌ی مرجع محصول را می‌گیرد و با هوش
-  // مصنوعی، فیلدهای فرم را خودکار پر می‌کند. همیشه قابل ویرایش دستی باقی می‌ماند.
-  const [aiExtracting, setAiExtracting] = useState(false);
-  const [aiExtractError, setAiExtractError] = useState("");
-  const [aiExtractResult, setAiExtractResult] = useState(null);
+  // ویژگی «جستجوی مشخصات ادکلن بر اساس نام محصول» (fraganty.ai) — جایگزین روش قبلیِ آپلود عکس.
+  // مرحله‌ی ۱: مدیر اسم محصول را تایپ می‌کند و لیست کوتاهی از نتایج محتمل نشان داده می‌شود.
+  // مرحله‌ی ۲: با انتخاب یکی از نتایج، جزئیات کامل گرفته می‌شود، نت‌ها و برند به فارسی ترجمه
+  // می‌شوند (با پایگاه‌دانش خودمان)، و فرم پایین خودکار پر می‌شود — همیشه قابل ویرایش دستی.
+  const [perfumeSearchQuery, setPerfumeSearchQuery] = useState("");
+  const [perfumeSearchLoading, setPerfumeSearchLoading] = useState(false);
+  const [perfumeSearchError, setPerfumeSearchError] = useState("");
+  const [perfumeSearchResults, setPerfumeSearchResults] = useState([]);
+  const [perfumeDetailsLoading, setPerfumeDetailsLoading] = useState(false);
+  const [perfumeFillResult, setPerfumeFillResult] = useState(null);
 
-  async function handleAiExtractFile(e) {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setAiExtractError("فایل انتخاب‌شده تصویر نیست");
-      return;
-    }
-    setAiExtractError("");
-    setAiExtractResult(null);
-    setAiExtracting(true);
+  async function handlePerfumeSearch(e) {
+    e.preventDefault();
+    const q = perfumeSearchQuery.trim();
+    if (!q) return;
+    setPerfumeSearchError("");
+    setPerfumeSearchResults([]);
+    setPerfumeFillResult(null);
+    setPerfumeSearchLoading(true);
     try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const info = await onExtractProductInfo(base64);
-
-      setForm((f) => {
-        const next = { ...f };
-        if (info.name) next.name = info.name;
-        if (info.nameEn) next.nameEn = info.nameEn;
-        if (info.brand) next.brand = info.brand;
-        if (info.description) next.description = info.description;
-        if (f.category === "perfume") {
-          if (info.topNotes) next.topNotes = info.topNotes;
-          if (info.middleNotes) next.middleNotes = info.middleNotes;
-          if (info.baseNotes) next.baseNotes = info.baseNotes;
-          if (info.perfumer) next.perfumer = info.perfumer;
-          if (info.countryOfOrigin) next.countryOfOrigin = info.countryOfOrigin;
-          if (info.yearMade) next.yearMade = info.yearMade;
-
-          const concKey = mapConcentrationLabelToKey(info.concentration);
-          const finalTop = info.topNotes || f.topNotes;
-          const finalMiddle = info.middleNotes || f.middleNotes;
-          const finalBase = info.baseNotes || f.baseNotes;
-          const suggestion = inferPerfumeFacetsFromNotes(finalTop, finalMiddle, finalBase);
-          next.facets = {
-            ...f.facets,
-            ...(concKey ? { concentration: [concKey] } : {}),
-            scentFamily: suggestion.scentFamily,
-            temperament: suggestion.temperament,
-            fragranceNote: suggestion.fragranceNote,
-          };
-          setNoteSuggestResult(suggestion);
-        }
-        return next;
-      });
-      setAiExtractResult(info);
+      const results = await onSearchPerfume(q);
+      setPerfumeSearchResults(results);
+      if (results.length === 0) setPerfumeSearchError("چیزی پیدا نشد — نام دیگه‌ای امتحان کن (مثلاً فقط اسم برند یا فقط اسم عطر)");
     } catch (err) {
-      setAiExtractError(err.message || "تشخیص هوشمند ناموفق بود");
+      setPerfumeSearchError(err.message || "جستجو ناموفق بود");
     } finally {
-      setAiExtracting(false);
+      setPerfumeSearchLoading(false);
+    }
+  }
+
+  async function handlePickPerfumeResult(item) {
+    setPerfumeSearchError("");
+    setPerfumeDetailsLoading(true);
+    try {
+      const details = await onGetPerfumeDetails(item.id);
+      const topFa = translateNotesArrayToFa(details.notes && details.notes.top);
+      const middleFa = translateNotesArrayToFa(details.notes && details.notes.middle);
+      const baseFa = translateNotesArrayToFa(details.notes && details.notes.base);
+      const concKey = mapConcentrationLabelToKey(details.concentration);
+      const suggestion = inferPerfumeFacetsFromNotes(topFa, middleFa, baseFa);
+
+      setForm((f) => ({
+        ...f,
+        nameEn: details.name || f.nameEn,
+        brand: translateBrandToFa(details.brand) || f.brand,
+        topNotes: topFa || f.topNotes,
+        middleNotes: middleFa || f.middleNotes,
+        baseNotes: baseFa || f.baseNotes,
+        perfumer: (Array.isArray(details.perfumers) && details.perfumers.join("، ")) || f.perfumer,
+        yearMade: details.year ? String(details.year) : f.yearMade,
+        facets: {
+          ...f.facets,
+          ...(concKey ? { concentration: [concKey] } : {}),
+          scentFamily: suggestion.scentFamily,
+          temperament: suggestion.temperament,
+          fragranceNote: suggestion.fragranceNote,
+        },
+      }));
+      setNoteSuggestResult(suggestion);
+      setPerfumeSearchResults([]);
+      setPerfumeSearchQuery("");
+      setPerfumeFillResult({ name: details.name, brand: details.brand });
+    } catch (err) {
+      setPerfumeSearchError(err.message || "دریافت جزئیات ناموفق بود");
+    } finally {
+      setPerfumeDetailsLoading(false);
     }
   }
 
@@ -4212,23 +4284,53 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
 
       <div className="bg-panel border border-hair rounded-lg p-4 mb-4">
         <h3 className="font-display mb-1 flex items-center gap-1.5" style={{ fontSize: 15 }}>
-          <Sparkles size={15} color="#7B5CF6" /> تشخیص هوشمند از روی عکس (هوش مصنوعی)
+          <Sparkles size={15} color="#7B5CF6" /> جستجوی مشخصات ادکلن بر اساس نام (رایگان)
         </h3>
         <p className="text-muted mb-3" style={{ fontSize: 11 }}>
-          عکسی از جعبه، برچسب، بطری محصول یا حتی اسکرین‌شات یک سایت مرجع بگیر یا آپلود کن — نام، برند و (برای ادکلن) نت‌ها/غلظت/عطار/کشور سازنده را تا جایی که از روی عکس قابل تشخیص باشد خودکار در فرم پایین پر می‌کند. هیچ‌چیزی حدس زده نمی‌شود؛ هرچه در عکس واضح نباشد خالی می‌ماند، و همه‌ی فیلدها بعداً کاملاً قابل ویرایش دستی‌اند.
+          اسم عطر (و اگر خواستی برند) رو بنویس — از دیتابیس رایگان fraganty.ai جستجو می‌شود. از میان نتایج، مورد درست را انتخاب کن تا نت‌ها، غلظت، عطار و سال ساخت به‌طور خودکار (و ترجمه‌شده به فارسی از روی پایگاه‌دانش خودمان) در فرم پایین پر شود. نام فارسی محصول باید خودت دستی تایپ کنی چون آوانویسی استاندارد و ثابتی برای همه‌ی اسم‌ها وجود ندارد.
         </p>
-        <label
-          className="btn-gold rounded px-4 py-2 text-sm inline-flex items-center gap-2"
-          style={{ cursor: aiExtracting ? "default" : "pointer", opacity: aiExtracting ? 0.6 : 1 }}
-        >
-          <Upload size={14} />
-          {aiExtracting ? "در حال تحلیل تصویر..." : "آپلود عکس محصول برای تشخیص خودکار"}
-          <input type="file" accept="image/*" onChange={handleAiExtractFile} disabled={aiExtracting} style={{ display: "none" }} />
-        </label>
-        {aiExtractError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 8 }}>{aiExtractError}</p>}
-        {aiExtractResult && !aiExtractError && (
+        <form onSubmit={handlePerfumeSearch} className="flex items-center gap-2 mb-2">
+          <input
+            placeholder="مثلاً: Lalique Encre Noire"
+            value={perfumeSearchQuery}
+            onChange={(e) => setPerfumeSearchQuery(e.target.value)}
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
+            style={{ color: "#241E3D" }}
+            dir="ltr"
+          />
+          <button type="submit" disabled={perfumeSearchLoading} className="btn-gold rounded px-4 py-2 text-sm flex items-center gap-1.5">
+            <Search size={14} /> {perfumeSearchLoading ? "..." : "جستجو"}
+          </button>
+        </form>
+
+        {perfumeSearchError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 6 }}>{perfumeSearchError}</p>}
+
+        {perfumeSearchResults.length > 0 && (
+          <div className="flex flex-col gap-1.5 mt-2">
+            {perfumeSearchResults.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handlePickPerfumeResult(item)}
+                disabled={perfumeDetailsLoading}
+                className="btn-ghost rounded-lg px-3 py-2 text-right flex items-center gap-3"
+              >
+                {item.image ? (
+                  <img src={item.image} alt={item.name} style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                ) : (
+                  <span style={{ width: 32, height: 32, borderRadius: 6, background: "rgba(123,92,246,0.12)", flexShrink: 0 }} />
+                )}
+                <span className="flex-1" dir="ltr" style={{ fontSize: 12.5, textAlign: "right" }}>
+                  {item.name} <span className="text-muted">— {item.brand}{item.year ? ` (${item.year})` : ""}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {perfumeDetailsLoading && <p className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>در حال دریافت جزئیات...</p>}
+        {perfumeFillResult && (
           <p style={{ fontSize: 12, color: "#0EA5A4", marginTop: 8 }}>
-            فرم پایین با اطلاعات تشخیص‌داده‌شده پر شد — لطفاً همه‌ی فیلدها را قبل از ذخیره بازبینی کن.
+            اطلاعات «{perfumeFillResult.name}» ({perfumeFillResult.brand}) در فرم پایین پر شد — لطفاً همه‌ی فیلدها (به‌خصوص نام فارسی) را قبل از ذخیره بازبینی و تکمیل کن.
           </p>
         )}
       </div>
