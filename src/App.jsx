@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
 import {
   ShoppingBag, ShoppingCart, X, Plus, Minus, Trash2, LayoutDashboard,
-  Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock, Upload, Search
+  Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock, Upload, Search, Camera
 } from "lucide-react";
+// برای اسکن بارکد با دوربین — کتابخانه‌ی رایگان و متن‌باز ZXing. قبل از دیپلوی، این پکیج را نصب کن:
+//   npm install @zxing/browser
+import { BrowserMultiFormatReader } from "@zxing/browser";
 
 // آدرس بک‌اندی که راه‌اندازی کردی را اینجا جایگزین کن
 // (بعد از دیپلوی سرور در پوشه‌ی backend، مثلاً: "https://jordan-gallery-shop-backend.onrender.com")
@@ -1372,6 +1375,67 @@ const SEED_PRODUCTS = [
   { id: "p11", name: "دستگاه پاکسازی صورت", brand: "ولوره", category: "electronics", subcategory: "face", price: 1650000, description: "برس سونیک برای پاکسازی عمیق منافذ پوست صورت.", image: "" },
 ];
 
+// مودال اسکن بارکد با دوربین — از کتابخانه‌ی رایگان ZXing استفاده می‌کند؛ به محض تشخیص یک بارکد
+// معتبر، onDetected را صدا می‌زند و خودش را می‌بندد. کاملاً سمت مرورگر است، هیچ سروری درگیر نیست.
+function BarcodeScannerModal({ onDetected, onClose }) {
+  const videoRef = useRef(null);
+  const readerRef = useRef(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const reader = new BrowserMultiFormatReader();
+    readerRef.current = reader;
+    let cancelled = false;
+
+    reader
+      .decodeFromConstraints(
+        { video: { facingMode: "environment" } },
+        videoRef.current,
+        (result, err) => {
+          if (cancelled) return;
+          if (result) {
+            onDetected(result.getText());
+          }
+          // NotFoundException در هر فریمی که بارکد پیدا نشود عادی است؛ نادیده گرفته می‌شود.
+        }
+      )
+      .catch((e) => {
+        if (!cancelled) setError("دسترسی به دوربین ممکن نشد — مطمئن شو اجازه‌ی دوربین را به مرورگر داده‌ای.");
+      });
+
+    return () => {
+      cancelled = true;
+      try {
+        readerRef.current && readerRef.current.reset();
+      } catch (e) {}
+    };
+  }, [onDetected]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.92)" }}>
+      <div className="flex items-center justify-between w-full max-w-md mb-3">
+        <span style={{ color: "#FFFFFF", fontSize: 14, fontWeight: 700 }}>اسکن بارکد</span>
+        <button onClick={onClose} aria-label="بستن"><X size={22} color="#FFFFFF" /></button>
+      </div>
+      <div className="relative w-full max-w-md rounded-xl overflow-hidden" style={{ aspectRatio: "4/3", background: "#111" }}>
+        <video ref={videoRef} className="w-full h-full" style={{ objectFit: "cover" }} muted playsInline />
+        <div
+          style={{
+            position: "absolute", top: "35%", bottom: "35%", insetInlineStart: "10%", insetInlineEnd: "10%",
+            border: "2px solid #FF3E8E", borderRadius: 10, pointerEvents: "none",
+          }}
+        />
+      </div>
+      {error ? (
+        <p style={{ color: "#FF8FA3", fontSize: 12.5, marginTop: 12, textAlign: "center", maxWidth: 320 }}>{error}</p>
+      ) : (
+        <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12.5, marginTop: 12 }}>بارکد را داخل کادر بگیر</p>
+      )}
+    </div>
+  );
+}
+
+
 function ProductCard({ product, onOpen, globalDiscountPercent }) {
   const displayImage = product.image || "";
   const hasVariants = product.variants && product.variants.length > 0;
@@ -2149,6 +2213,16 @@ export default function MaisonStore() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "دریافت جزئیات ناموفق بود");
+    return data;
+  }
+
+  // اسکن بارکد: اول دیتابیس خودمان، بعد best-effort از UPCitemdb رایگان
+  async function lookupBarcode(code) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/barcode-lookup?code=${encodeURIComponent(code)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "جستجوی بارکد ناموفق بود");
     return data;
   }
 
@@ -2960,6 +3034,7 @@ export default function MaisonStore() {
           onExtractProductInfo={extractProductInfo}
           onSearchPerfume={searchPerfumeByName}
           onGetPerfumeDetails={getPerfumeDetails}
+          onLookupBarcode={lookupBarcode}
         />
       ) : view === "account" && user ? (
         <AccountPage
@@ -3416,7 +3491,7 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", nameEn: "", brand: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", longevity: "", sillage: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
+  return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", longevity: "", sillage: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
 function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
@@ -3495,7 +3570,7 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
   );
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, onExtractProductInfo, onSearchPerfume, onGetPerfumeDetails }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, onExtractProductInfo, onSearchPerfume, onGetPerfumeDetails, onLookupBarcode }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -3588,6 +3663,48 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       setPerfumeSearchError(err.message || "دریافت جزئیات ناموفق بود");
     } finally {
       setPerfumeDetailsLoading(false);
+    }
+  }
+
+  // اسکن بارکد — کار می‌کند در همه‌ی دسته‌ها، نه فقط ادکلن.
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [barcodeLookupLoading, setBarcodeLookupLoading] = useState(false);
+  const [barcodeLookupMessage, setBarcodeLookupMessage] = useState(null); // { type: 'own'|'external'|'none'|'error', text }
+
+  async function handleBarcodeDetected(code) {
+    setScannerOpen(false);
+    setForm((f) => ({ ...f, barcode: code }));
+    setBarcodeLookupMessage(null);
+    setBarcodeLookupLoading(true);
+    try {
+      const result = await onLookupBarcode(code);
+      if (result.foundInOwnDb) {
+        setBarcodeLookupMessage({
+          type: "own",
+          text: `این بارکد قبلاً برای «${result.product.name}» ثبت شده — اگه می‌خوای موجودی/قیمتش رو ویرایش کنی، از لیست پایین صفحه پیداش کن.`,
+        });
+      } else if (result.external && (result.external.title || result.external.brand)) {
+        setForm((f) => ({
+          ...f,
+          nameEn: result.external.title || f.nameEn,
+          brand: result.external.brand || f.brand,
+          image: f.image || result.external.image || f.image,
+        }));
+        setBarcodeLookupMessage({
+          type: "external",
+          text: `از UPCitemdb پیدا شد: «${result.external.title || result.external.brand}» — نام فارسی و بقیه‌ی فیلدها را بازبینی و تکمیل کن. برای ادکلن، می‌تونی این اسم رو توی جستجوی بالا هم بزنی تا نت‌ها رو بگیری.`,
+        });
+        if (result.external.title) setPerfumeSearchQuery(result.external.title);
+      } else {
+        setBarcodeLookupMessage({
+          type: "none",
+          text: "این بارکد در دیتابیس رایگان UPCitemdb پیدا نشد (پوشش این سرویس بیشتر بازار آمریکا/اروپاست، نه لزوماً کالاهای وارداتی ایران) — کد بارکد ذخیره شد، بقیه‌ی فیلدها رو دستی پر کن.",
+        });
+      }
+    } catch (err) {
+      setBarcodeLookupMessage({ type: "error", text: err.message || "جستجوی بارکد ناموفق بود" });
+    } finally {
+      setBarcodeLookupLoading(false);
     }
   }
 
@@ -3827,6 +3944,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       countryOfOrigin: p.countryOfOrigin || "",
       yearMade: p.yearMade || "",
       fragranticaRating: p.fragranticaRating || "",
+      barcode: p.barcode || "",
       imageFit: p.imageFit === "cover" ? "cover" : "contain",
       imagePosX: Number.isFinite(Number(p.imagePosX)) ? Number(p.imagePosX) : 50,
       imagePosY: Number.isFinite(Number(p.imagePosY)) ? Number(p.imagePosY) : 50,
@@ -4360,6 +4478,31 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
           style={{ color: "#241E3D" }}
         />
+        <div className="sm:col-span-2 flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <input
+              placeholder="بارکد محصول (اختیاری)"
+              value={form.barcode}
+              onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+              className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
+              style={{ color: "#241E3D" }}
+              dir="ltr"
+            />
+            <button
+              type="button"
+              onClick={() => setScannerOpen(true)}
+              className="btn-gold rounded px-3 py-2 text-sm flex items-center gap-1.5 flex-shrink-0"
+            >
+              <Camera size={14} /> اسکن
+            </button>
+          </div>
+          {barcodeLookupLoading && <p className="text-muted" style={{ fontSize: 11 }}>در حال جستجوی بارکد...</p>}
+          {barcodeLookupMessage && (
+            <p style={{ fontSize: 11.5, color: barcodeLookupMessage.type === "own" ? "#D97706" : barcodeLookupMessage.type === "external" ? "#0EA5A4" : barcodeLookupMessage.type === "error" ? "#D6336C" : "#756E93" }}>
+              {barcodeLookupMessage.text}
+            </p>
+          )}
+        </div>
         <select
           value={form.category}
           onChange={(e) => setForm({ ...form, category: e.target.value, subcategory: "", type: "", facets: {} })}
@@ -4891,6 +5034,13 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           </div>
         ))}
       </div>
+
+      {scannerOpen && (
+        <BarcodeScannerModal
+          onDetected={handleBarcodeDetected}
+          onClose={() => setScannerOpen(false)}
+        />
+      )}
     </section>
   );
 }
