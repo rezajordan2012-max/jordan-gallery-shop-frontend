@@ -3753,22 +3753,50 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           type: "own",
           text: `این بارکد قبلاً برای «${result.product.name}» ثبت شده — اگه می‌خوای موجودی/قیمتش رو ویرایش کنی، از لیست پایین صفحه پیداش کن.`,
         });
-      } else if (result.external && (result.external.title || result.external.brand)) {
+      } else if (result.external && result.external.found) {
+        const ext = result.external;
+        // اگر عطر تشخیص داده شده، از روی نت‌های همین جستجو (که از قبل فارسی‌اند) پیشنهاد خودکار
+        // حس رایحه/طبع/گروه بویایی هم زده می‌شود — دقیقاً همان مکانیزم جستجوی نام عطر.
+        const suggestion = ext.isPerfume
+          ? inferPerfumeFacetsFromNotes(ext.topNotes, ext.middleNotes, ext.baseNotes)
+          : null;
+        const concKey = ext.isPerfume ? mapConcentrationLabelToKey(ext.concentration) : null;
+
         setForm((f) => ({
           ...f,
-          nameEn: result.external.title || f.nameEn,
-          brand: result.external.brand || f.brand,
-          image: f.image || result.external.image || f.image,
+          name: f.name || ext.name || f.name,
+          nameEn: f.nameEn || ext.title || f.nameEn,
+          brand: f.brand || ext.brand || f.brand,
+          image: f.image || ext.image || f.image,
+          description: f.description || ext.description || f.description,
+          properties: f.properties || ext.properties || f.properties,
+          ingredients: !ext.isPerfume ? (f.ingredients || ext.ingredients || f.ingredients) : f.ingredients,
+          topNotes: ext.isPerfume ? (f.topNotes || ext.topNotes || f.topNotes) : f.topNotes,
+          middleNotes: ext.isPerfume ? (f.middleNotes || ext.middleNotes || f.middleNotes) : f.middleNotes,
+          baseNotes: ext.isPerfume ? (f.baseNotes || ext.baseNotes || f.baseNotes) : f.baseNotes,
+          perfumer: ext.isPerfume ? (f.perfumer || ext.perfumer || f.perfumer) : f.perfumer,
+          countryOfOrigin: f.countryOfOrigin || ext.countryOfOrigin || f.countryOfOrigin,
+          yearMade: f.yearMade || ext.yearMade || f.yearMade,
+          facets:
+            ext.isPerfume && suggestion
+              ? {
+                  ...f.facets,
+                  ...(concKey ? { concentration: [concKey] } : {}),
+                  scentFamily: suggestion.scentFamily,
+                  temperament: suggestion.temperament,
+                  fragranceNote: suggestion.fragranceNote,
+                }
+              : f.facets,
         }));
+        if (ext.isPerfume && suggestion) setNoteSuggestResult(suggestion);
         setBarcodeLookupMessage({
           type: "external",
-          text: `از UPCitemdb پیدا شد: «${result.external.title || result.external.brand}» — نام فارسی و بقیه‌ی فیلدها را بازبینی و تکمیل کن. برای ادکلن، می‌تونی این اسم رو توی جستجوی بالا هم بزنی تا نت‌ها رو بگیری.`,
+          text: `با جستجوی هوشمند وب پیدا شد: «${ext.name || ext.title}» — نام، برند، توضیح، ویژگی‌ها${ext.isPerfume ? " و نت‌ها" : " و ترکیبات"} تا جایی که پیدا شد پر شدند؛ لطفاً همه‌ی فیلدها را قبل از ذخیره بازبینی کن.`,
         });
-        if (result.external.title) setPerfumeSearchQuery(result.external.title);
       } else {
         setBarcodeLookupMessage({
           type: "none",
-          text: "این بارکد در دیتابیس رایگان UPCitemdb پیدا نشد (پوشش این سرویس بیشتر بازار آمریکا/اروپاست، نه لزوماً کالاهای وارداتی ایران) — کد بارکد ذخیره شد، بقیه‌ی فیلدها رو دستی پر کن.",
+          text: "این بارکد حتی با جستجوی وب هم شناسایی نشد — کد بارکد ذخیره شد، بقیه‌ی فیلدها رو دستی پر کن.",
         });
       }
     } catch (err) {
@@ -4574,7 +4602,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               <Camera size={14} /> اسکن
             </button>
           </div>
-          {barcodeLookupLoading && <p className="text-muted" style={{ fontSize: 11 }}>در حال جستجوی بارکد...</p>}
+          {barcodeLookupLoading && <p className="text-muted" style={{ fontSize: 11 }}>در حال جستجوی هوشمند بارکد در وب... (چند ثانیه طول می‌کشد)</p>}
           {barcodeLookupMessage && (
             <p style={{ fontSize: 11.5, color: barcodeLookupMessage.type === "own" ? "#D97706" : barcodeLookupMessage.type === "external" ? "#0EA5A4" : barcodeLookupMessage.type === "error" ? "#D6336C" : "#756E93" }}>
               {barcodeLookupMessage.text}
