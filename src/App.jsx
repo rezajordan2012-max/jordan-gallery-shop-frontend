@@ -2216,6 +2216,20 @@ export default function MaisonStore() {
     return data;
   }
 
+  // بعد از پر شدن نت‌ها/برند از fraganty.ai، توضیح انگلیسی (در صورت وجود) و داده‌های آکورد/فصل/زمان
+  // را می‌گیرد و با هوش مصنوعی یک توضیح کوتاه و چند ویژگی کلیدی، کاملاً به فارسی، تولید می‌کند —
+  // این درخواست جدا از جستجوی fraganty.ai است و از سهمیه‌ی آن مصرف نمی‌کند.
+  async function translatePerfumeText(payload) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/translate-perfume-text`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "ترجمه ناموفق بود");
+    return data;
+  }
+
   // اسکن بارکد: اول دیتابیس خودمان، بعد best-effort از UPCitemdb رایگان
   async function lookupBarcode(code) {
     const res = await fetch(`${API_BASE_URL}/api/ai/barcode-lookup?code=${encodeURIComponent(code)}`, {
@@ -3034,6 +3048,7 @@ export default function MaisonStore() {
           onExtractProductInfo={extractProductInfo}
           onSearchPerfume={searchPerfumeByName}
           onGetPerfumeDetails={getPerfumeDetails}
+          onTranslatePerfumeText={translatePerfumeText}
           onLookupBarcode={lookupBarcode}
         />
       ) : view === "account" && user ? (
@@ -3570,7 +3585,7 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
   );
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, onExtractProductInfo, onSearchPerfume, onGetPerfumeDetails, onLookupBarcode }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, onExtractProductInfo, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText, onLookupBarcode }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -3606,7 +3621,14 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [perfumeSearchError, setPerfumeSearchError] = useState("");
   const [perfumeSearchResults, setPerfumeSearchResults] = useState([]);
   const [perfumeDetailsLoading, setPerfumeDetailsLoading] = useState(false);
+  const [perfumeTranslating, setPerfumeTranslating] = useState(false);
   const [perfumeFillResult, setPerfumeFillResult] = useState(null);
+
+  // کش ساده‌ی نتایج جستجو و جزئیات عطر در حافظه (فقط طول عمر همین صفحه) — چون سهمیه‌ی رایگان
+  // fraganty.ai بسیار محدود است (۲۰ درخواست در ماه، و هر جستجو + هر انتخاب هرکدام یک درخواست
+  // حساب می‌شوند)، این کش از هدررفتن سهمیه با جستجو یا انتخاب تکراریِ همون محصول جلوگیری می‌کند.
+  const perfumeSearchCacheRef = useRef(new Map());
+  const perfumeDetailsCacheRef = useRef(new Map());
 
   async function handlePerfumeSearch(e) {
     e.preventDefault();
@@ -3615,9 +3637,17 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     setPerfumeSearchError("");
     setPerfumeSearchResults([]);
     setPerfumeFillResult(null);
+    const cacheKey = q.toLowerCase();
+    const cached = perfumeSearchCacheRef.current.get(cacheKey);
+    if (cached) {
+      setPerfumeSearchResults(cached);
+      if (cached.length === 0) setPerfumeSearchError("چیزی پیدا نشد — نام دیگه‌ای امتحان کن (مثلاً فقط اسم برند یا فقط اسم عطر)");
+      return;
+    }
     setPerfumeSearchLoading(true);
     try {
       const results = await onSearchPerfume(q);
+      perfumeSearchCacheRef.current.set(cacheKey, results);
       setPerfumeSearchResults(results);
       if (results.length === 0) setPerfumeSearchError("چیزی پیدا نشد — نام دیگه‌ای امتحان کن (مثلاً فقط اسم برند یا فقط اسم عطر)");
     } catch (err) {
@@ -3629,9 +3659,20 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
 
   async function handlePickPerfumeResult(item) {
     setPerfumeSearchError("");
+    setPerfumeFillResult(null);
     setPerfumeDetailsLoading(true);
     try {
-      const details = await onGetPerfumeDetails(item.id);
+      let details = perfumeDetailsCacheRef.current.get(item.id);
+      if (!details) {
+        details = await onGetPerfumeDetails(item.id);
+        perfumeDetailsCacheRef.current.set(item.id, details);
+      }
+      // اگر fraganty.ai برای این شناسه با وضعیت موفق (200) ولی بدون داده‌ی واقعی پاسخ بدهد
+      // (مثلاً به‌خاطر شناسه‌ی نامعتبر/قدیمی)، به‌جای پر کردن خاموشِ فرم با مقادیر خالی، خطای
+      // روشن نشان می‌دهیم تا مدیر بداند باید نتیجه‌ی دیگری را امتحان کند یا دستی وارد کند.
+      if (!details || !details.name) {
+        throw new Error("اطلاعات کامل این محصول در fraganty.ai یافت نشد — یک نتیجه‌ی دیگر را امتحان کن یا فیلدها را دستی پر کن.");
+      }
       const topFa = translateNotesArrayToFa(details.notes && details.notes.top);
       const middleFa = translateNotesArrayToFa(details.notes && details.notes.middle);
       const baseFa = translateNotesArrayToFa(details.notes && details.notes.base);
@@ -3645,7 +3686,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         topNotes: topFa || f.topNotes,
         middleNotes: middleFa || f.middleNotes,
         baseNotes: baseFa || f.baseNotes,
-        perfumer: (Array.isArray(details.perfumers) && details.perfumers.join("، ")) || f.perfumer,
+        perfumer:
+          (Array.isArray(details.perfumers) && details.perfumers.map((p) => (typeof p === "string" ? p : p.name)).filter(Boolean).join("، ")) ||
+          f.perfumer,
         yearMade: details.year ? String(details.year) : f.yearMade,
         facets: {
           ...f.facets,
@@ -3658,7 +3701,34 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       setNoteSuggestResult(suggestion);
       setPerfumeSearchResults([]);
       setPerfumeSearchQuery("");
-      setPerfumeFillResult({ name: details.name, brand: details.brand });
+      setPerfumeFillResult({ name: details.name, brand: details.brand, translated: null });
+
+      // توضیح کوتاه و ویژگی‌ها را جدا و به‌طور کامل فارسی از هوش مصنوعی می‌گیریم (این درخواست از
+      // سهمیه‌ی fraganty.ai نیست، جدا و روی سرویس هوش مصنوعی خودمان است) — اگر ناموفق شد، بقیه‌ی
+      // فرم که همین حالا پر شده دست‌نخورده می‌ماند و فقط این دو فیلد را باید دستی نوشت.
+      setPerfumeTranslating(true);
+      try {
+        const translated = await onTranslatePerfumeText({
+          name: details.name,
+          brand: details.brand,
+          description: details.description,
+          accords: details.accords,
+          seasons: details.seasons,
+          dayNight: details.dayNight,
+          gender: details.gender,
+          rating: details.rating,
+        });
+        setForm((f) => ({
+          ...f,
+          description: (translated && translated.description) || f.description,
+          properties: (translated && translated.properties) || f.properties,
+        }));
+        setPerfumeFillResult({ name: details.name, brand: details.brand, translated: true });
+      } catch (translateErr) {
+        setPerfumeFillResult({ name: details.name, brand: details.brand, translated: false });
+      } finally {
+        setPerfumeTranslating(false);
+      }
     } catch (err) {
       setPerfumeSearchError(err.message || "دریافت جزئیات ناموفق بود");
     } finally {
@@ -4448,7 +4518,15 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         {perfumeDetailsLoading && <p className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>در حال دریافت جزئیات...</p>}
         {perfumeFillResult && (
           <p style={{ fontSize: 12, color: "#0EA5A4", marginTop: 8 }}>
-            اطلاعات «{perfumeFillResult.name}» ({perfumeFillResult.brand}) در فرم پایین پر شد — لطفاً همه‌ی فیلدها (به‌خصوص نام فارسی) را قبل از ذخیره بازبینی و تکمیل کن.
+            اطلاعات «{perfumeFillResult.name}» ({perfumeFillResult.brand}) در فرم پایین پر شد
+            {perfumeTranslating
+              ? " — در حال آماده‌سازی توضیح و ویژگی‌های فارسی..."
+              : perfumeFillResult.translated === true
+                ? " (توضیح کوتاه و ویژگی‌ها هم به فارسی آماده و پر شد)"
+                : perfumeFillResult.translated === false
+                  ? " — تهیه‌ی خودکار توضیح و ویژگی‌ها ناموفق بود، این دو فیلد را دستی بنویس"
+                  : ""}
+            {" — لطفاً همه‌ی فیلدها (به‌خصوص نام فارسی) را قبل از ذخیره بازبینی و تکمیل کن."}
           </p>
         )}
       </div>
