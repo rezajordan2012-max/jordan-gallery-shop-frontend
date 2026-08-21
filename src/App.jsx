@@ -1005,6 +1005,22 @@ function productImageStyle(product) {
   };
 }
 
+// اگر آدرس تصویر روی Cloudinary خودمان میزبانی شده باشد (چه از آپلود مستقیم از گالری، چه از
+// شناسایی هوشمند بارکد که سمت سرور روی همین Cloudinary بارگذاری می‌شود)، این تابع با تبدیل‌های
+// خودِ Cloudinary — بدون هیچ سرویس یا هزینه‌ی اضافه — حاشیه‌ی یکنواخت اضافه‌ی دور عکس را خودکار
+// می‌بُرد (e_trim) و عکس را داخل یک قاب مربعیِ با پس‌زمینه‌ی سفیدِ یکپارچه قرار می‌دهد (c_pad,b_white)
+// تا مستقل از اینکه عکس اصلی چه اندازه/نسبتی داشته یا پس‌زمینه‌اش چه رنگی بوده، همیشه با یک قاب
+// تمیز و یکسان در کارت/صفحه‌ی محصول نمایش داده شود. روی لینک‌های خارجیِ غیر Cloudinary (مثلاً وقتی
+// مدیر مستقیم لینک عکس را می‌چسباند) بی‌اثر است و همان لینک اصلی بدون تغییر برگردانده می‌شود.
+function framedProductImageUrl(url, size = 1000) {
+  if (!url || typeof url !== "string") return url;
+  const marker = "/upload/";
+  const idx = url.indexOf(marker);
+  if (!url.includes("res.cloudinary.com") || idx === -1) return url;
+  const transform = `e_trim:10,c_pad,b_white,w_${size},h_${size},q_auto:good,f_auto`;
+  return url.slice(0, idx + marker.length) + transform + "/" + url.slice(idx + marker.length);
+}
+
 // برای نمایش قیمت با جداکننده‌ی هزارگان (۳ رقم ۳ رقم) حین تایپ در پنل مدیریت
 function formatPriceInput(digitsStr) {
   if (!digitsStr) return "";
@@ -1460,10 +1476,10 @@ function ProductCard({ product, onOpen, globalDiscountPercent }) {
           ٪{discountPct.toLocaleString("fa-IR")} تخفیف
         </span>
       )}
-      <div className="flex items-center justify-center" style={{ background: "rgba(123,92,246,0.08)", height: 168, overflow: "hidden" }}>
+      <div className="flex items-center justify-center" style={{ background: "#FFFFFF", height: 168, overflow: "hidden" }}>
         {displayImage ? (
           <img
-            src={displayImage}
+            src={framedProductImageUrl(displayImage)}
             alt={product.name}
             style={productImageStyle(product)}
             onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }}
@@ -1525,11 +1541,12 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
     <section className="px-4 sm:px-8 lg:px-12 max-w-3xl lg:max-w-5xl mx-auto py-6 pb-24">
       <div className="lg:flex lg:items-start lg:gap-10">
         <div
-          className={`${CATEGORY_CARD_CLASS[product.category]} rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-96 lg:h-[520px] lg:w-[420px] lg:flex-shrink-0`}
+          className="rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-96 lg:h-[520px] lg:w-[420px] lg:flex-shrink-0"
+          style={{ background: "#FFFFFF" }}
         >
           {displayImage ? (
             <img
-              src={displayImage}
+              src={framedProductImageUrl(displayImage)}
               alt={product.name}
               style={selectedVariant && selectedVariant.image ? { width: "100%", height: "100%", objectFit: "contain" } : productImageStyle(product)}
             />
@@ -1604,6 +1621,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
               (() => {
                 const specs = [
                   { label: "برند", value: product.brand },
+                  { label: "حجم", value: product.volume ? `${product.volume} میل` : "" },
                   { label: "غلظت مواد معطر", value: facetGroupValues(product.category, product.subcategory, "concentration", product.facets) },
                   { label: "ماندگاری", value: PERFUME_LONGEVITY_OPTIONS[product.longevity] },
                   { label: "پخش بو", value: PERFUME_SILLAGE_OPTIONS[product.sillage] },
@@ -3384,10 +3402,10 @@ export default function MaisonStore() {
               <div className="flex-1 overflow-y-auto flex flex-col gap-4">
                 {cartItems.map((item) => (
                   <div key={item.cartKey} className="flex items-center gap-3 border-b border-hair pb-3">
-                    <div className="flex items-center justify-center rounded overflow-hidden" style={{ width: 44, height: 44, background: "rgba(123,92,246,0.08)" }}>
+                    <div className="flex items-center justify-center rounded overflow-hidden" style={{ width: 44, height: 44, background: "#FFFFFF", border: "1px solid rgba(123,92,246,0.15)" }}>
                       {(item.variant && item.variant.image) || item.image ? (
                         <img
-                          src={(item.variant && item.variant.image) || item.image}
+                          src={framedProductImageUrl((item.variant && item.variant.image) || item.image)}
                           alt={item.name}
                           style={{ width: "100%", height: "100%", objectFit: "cover" }}
                         />
@@ -3506,7 +3524,7 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", longevity: "", sillage: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
+  return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", longevity: "", sillage: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", volume: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
 function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
@@ -4042,6 +4060,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       countryOfOrigin: p.countryOfOrigin || "",
       yearMade: p.yearMade || "",
       fragranticaRating: p.fragranticaRating || "",
+      volume: p.volume || "",
       barcode: p.barcode || "",
       imageFit: p.imageFit === "cover" ? "cover" : "contain",
       imagePosX: Number.isFinite(Number(p.imagePosX)) ? Number(p.imagePosX) : 50,
@@ -4911,6 +4930,20 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 />
                 <span className="text-muted" style={{ fontSize: 11 }}>از ۱۰</span>
               </div>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="حجم (اختیاری)"
+                  value={form.volume}
+                  onChange={(e) => setForm({ ...form, volume: e.target.value })}
+                  className="bg-panel border border-hair rounded px-3 py-2 text-sm flex-1"
+                  style={{ color: "#241E3D" }}
+                  dir="ltr"
+                />
+                <span className="text-muted" style={{ fontSize: 11 }}>میل</span>
+              </div>
             </div>
           </div>
         )}
@@ -4948,8 +4981,8 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 پیش‌نمایش دقیق — دقیقاً همین‌طوری توی کارت محصول نمایش داده می‌شود:
               </p>
               <div
-                className={CATEGORY_CARD_CLASS[form.category]}
                 style={{
+                  background: "#FFFFFF",
                   height: 168,
                   borderRadius: 10,
                   border: "1px solid rgba(123,92,246,0.3)",
@@ -4961,7 +4994,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 }}
               >
                 <img
-                  src={form.image}
+                  src={framedProductImageUrl(form.image)}
                   alt="پیش‌نمایش"
                   style={productImageStyle({
                     imageFit: form.imageFit,
@@ -4973,6 +5006,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                   onLoad={(e) => { delete e.currentTarget.parentElement.dataset.broken; e.currentTarget.style.display = "block"; }}
                 />
               </div>
+              <p className="text-muted" style={{ fontSize: 10.5 }}>
+                برش و پس‌زمینه‌ی سفید به‌صورت خودکار روی عکس اعمال می‌شود (فقط برای عکس‌های آپلودشده از گالری یا شناسایی‌شده از بارکد — نه لینک‌های خارجیِ دستی).
+              </p>
 
               {/* تنظیمات دستی نمایش تصویر — حالت جاگیری، موقعیت و بزرگ‌نمایی */}
               <div className="bg-panel-2 border border-hair rounded-lg p-3 mt-2 flex flex-col gap-3" style={{ maxWidth: 380 }}>
@@ -5109,10 +5145,10 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       <div className="flex flex-col gap-2">
         {products.map((p) => (
           <div key={p.id} className="bg-panel border border-hair rounded-lg p-3 flex items-center gap-3">
-            <div className="flex items-center justify-center rounded overflow-hidden" style={{ width: 40, height: 40, background: "rgba(123,92,246,0.08)", flexShrink: 0 }}>
+            <div className="flex items-center justify-center rounded overflow-hidden" style={{ width: 40, height: 40, background: "#FFFFFF", border: "1px solid rgba(123,92,246,0.15)", flexShrink: 0 }}>
               {p.image ? (
                 <img
-                  src={p.image}
+                  src={framedProductImageUrl(p.image)}
                   alt={p.name}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }}
