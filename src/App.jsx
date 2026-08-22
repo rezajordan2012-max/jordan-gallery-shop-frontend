@@ -3773,12 +3773,11 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         });
       } else if (result.external && result.external.found) {
         const ext = result.external;
-        // اگر عطر تشخیص داده شده، از روی نت‌های همین جستجو (که از قبل فارسی‌اند) پیشنهاد خودکار
-        // حس رایحه/طبع/گروه بویایی هم زده می‌شود — دقیقاً همان مکانیزم جستجوی نام عطر.
-        const suggestion = ext.isPerfume
-          ? inferPerfumeFacetsFromNotes(ext.topNotes, ext.middleNotes, ext.baseNotes)
-          : null;
-        const concKey = ext.isPerfume ? mapConcentrationLabelToKey(ext.concentration) : null;
+        // پیشنهاد خودکار حس رایحه/طبع/گروه بویایی فقط وقتی معنا دارد که نت‌ها موجود باشند —
+        // نت‌ها فقط از لایه‌ی هوش مصنوعی (در صورت فعال بودن) می‌آیند، نه از پایگاه‌ی رایگان.
+        const hasNotes = ext.topNotes || ext.middleNotes || ext.baseNotes;
+        const suggestion = hasNotes ? inferPerfumeFacetsFromNotes(ext.topNotes, ext.middleNotes, ext.baseNotes) : null;
+        const concKey = ext.concentration ? mapConcentrationLabelToKey(ext.concentration) : null;
 
         setForm((f) => ({
           ...f,
@@ -3788,15 +3787,16 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           image: f.image || ext.image || f.image,
           description: f.description || ext.description || f.description,
           properties: f.properties || ext.properties || f.properties,
-          ingredients: !ext.isPerfume ? (f.ingredients || ext.ingredients || f.ingredients) : f.ingredients,
-          topNotes: ext.isPerfume ? (f.topNotes || ext.topNotes || f.topNotes) : f.topNotes,
-          middleNotes: ext.isPerfume ? (f.middleNotes || ext.middleNotes || f.middleNotes) : f.middleNotes,
-          baseNotes: ext.isPerfume ? (f.baseNotes || ext.baseNotes || f.baseNotes) : f.baseNotes,
-          perfumer: ext.isPerfume ? (f.perfumer || ext.perfumer || f.perfumer) : f.perfumer,
+          ingredients: f.ingredients || ext.ingredients || f.ingredients,
+          volume: f.volume || ext.volume || f.volume,
+          topNotes: f.topNotes || ext.topNotes || f.topNotes,
+          middleNotes: f.middleNotes || ext.middleNotes || f.middleNotes,
+          baseNotes: f.baseNotes || ext.baseNotes || f.baseNotes,
+          perfumer: f.perfumer || ext.perfumer || f.perfumer,
           countryOfOrigin: f.countryOfOrigin || ext.countryOfOrigin || f.countryOfOrigin,
           yearMade: f.yearMade || ext.yearMade || f.yearMade,
           facets:
-            ext.isPerfume && suggestion
+            suggestion
               ? {
                   ...f.facets,
                   ...(concKey ? { concentration: [concKey] } : {}),
@@ -3806,15 +3806,24 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 }
               : f.facets,
         }));
-        if (ext.isPerfume && suggestion) setNoteSuggestResult(suggestion);
+        if (suggestion) setNoteSuggestResult(suggestion);
+
+        const sourceText =
+          ext.source === "ai+free"
+            ? "پایگاه‌ی باز رایگان + جستجوی هوشمند وب"
+            : ext.source === "ai"
+              ? "جستجوی هوشمند وب"
+              : "پایگاه‌ی باز و رایگان Open Beauty/Food Facts";
         setBarcodeLookupMessage({
           type: "external",
-          text: `با جستجوی هوشمند وب پیدا شد: «${ext.name || ext.title}» — نام، برند، توضیح، ویژگی‌ها${ext.isPerfume ? " و نت‌ها" : " و ترکیبات"} تا جایی که پیدا شد پر شدند؛ لطفاً همه‌ی فیلدها را قبل از ذخیره بازبینی کن.`,
+          text: `از طریق ${sourceText} پیدا شد: «${ext.name || ext.title}» — فیلدهای موجود پر شدند؛ لطفاً همه (به‌خصوص نام فارسی و توضیح‌ها اگر پر نشدن) را قبل از ذخیره بازبینی و تکمیل کن.`,
         });
       } else {
         setBarcodeLookupMessage({
           type: "none",
-          text: "این بارکد حتی با جستجوی وب هم شناسایی نشد — کد بارکد ذخیره شد، بقیه‌ی فیلدها رو دستی پر کن.",
+          text:
+            result.note ||
+            "این بارکد در پایگاه‌ی باز رایگان پیدا نشد — کد بارکد ذخیره شد، بقیه‌ی فیلدها رو دستی پر کن.",
         });
       }
     } catch (err) {
@@ -4621,7 +4630,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               <Camera size={14} /> اسکن
             </button>
           </div>
-          {barcodeLookupLoading && <p className="text-muted" style={{ fontSize: 11 }}>در حال جستجوی هوشمند بارکد در وب... (چند ثانیه طول می‌کشد)</p>}
+          {barcodeLookupLoading && <p className="text-muted" style={{ fontSize: 11 }}>در حال جستجوی بارکد...</p>}
           {barcodeLookupMessage && (
             <p style={{ fontSize: 11.5, color: barcodeLookupMessage.type === "own" ? "#D97706" : barcodeLookupMessage.type === "external" ? "#0EA5A4" : barcodeLookupMessage.type === "error" ? "#D6336C" : "#756E93" }}>
               {barcodeLookupMessage.text}
