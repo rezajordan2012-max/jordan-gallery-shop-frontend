@@ -2625,6 +2625,15 @@ export default function MaisonStore() {
 
   // آیا در صفحه‌ی اصلی روی بنر هستیم؟ (برای شناور بودن دکمه‌ها روی بنر، بدون فاصله‌ی هدر)
   const isHomeHero = view === "store" && !categoryPageOpen && !openProductId;
+  // بنر صفحه‌ی دسته‌بندی فعلی (در صورت وجود) — یک‌بار همین‌جا محاسبه می‌شود تا هم برای تصمیم
+  // «آیا هدر باید مثل صفحه‌ی اصلی شفاف/شناور باشد یا نه» استفاده شود، هم پایین‌تر داخل JSX (بدون
+  // محاسبه‌ی دوباره‌ی همان چیز).
+  const currentCategoryBanner =
+    categoryPageOpen && !searchTerm ? resolveCategoryBanner(categoryBanners, activeCategory, activeSubcategory, activeType) : null;
+  // هر صفحه‌ای که بالای خودش یک بنر تمام‌عرض (عکس/ویدیوی صفحه‌ی اصلی یا بنر دسته‌بندی) دارد، هدر
+  // باید دقیقاً مثل صفحه‌ی اصلی روی همان بنر شناور و شفاف بماند — نه با یک نوار سفید زیرش که باعث
+  // می‌شد پشت هدر یک پس‌زمینه‌ی سفیدِ نامرتبط دیده شود.
+  const hasTopBanner = (isHomeHero && heroBanners.length > 0) || !!currentCategoryBanner;
 
   return (
     <div dir="rtl" lang="fa" className="maison-root min-h-screen">
@@ -3047,7 +3056,7 @@ export default function MaisonStore() {
         </div>
       )}
 
-      {!isHomeHero && <div style={{ height: "12mm" }} />}
+      {!hasTopBanner && <div style={{ height: "12mm" }} />}
 
       {view === "admin" && isAdmin ? (
         <AdminPanel
@@ -3213,7 +3222,7 @@ export default function MaisonStore() {
           )}
 
           {categoryPageOpen && (() => {
-            const categoryBanner = !searchTerm ? resolveCategoryBanner(categoryBanners, activeCategory, activeSubcategory, activeType) : null;
+            const categoryBanner = currentCategoryBanner;
             // مسیر (breadcrumb) دسته/زیرشاخه/نوع — کوچک و کم‌رنگ، دقیقاً مثل مسیر ریز زیر بنر در
             // سایت‌های معتبر فروش آنلاین؛ همیشه در ناحیه‌ی ساده‌ی زیر بنر (نه روی خودِ بنر) می‌آید تا توجه را از محصولات نگیرد.
             const breadcrumbContent = (
@@ -3816,14 +3825,12 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               : "پایگاه‌ی باز و رایگان Open Beauty/Food Facts";
         setBarcodeLookupMessage({
           type: "external",
-          text: `از طریق ${sourceText} پیدا شد: «${ext.name || ext.title}» — فیلدهای موجود پر شدند؛ لطفاً همه (به‌خصوص نام فارسی و توضیح‌ها اگر پر نشدن) را قبل از ذخیره بازبینی و تکمیل کن.`,
+          text: `از طریق ${sourceText} پیدا شد: «${ext.name || ext.title}» — فیلدهای موجود پر شدند؛ لطفاً همه (به‌خصوص نام فارسی و توضیح‌ها اگر پر نشدن) را قبل از ذخیره بازبینی و تکمیل کن.${result.note ? ` ${result.note}` : ""}`,
         });
       } else {
         setBarcodeLookupMessage({
           type: "none",
-          text:
-            result.note ||
-            "این بارکد در پایگاه‌ی باز رایگان پیدا نشد — کد بارکد ذخیره شد، بقیه‌ی فیلدها رو دستی پر کن.",
+          text: `این بارکد در پایگاه‌ی باز رایگان پیدا نشد — کد بارکد ذخیره شد، بقیه‌ی فیلدها رو دستی پر کن.${result.note ? ` ${result.note}` : ""}`,
         });
       }
     } catch (err) {
