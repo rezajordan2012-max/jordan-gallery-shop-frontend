@@ -856,6 +856,12 @@ const CATEGORY_LABEL = Object.fromEntries(
 
 const CATEGORY_ORDER = Object.keys(CATEGORIES);
 
+// ترتیب نمایش باکس‌های دسته‌بندی در صفحه‌ی اصلی — طبق درخواست: جای ادکلن با آرایشی، و جای اسپری
+// و بادی اسپلش با بهداشتی جابه‌جا شده؛ این آرایش فقط روی چیدمان صفحه‌ی اصلی اثر دارد و ترتیب
+// دسته‌ها در منوی کشویی و بقیه‌ی جاهای سایت (CATEGORY_ORDER) دست‌نخورده می‌ماند. لوازم برقی شخصی
+// همچنان آخرین باکس است، با این تفاوت که به‌صورت یک باکس بزرگ و تمام‌عرض نمایش داده می‌شود.
+const HOME_CATEGORY_ORDER = ["makeup", "hygiene", "perfume", "sprayAndSplash", "electronics"];
+
 const CATEGORY_CARD_CLASS = {
   perfume: "card-perfume-blue",
   sprayAndSplash: "card-perfume",
@@ -1089,6 +1095,18 @@ const CATEGORY_ICON_COLOR = {
   electronics: "#7B5CF6",
 };
 
+// تبدیل رنگ هگز به rgba با شفافیت دلخواه — برای رنگ‌آمیزی نرم و نیمه‌شفافِ عناصر تزئینیِ باکس‌های
+// دسته‌بندی صفحه‌ی اصلی (نقطه‌چین، دایره‌ی محو، گوشه‌ی رنگی) بر پایه‌ی رنگ اصلی همان دسته.
+function hexToRgba(hex, alpha) {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+  const num = parseInt(full, 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function CategoryIcon({ category, size = 34 }) {
   const c = CATEGORY_ICON_COLOR[category] || "#7B5CF6";
 
@@ -1160,6 +1178,96 @@ function CategoryIcon({ category, size = 34 }) {
         <path d="M16 23h16" stroke={c} strokeWidth="1.6" opacity="0.7" />
       </svg>
     </span>
+  );
+}
+
+// باکس دسته‌بندی صفحه‌ی اصلی — طراحی الهام‌گرفته از کارت‌های رنگی با قاب رسانه‌ی چرخیده (اسکوییرکل).
+// اگر مدیر برای این دسته عکس یا ویدیو تنظیم کرده باشد (media)، همان با crop هوشمند (object-fit:
+// cover، بدون کشیدگی) داخل قاب نمایش داده می‌شود؛ وگرنه همان آیکون گرافیکی پیش‌فرض دسته جایگزین می‌شود.
+// prop «large» فقط برای باکس لوازم برقی شخصی true است (باکس بزرگ‌تر و تمام‌عرض).
+function CategoryTile({ category, count, media, large, onClick }) {
+  const accent = CATEGORY_ICON_COLOR[category] || "#7B5CF6";
+  const cardClass = CATEGORY_CARD_CLASS[category];
+  const m = media && media.url ? normalizeBanner(media) : null;
+  const frameSize = large ? 112 : 92;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${cardClass} category-card rounded-3xl border border-hair w-full h-full relative overflow-hidden`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: large ? "20px 22px" : "18px 18px",
+        minHeight: large ? 132 : 172,
+      }}
+    >
+      {/* نقطه‌چین تزئینی */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute", top: 16, insetInlineEnd: 18, width: 42, height: 42,
+          backgroundImage: `radial-gradient(${hexToRgba(accent, 0.4)} 1.3px, transparent 1.3px)`,
+          backgroundSize: "7px 7px", pointerEvents: "none", opacity: 0.85,
+        }}
+      />
+      {/* دایره‌ی محو تزئینی */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute", top: -20, insetInlineStart: -16, width: 66, height: 66, borderRadius: "50%",
+          background: hexToRgba(accent, 0.2), pointerEvents: "none",
+        }}
+      />
+      {/* گوشه‌ی رنگی تزئینی */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute", bottom: 0, insetInlineStart: 0, width: 46, height: 46,
+          background: hexToRgba(accent, 0.22),
+          clipPath: "polygon(0 100%, 100% 100%, 0 0)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* قاب رسانه — عکس/ویدیوی مدیر یا آیکون پیش‌فرض، داخل یک اسکوییرکل چرخیده */}
+      <div style={{ position: "relative", zIndex: 1, order: 1, flexShrink: 0, width: frameSize, height: frameSize }}>
+        <div
+          className="float-slow"
+          style={{
+            width: "100%", height: "100%",
+            borderRadius: "42% 58% 65% 35% / 45% 45% 55% 55%",
+            background: "rgba(255,255,255,0.6)",
+            border: "1px solid rgba(255,255,255,0.75)",
+            boxShadow: `0 10px 22px -10px ${hexToRgba(accent, 0.55)}`,
+            overflow: "hidden",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transform: "rotate(-6deg)",
+          }}
+        >
+          {m ? (
+            m.type === "video" ? (
+              <video src={m.url} autoPlay muted loop playsInline style={productImageStyle(m)} />
+            ) : (
+              <img src={m.url} alt={CATEGORY_LABEL[category]} style={productImageStyle(m)} />
+            )
+          ) : (
+            <CategoryIcon category={category} size={large ? 48 : 40} />
+          )}
+        </div>
+        <span className="sparkle" style={{ position: "absolute", top: -2, insetInlineEnd: -2, width: 7, height: 7, borderRadius: "50%", background: accent, boxShadow: `0 0 8px 2px ${hexToRgba(accent, 0.6)}` }} />
+        <span className="sparkle" style={{ position: "absolute", bottom: 4, insetInlineStart: -5, width: 5, height: 5, borderRadius: "50%", background: accent, boxShadow: `0 0 6px 2px ${hexToRgba(accent, 0.6)}`, animationDelay: "0.6s" }} />
+      </div>
+
+      {/* متن — عنوان دسته و تعداد محصول */}
+      <div style={{ position: "relative", zIndex: 1, order: 2, display: "flex", flexDirection: "column", gap: 6, minWidth: 0, textAlign: "right" }}>
+        <p className="font-display" style={{ fontSize: large ? 19 : 16.5, lineHeight: 1.4 }}>{CATEGORY_LABEL[category]}</p>
+        <p className="text-muted" style={{ fontSize: 12.5 }}>{count.toLocaleString("fa-IR")} محصول</p>
+      </div>
+    </button>
   );
 }
 
@@ -1938,6 +2046,8 @@ export default function MaisonStore() {
   // { [key]: { type:'image'|'video', url } } — کلید یا فقط نام دسته است (برای کل آن دسته) یا "دسته:زیرشاخه"
   // برای بنر اختصاصی همان زیرشاخه؛ اگر زیرشاخه بنر نداشته باشد، بنر کل دسته (در صورت وجود) نمایش داده می‌شود.
   const [categoryBanners, setCategoryBanners] = useState({});
+  // رسانه‌ی (عکس/ویدیوی) هر باکس دسته‌بندی در صفحه‌ی اصلی — { [categoryKey]: { type:'image'|'video', url, imageFit, imagePosX, imagePosY, imageZoom } }
+  const [categoryTileMedia, setCategoryTileMedia] = useState({});
 
   // احراز هویت و پرداخت — توکن در localStorage نگه داشته می‌شود تا با رفرش صفحه
   // یا برگشت به تب مرورگر، ورود کاربر حفظ شود و فقط با زدن دکمه‌ی خروج پاک شود.
@@ -2010,6 +2120,9 @@ export default function MaisonStore() {
       }
       if (data && data.categoryBanners && typeof data.categoryBanners === "object") {
         setCategoryBanners(data.categoryBanners);
+      }
+      if (data && data.categoryTileMedia && typeof data.categoryTileMedia === "object") {
+        setCategoryTileMedia(data.categoryTileMedia);
       }
     } catch (e) {
       // بعد از چند بار تلاش هم سرور در دسترس نبود، همان طرح پیش‌فرض نمایش داده می‌شود.
@@ -2290,6 +2403,17 @@ export default function MaisonStore() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "ذخیره‌ی بنر دسته‌بندی ناموفق بود");
     setCategoryBanners(banners);
+  }
+
+  async function updateCategoryTileMedia(media) {
+    const res = await fetch(`${API_BASE_URL}/api/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ categoryTileMedia: media }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "ذخیره‌ی رسانه‌ی باکس‌های دسته‌بندی ناموفق بود");
+    setCategoryTileMedia(media);
   }
 
   function addToCart(product, variantId) {
@@ -3072,6 +3196,8 @@ export default function MaisonStore() {
           onUpdateGlobalDiscount={updateGlobalDiscount}
           categoryBanners={categoryBanners}
           onUpdateCategoryBanners={updateCategoryBanners}
+          categoryTileMedia={categoryTileMedia}
+          onUpdateCategoryTileMedia={updateCategoryTileMedia}
           onExtractProductInfo={extractProductInfo}
           onSearchPerfume={searchPerfumeByName}
           onGetPerfumeDetails={getPerfumeDetails}
@@ -3201,22 +3327,21 @@ export default function MaisonStore() {
           )}
 
           {/* Category strip */}
-          <section className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-y-4 gap-x-0 mb-12">
-            {CATEGORY_ORDER.map((c) => (
-              <button
-                key={c}
-                onClick={() => { selectCategory(c); pushNav({ activeCategory: c, categoryPageOpen: c !== "all" }); }}
-                className={`${CATEGORY_CARD_CLASS[c]} category-card rounded-xl p-5 flex items-center gap-4 border border-hair text-right`}
-              >
-                <CategoryIcon category={c} size={42} />
-                <div>
-                  <p className="font-display" style={{ fontSize: 16 }}>{CATEGORY_LABEL[c]}</p>
-                  <p className="text-muted" style={{ fontSize: 12 }}>
-                    {products.filter((p) => p.category === c).length} محصول
-                  </p>
+          <section className="px-4 sm:px-8 lg:px-12 max-w-3xl mx-auto grid grid-cols-2 gap-3 sm:gap-4 mb-12">
+            {HOME_CATEGORY_ORDER.map((c) => {
+              const isLarge = c === "electronics";
+              return (
+                <div key={c} className={isLarge ? "col-span-2" : undefined}>
+                  <CategoryTile
+                    category={c}
+                    count={products.filter((p) => p.category === c).length}
+                    media={categoryTileMedia[c]}
+                    large={isLarge}
+                    onClick={() => { selectCategory(c); pushNav({ activeCategory: c, categoryPageOpen: c !== "all" }); }}
+                  />
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </section>
           </>
           )}
@@ -3612,7 +3737,7 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
   );
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, onExtractProductInfo, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText, onLookupBarcode }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText, onLookupBarcode }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -3627,6 +3752,13 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [catBannerSaving, setCatBannerSaving] = useState(false);
   const [catBannerError, setCatBannerError] = useState("");
   const [catBannerSaved, setCatBannerSaved] = useState(false);
+  // رسانه‌ی هر باکس دسته‌بندی صفحه‌ی اصلی — نسخه‌ی محلی قابل‌ویرایش از categoryTileMedia
+  const [catTileDrafts, setCatTileDrafts] = useState(categoryTileMedia || {});
+  const [catTileCategory, setCatTileCategory] = useState(CATEGORY_ORDER[0]);
+  const [catTileUploading, setCatTileUploading] = useState(false);
+  const [catTileSaving, setCatTileSaving] = useState(false);
+  const [catTileError, setCatTileError] = useState("");
+  const [catTileSaved, setCatTileSaved] = useState(false);
   const [discountDraft, setDiscountDraft] = useState(String(globalDiscountPercent || ""));
   const [discountSaving, setDiscountSaving] = useState(false);
   const [discountError, setDiscountError] = useState("");
@@ -4052,6 +4184,75 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       setCatBannerError(err.message || "ذخیره‌سازی ناموفق بود");
     } finally {
       setCatBannerSaving(false);
+    }
+  }
+
+  // مقدار فعلی (نرمال‌شده) رسانه‌ی دسته‌ی انتخاب‌شده در این بخش پنل
+  const catTileCurrent = catTileDrafts[catTileCategory] ? normalizeBanner(catTileDrafts[catTileCategory]) : null;
+
+  async function handleCatTileFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    if (!isImage && !isVideo) {
+      setCatTileError("فایل انتخاب‌شده باید عکس یا کلیپ ویدئویی باشد");
+      return;
+    }
+    setCatTileError("");
+    setCatTileSaved(false);
+    setCatTileUploading(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const url = await onUploadImage(base64);
+      // پیش‌فرض هر رسانه‌ی تازه: پر کردن کامل قاب (crop هوشمند و خودکار) بدون نیاز به تنظیم دستی
+      setCatTileDrafts((prev) => ({
+        ...prev,
+        [catTileCategory]: { type: isVideo ? "video" : "image", url, imageFit: "cover", imagePosX: 50, imagePosY: 50, imageZoom: 1 },
+      }));
+    } catch (err) {
+      setCatTileError(err.message || "آپلود ناموفق بود");
+    } finally {
+      setCatTileUploading(false);
+    }
+  }
+
+  function removeCatTile() {
+    setCatTileDrafts((prev) => {
+      const next = { ...prev };
+      delete next[catTileCategory];
+      return next;
+    });
+    setCatTileSaved(false);
+  }
+
+  function updateCatTileField(field, value) {
+    setCatTileDrafts((prev) => {
+      const existingRaw = prev[catTileCategory];
+      if (!existingRaw) return prev;
+      const normalized = normalizeBanner(existingRaw);
+      return { ...prev, [catTileCategory]: { ...normalized, [field]: value } };
+    });
+    setCatTileSaved(false);
+  }
+
+  async function saveCatTiles() {
+    setCatTileError("");
+    setCatTileSaved(false);
+    setCatTileSaving(true);
+    try {
+      await onUpdateCategoryTileMedia(catTileDrafts);
+      setCatTileSaved(true);
+    } catch (err) {
+      setCatTileError(err.message || "ذخیره‌سازی ناموفق بود");
+    } finally {
+      setCatTileSaving(false);
     }
   }
 
@@ -4531,6 +4732,174 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         </button>
         {catBannerSaved && <span className="text-gold" style={{ fontSize: 12, marginRight: 10 }}>ذخیره شد ✓</span>}
         {catBannerError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 6 }}>{catBannerError}</p>}
+      </div>
+
+      {/* رسانه‌ی باکس‌های دسته‌بندی صفحه‌ی اصلی */}
+      <div className="bg-panel border border-hair rounded-lg p-4 mb-8">
+        <h3 className="font-display mb-1" style={{ fontSize: 15 }}>رسانه‌ی باکس‌های دسته‌بندی صفحه‌ی اصلی</h3>
+        <p className="text-muted mb-3" style={{ fontSize: 11 }}>
+          برای هر یک از ۵ باکس دسته‌بندی روی صفحه‌ی اصلی، یک عکس یا کلیپ ویدئویی کوتاه و حرفه‌ای آپلود کن. تصویر یا ویدیو به‌طور خودکار و بدون کشیدگی متناسب با فضای باکس برش می‌خورد (crop هوشمند)؛ اگر خواستی بخش دقیق‌تری از رسانه دیده شود، از تنظیمات دستیِ زیر (بزرگ‌نمایی و موقعیت) استفاده کن. اگر برای دسته‌ای رسانه‌ای تنظیم نشود، همان آیکون گرافیکی پیش‌فرض همان دسته نمایش داده می‌شود.
+        </p>
+
+        <select
+          value={catTileCategory}
+          onChange={(e) => { setCatTileCategory(e.target.value); setCatTileSaved(false); }}
+          className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm mb-3"
+          style={{ color: "#241E3D" }}
+        >
+          {CATEGORY_ORDER.map((k) => (
+            <option key={k} value={k}>{CATEGORY_LABEL[k]}</option>
+          ))}
+        </select>
+
+        {catTileCurrent && (
+          <div className="flex items-center gap-2 bg-panel-2 border border-hair rounded p-2 mb-3">
+            {catTileCurrent.type === "video" ? (
+              <video
+                src={catTileCurrent.url}
+                muted
+                style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", background: "#241E3D" }}
+                onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
+              />
+            ) : (
+              <img
+                src={catTileCurrent.url}
+                alt="رسانه‌ی فعلی"
+                style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover" }}
+                onError={(e) => { e.currentTarget.style.opacity = 0.3; }}
+              />
+            )}
+            <span className="text-muted" style={{ fontSize: 11, flex: 1 }}>
+              رسانه‌ی فعلیِ {CATEGORY_LABEL[catTileCategory]} ({catTileCurrent.type === "video" ? "ویدیو" : "عکس"})
+            </span>
+            <button type="button" onClick={removeCatTile} className="btn-ghost rounded px-2 py-1 text-xs" style={{ color: "#D6336C" }}>حذف</button>
+          </div>
+        )}
+        {!catTileCurrent && (
+          <p className="text-muted mb-3" style={{ fontSize: 11 }}>
+            فعلاً برای {CATEGORY_LABEL[catTileCategory]} رسانه‌ای تنظیم نشده — آیکون پیش‌فرض نمایش داده می‌شود.
+          </p>
+        )}
+
+        <div className="flex items-center gap-3 flex-wrap mb-3">
+          <label
+            className="btn-ghost rounded px-3 py-2 text-xs flex items-center gap-2"
+            style={{ cursor: catTileUploading ? "default" : "pointer", opacity: catTileUploading ? 0.6 : 1 }}
+          >
+            <Upload size={14} />
+            {catTileUploading ? "در حال آپلود..." : catTileCurrent ? "تغییر عکس/ویدیوی این باکس" : "افزودن عکس یا کلیپ ویدئویی از گالری"}
+            <input type="file" accept="image/*,video/*" onChange={handleCatTileFile} disabled={catTileUploading} style={{ display: "none" }} />
+          </label>
+        </div>
+
+        {catTileCurrent && (
+          <div className="flex flex-col gap-1 mb-3">
+            <p className="text-muted" style={{ fontSize: 11 }}>
+              پیش‌نمایش — تقریباً همین‌طوری داخل قاب چرخیده‌ی باکس دسته‌بندی نمایش داده می‌شود:
+            </p>
+            <div
+              style={{
+                width: 140, height: 140,
+                borderRadius: "42% 58% 65% 35% / 45% 45% 55% 55%",
+                border: "1px solid rgba(123,92,246,0.3)",
+                overflow: "hidden",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "rgba(123,92,246,0.08)",
+              }}
+            >
+              {catTileCurrent.type === "video" ? (
+                <video
+                  key={catTileCurrent.url}
+                  src={catTileCurrent.url}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  style={productImageStyle(catTileCurrent)}
+                />
+              ) : (
+                <img
+                  src={catTileCurrent.url}
+                  alt="پیش‌نمایش"
+                  style={productImageStyle(catTileCurrent)}
+                />
+              )}
+            </div>
+
+            {/* تنظیمات دستی — فقط برای موارد نادری که crop خودکار کافی نباشد */}
+            <div className="bg-panel-2 border border-hair rounded-lg p-3 mt-2 flex flex-col gap-3" style={{ maxWidth: 380 }}>
+              <div className="flex items-center justify-between">
+                <span className="text-muted" style={{ fontSize: 11 }}>تنظیمات دستی رسانه</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateCatTileField("imageFit", "cover");
+                    updateCatTileField("imagePosX", 50);
+                    updateCatTileField("imagePosY", 50);
+                    updateCatTileField("imageZoom", 1);
+                  }}
+                  className="btn-ghost rounded px-2 py-1 text-xs"
+                >
+                  بازنشانی
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 60 }}>بزرگ‌نمایی</span>
+                <input
+                  type="range" min="1" max="2.5" step="0.05"
+                  value={catTileCurrent.imageZoom}
+                  onChange={(e) => updateCatTileField("imageZoom", Number(e.target.value))}
+                  style={{ flex: 1 }}
+                />
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 34, textAlign: "left" }} dir="ltr">
+                  {Number(catTileCurrent.imageZoom).toFixed(2)}×
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 60 }}>موقعیت افقی</span>
+                <input
+                  type="range" min="0" max="100" step="1"
+                  value={catTileCurrent.imagePosX}
+                  onChange={(e) => updateCatTileField("imagePosX", Number(e.target.value))}
+                  style={{ flex: 1 }}
+                />
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 34, textAlign: "left" }} dir="ltr">
+                  {catTileCurrent.imagePosX}%
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 60 }}>موقعیت عمودی</span>
+                <input
+                  type="range" min="0" max="100" step="1"
+                  value={catTileCurrent.imagePosY}
+                  onChange={(e) => updateCatTileField("imagePosY", Number(e.target.value))}
+                  style={{ flex: 1 }}
+                />
+                <span className="text-muted" style={{ fontSize: 11, minWidth: 34, textAlign: "left" }} dir="ltr">
+                  {catTileCurrent.imagePosY}%
+                </span>
+              </div>
+
+              <p className="text-muted" style={{ fontSize: 10.5, lineHeight: 1.7 }}>
+                به‌طور پیش‌فرض رسانه به‌صورت خودکار کل قاب را با حفظ نسبت تصویر پر می‌کند (بدون کشیدگی). اگر بخش مهم عکس یا ویدیو از قاب بیرون افتاد، با بزرگ‌نمایی و موقعیت، دقیقاً بخش دلخواه را داخل قاب بگیر.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={saveCatTiles}
+          disabled={catTileSaving}
+          type="button"
+          className="btn-gold rounded px-4 py-2 text-sm"
+        >
+          {catTileSaving ? "در حال ذخیره..." : "ذخیره‌ی رسانه‌ی باکس‌های دسته‌بندی"}
+        </button>
+        {catTileSaved && <span className="text-gold" style={{ fontSize: 12, marginRight: 10 }}>ذخیره شد ✓</span>}
+        {catTileError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 6 }}>{catTileError}</p>}
       </div>
 
       <div className="bg-panel border border-hair rounded-lg p-4 mb-4">
