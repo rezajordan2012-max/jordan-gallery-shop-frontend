@@ -1027,6 +1027,24 @@ function framedProductImageUrl(url, size = 1000) {
   return url.slice(0, idx + marker.length) + transform + "/" + url.slice(idx + marker.length);
 }
 
+// بنرها (بنر بزرگ صفحه‌ی اصلی، رسانه‌ی باکس‌های دسته‌بندی و ...) برخلاف عکس محصول نباید داخل یک
+// قاب مربعیِ سفید جا بگیرند — باید کل فضای بنر را با بهترین کیفیتِ ممکن پر کنند. این تابع (فقط
+// روی لینک‌های میزبانی‌شده در Cloudinary خودمان) با تبدیل‌های خودکار Cloudinary — بدون هیچ سرویس یا
+// هزینه‌ی اضافه — فرمت و کیفیت را برای دستگاه و شبکه‌ی هر بازدیدکننده بهینه می‌کند: برای عکس‌ها
+// q_auto:best (بالاترین کیفیتِ معقول) + f_auto (تبدیل خودکار به فرمت سبک‌تر مثل WebP/AVIF در
+// مرورگرهای پشتیبان) + dpr_auto (تطبیق با تراکم پیکسلی صفحه‌نمایش)، و برای ویدیو q_auto:best +
+// f_auto (کدک/کانتینر بهینه مثل WebM/H.265 در صورت پشتیبانی مرورگر) — یعنی خودِ سایت، بدون هیچ
+// تنظیم دستی از طرف مدیر، ویدیو/عکس را برای بهترین کیفیتِ ممکنِ نمایش و پخش آماده می‌کند. روی
+// لینک‌های خارجیِ غیر Cloudinary بی‌اثر است و همان لینک اصلی بدون تغییر برگردانده می‌شود.
+function optimizedMediaUrl(url, kind = "image") {
+  if (!url || typeof url !== "string") return url;
+  const marker = "/upload/";
+  const idx = url.indexOf(marker);
+  if (!url.includes("res.cloudinary.com") || idx === -1) return url;
+  const transform = kind === "video" ? "q_auto:best,f_auto" : "q_auto:best,f_auto,dpr_auto";
+  return url.slice(0, idx + marker.length) + transform + "/" + url.slice(idx + marker.length);
+}
+
 // برای نمایش قیمت با جداکننده‌ی هزارگان (۳ رقم ۳ رقم) حین تایپ در پنل مدیریت
 function formatPriceInput(digitsStr) {
   if (!digitsStr) return "";
@@ -1094,18 +1112,6 @@ const CATEGORY_ICON_COLOR = {
   hygiene: "#0EA5A4",
   electronics: "#7B5CF6",
 };
-
-// تبدیل رنگ هگز به rgba با شفافیت دلخواه — برای رنگ‌آمیزی نرم و نیمه‌شفافِ عناصر تزئینیِ باکس‌های
-// دسته‌بندی صفحه‌ی اصلی (نقطه‌چین، دایره‌ی محو، گوشه‌ی رنگی) بر پایه‌ی رنگ اصلی همان دسته.
-function hexToRgba(hex, alpha) {
-  const clean = hex.replace("#", "");
-  const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
-  const num = parseInt(full, 16);
-  const r = (num >> 16) & 255;
-  const g = (num >> 8) & 255;
-  const b = num & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 function CategoryIcon({ category, size = 34 }) {
   const c = CATEGORY_ICON_COLOR[category] || "#7B5CF6";
@@ -1181,92 +1187,52 @@ function CategoryIcon({ category, size = 34 }) {
   );
 }
 
-// باکس دسته‌بندی صفحه‌ی اصلی — طراحی الهام‌گرفته از کارت‌های رنگی با قاب رسانه‌ی چرخیده (اسکوییرکل).
-// اگر مدیر برای این دسته عکس یا ویدیو تنظیم کرده باشد (media)، همان با crop هوشمند (object-fit:
-// cover، بدون کشیدگی) داخل قاب نمایش داده می‌شود؛ وگرنه همان آیکون گرافیکی پیش‌فرض دسته جایگزین می‌شود.
-// prop «large» فقط برای باکس لوازم برقی شخصی true است (باکس بزرگ‌تر و تمام‌عرض).
-function CategoryTile({ category, count, media, large, onClick }) {
-  const accent = CATEGORY_ICON_COLOR[category] || "#7B5CF6";
+// باکس دسته‌بندی صفحه‌ی اصلی — کل فضای باکس به بنر عکس/ویدیوی کوتاهِ مدیر اختصاص دارد (crop هوشمند
+// و بدون کشیدگی، با بهترین کیفیتِ ممکن روی Cloudinary)، بدون هیچ متن یا عنوانی روی آن — چون خودِ
+// رسانه گویای محصولات همان دسته است. اگر مدیر هنوز برای این دسته رسانه‌ای تنظیم نکرده باشد، همان
+// پس‌زمینه‌ی رنگیِ قبلی + آیکون گرافیکی پیش‌فرض دسته (بدون متن) جایگزین می‌شود تا باکس خالی نماند.
+// prop «large» فقط برای باکس لوازم برقی شخصی true است (باکس تمام‌عرض، با ارتفاع کمی کمتر).
+function CategoryTile({ category, media, large, onClick }) {
   const cardClass = CATEGORY_CARD_CLASS[category];
   const m = media && media.url ? normalizeBanner(media) : null;
-  const frameSize = large ? 112 : 92;
+  const mediaFillStyle = m
+    ? {
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        objectPosition: `${m.imagePosX}% ${m.imagePosY}%`,
+        transform: m.imageZoom !== 1 ? `scale(${m.imageZoom})` : undefined,
+        transformOrigin: `${m.imagePosX}% ${m.imagePosY}%`,
+      }
+    : undefined;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`${cardClass} category-card rounded-3xl border border-hair w-full h-full relative overflow-hidden`}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-        padding: large ? "20px 22px" : "18px 18px",
-        minHeight: large ? 132 : 172,
-      }}
+      aria-label={CATEGORY_LABEL[category]}
+      className={`${m ? "" : cardClass} category-card rounded-2xl border border-hair w-full relative overflow-hidden block`}
+      style={{ height: large ? 108 : 132 }}
     >
-      {/* نقطه‌چین تزئینی */}
-      <span
-        aria-hidden="true"
-        style={{
-          position: "absolute", top: 16, insetInlineEnd: 18, width: 42, height: 42,
-          backgroundImage: `radial-gradient(${hexToRgba(accent, 0.4)} 1.3px, transparent 1.3px)`,
-          backgroundSize: "7px 7px", pointerEvents: "none", opacity: 0.85,
-        }}
-      />
-      {/* دایره‌ی محو تزئینی */}
-      <span
-        aria-hidden="true"
-        style={{
-          position: "absolute", top: -20, insetInlineStart: -16, width: 66, height: 66, borderRadius: "50%",
-          background: hexToRgba(accent, 0.2), pointerEvents: "none",
-        }}
-      />
-      {/* گوشه‌ی رنگی تزئینی */}
-      <span
-        aria-hidden="true"
-        style={{
-          position: "absolute", bottom: 0, insetInlineStart: 0, width: 46, height: 46,
-          background: hexToRgba(accent, 0.22),
-          clipPath: "polygon(0 100%, 100% 100%, 0 0)",
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* قاب رسانه — عکس/ویدیوی مدیر یا آیکون پیش‌فرض، داخل یک اسکوییرکل چرخیده */}
-      <div style={{ position: "relative", zIndex: 1, order: 1, flexShrink: 0, width: frameSize, height: frameSize }}>
-        <div
-          className="float-slow"
-          style={{
-            width: "100%", height: "100%",
-            borderRadius: "42% 58% 65% 35% / 45% 45% 55% 55%",
-            background: "rgba(255,255,255,0.6)",
-            border: "1px solid rgba(255,255,255,0.75)",
-            boxShadow: `0 10px 22px -10px ${hexToRgba(accent, 0.55)}`,
-            overflow: "hidden",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            transform: "rotate(-6deg)",
-          }}
-        >
-          {m ? (
-            m.type === "video" ? (
-              <video src={m.url} autoPlay muted loop playsInline style={productImageStyle(m)} />
-            ) : (
-              <img src={m.url} alt={CATEGORY_LABEL[category]} style={productImageStyle(m)} />
-            )
-          ) : (
-            <CategoryIcon category={category} size={large ? 48 : 40} />
-          )}
-        </div>
-        <span className="sparkle" style={{ position: "absolute", top: -2, insetInlineEnd: -2, width: 7, height: 7, borderRadius: "50%", background: accent, boxShadow: `0 0 8px 2px ${hexToRgba(accent, 0.6)}` }} />
-        <span className="sparkle" style={{ position: "absolute", bottom: 4, insetInlineStart: -5, width: 5, height: 5, borderRadius: "50%", background: accent, boxShadow: `0 0 6px 2px ${hexToRgba(accent, 0.6)}`, animationDelay: "0.6s" }} />
-      </div>
-
-      {/* متن — عنوان دسته و تعداد محصول */}
-      <div style={{ position: "relative", zIndex: 1, order: 2, display: "flex", flexDirection: "column", gap: 6, minWidth: 0, textAlign: "right" }}>
-        <p className="font-display" style={{ fontSize: large ? 19 : 16.5, lineHeight: 1.4 }}>{CATEGORY_LABEL[category]}</p>
-        <p className="text-muted" style={{ fontSize: 12.5 }}>{count.toLocaleString("fa-IR")} محصول</p>
-      </div>
+      {m ? (
+        m.type === "video" ? (
+          <video
+            src={optimizedMediaUrl(m.url, "video")}
+            autoPlay muted loop playsInline preload="auto"
+            style={mediaFillStyle}
+          />
+        ) : (
+          <img
+            src={optimizedMediaUrl(m.url, "image")}
+            alt={CATEGORY_LABEL[category]}
+            style={mediaFillStyle}
+          />
+        )
+      ) : (
+        <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <CategoryIcon category={category} size={large ? 44 : 40} />
+        </span>
+      )}
     </button>
   );
 }
@@ -3226,18 +3192,19 @@ export default function MaisonStore() {
           {!categoryPageOpen && (
           <>
           {heroBanners.length > 0 && (
-            <section className="relative w-full overflow-hidden" style={{ height: "clamp(320px, 62vh, 620px)" }}>
+            <section className="relative w-full overflow-hidden" style={{ height: "clamp(396px, 66vh, 696px)" }}>
               {(() => {
                 const banner = normalizeBanner(heroBanners[bannerIndex]);
                 if (banner.type === "video") {
                   return (
                     <video
                       key={bannerIndex}
-                      src={banner.url}
+                      src={optimizedMediaUrl(banner.url, "video")}
                       autoPlay
                       muted
                       loop={heroBanners.length === 1}
                       playsInline
+                      preload="auto"
                       className="fade-in-up"
                       style={{ ...productImageStyle(banner), position: "absolute", inset: 0 }}
                       onEnded={() => {
@@ -3249,7 +3216,7 @@ export default function MaisonStore() {
                 return (
                   <img
                     key={bannerIndex}
-                    src={banner.url}
+                    src={optimizedMediaUrl(banner.url, "image")}
                     alt={`بنر تبلیغاتی ${bannerIndex + 1}`}
                     className="fade-in-up"
                     style={{ ...productImageStyle(banner), position: "absolute", inset: 0 }}
@@ -3327,14 +3294,13 @@ export default function MaisonStore() {
           )}
 
           {/* Category strip */}
-          <section className="px-4 sm:px-8 lg:px-12 max-w-3xl mx-auto grid grid-cols-2 gap-3 sm:gap-4 mb-12">
+          <section className="px-4 sm:px-8 lg:px-12 max-w-3xl mx-auto grid grid-cols-2 gap-2.5 sm:gap-3 mb-12">
             {HOME_CATEGORY_ORDER.map((c) => {
               const isLarge = c === "electronics";
               return (
                 <div key={c} className={isLarge ? "col-span-2" : undefined}>
                   <CategoryTile
                     category={c}
-                    count={products.filter((p) => p.category === c).length}
                     media={categoryTileMedia[c]}
                     large={isLarge}
                     onClick={() => { selectCategory(c); pushNav({ activeCategory: c, categoryPageOpen: c !== "all" }); }}
