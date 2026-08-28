@@ -1526,23 +1526,30 @@ function BarcodeScannerModal({ onDetected, onClose }) {
 }
 
 
-function ProductCard({ product, onOpen, globalDiscountPercent }) {
+// کارت محصول در فهرست/کاتالوگ. پس‌زمینه‌ی بخش «اطلاعات محصول» (برند، نام، توضیح، قیمت) دیگر یک
+// رنگ تخت (آبی/زرد/...) بر اساس دسته نیست؛ اگر مدیر برای همان دسته (مثلاً آرایشی) در بخش «رسانه‌ی
+// باکس‌های دسته‌بندی» عکس یا ویدیو تنظیم کرده باشد، همان رسانه به‌صورت یک هاله‌ی محو و تارشده
+// (frosted glass) پشت متن‌ها قرار می‌گیرد — با یک لایه‌ی نیمه‌شفافِ روشن روی آن تا خوانایی فونت‌ها
+// و توضیحات محصول به‌هیچ‌وجه آسیب نبیند. اگر برای آن دسته هنوز رسانه‌ای تنظیم نشده باشد، همان
+// پس‌زمینه‌ی رنگیِ ساده‌ی قبلی (CATEGORY_CARD_CLASS) به‌عنوان جایگزین به‌کار می‌رود.
+function ProductCard({ product, onOpen, globalDiscountPercent, categoryMedia }) {
   const displayImage = product.image || "";
   const hasVariants = product.variants && product.variants.length > 0;
   const discountPct = effectiveDiscountPercent(product, globalDiscountPercent);
   const finalPrice = discountedPrice(product, globalDiscountPercent);
+  const catMedia = categoryMedia && categoryMedia.url ? normalizeBanner(categoryMedia) : null;
 
   return (
     <button
       type="button"
       onClick={() => onOpen(product.id)}
-      className={`${CATEGORY_CARD_CLASS[product.category]} product-card rounded-xl border border-hair overflow-hidden flex flex-col text-right w-full`}
+      className={`${catMedia ? "" : CATEGORY_CARD_CLASS[product.category]} product-card rounded-xl border border-hair overflow-hidden flex flex-col text-right w-full`}
       style={{ position: "relative" }}
     >
       {discountPct > 0 && (
         <span
           style={{
-            position: "absolute", top: 8, insetInlineStart: 8, zIndex: 1,
+            position: "absolute", top: 8, insetInlineStart: 8, zIndex: 2,
             background: "linear-gradient(135deg, #FF3E8E, #7B5CF6)", color: "#fff",
             fontSize: 10.5, fontWeight: 700, borderRadius: 999, padding: "3px 9px",
           }}
@@ -1563,21 +1570,54 @@ function ProductCard({ product, onOpen, globalDiscountPercent }) {
           <CategoryIcon category={product.category} size={54} />
         </div>
       </div>
-      <div className="p-4 flex flex-col gap-1 flex-1">
-        <div className="flex items-center justify-between">
+      <div className="p-4 flex flex-col gap-1 flex-1" style={{ position: "relative", overflow: "hidden" }}>
+        {catMedia && (
+          <>
+            {/* هاله‌ی محو و تارشده از رسانه‌ی همان دسته — کاملاً پشت متن و مقیاس‌شده تا لبه‌ی
+                تارشده هرگز از قاب بیرون نزند و خط‌های محو ناخواسته دیده نشوند. */}
+            <div style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }} aria-hidden="true">
+              {catMedia.type === "video" ? (
+                <video
+                  src={optimizedMediaUrl(catMedia.url, "video")}
+                  autoPlay muted loop playsInline preload="metadata"
+                  style={{
+                    width: "100%", height: "100%", objectFit: "cover",
+                    objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
+                    filter: "blur(16px) saturate(1.15)",
+                    transform: "scale(1.35)",
+                  }}
+                />
+              ) : (
+                <img
+                  src={optimizedMediaUrl(catMedia.url, "image")}
+                  alt=""
+                  style={{
+                    width: "100%", height: "100%", objectFit: "cover",
+                    objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
+                    filter: "blur(16px) saturate(1.15)",
+                    transform: "scale(1.35)",
+                  }}
+                />
+              )}
+            </div>
+            {/* لایه‌ی نیمه‌شفافِ روشن — تضمین‌کننده‌ی کنتراست و خوانایی کامل متن روی هر رسانه‌ای */}
+            <div style={{ position: "absolute", inset: 0, zIndex: 0, background: "rgba(255,255,255,0.82)" }} aria-hidden="true" />
+          </>
+        )}
+        <div className="flex items-center justify-between" style={{ position: "relative", zIndex: 1 }}>
           <span className="text-gold" style={{ fontSize: 11 }}>{product.brand}</span>
           {subcategoryLabel(product.category, product.subcategory) && (
-            <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px" }}>
+            <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px", background: catMedia ? "rgba(255,255,255,0.6)" : undefined }}>
               {subcategoryLabel(product.category, product.subcategory)}
               {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
               {product.facets && facetsSummary(product.category, product.subcategory, product.facets) && ` · ${facetsSummary(product.category, product.subcategory, product.facets)}`}
             </span>
           )}
         </div>
-        <h3 className="font-display" style={{ fontSize: 16 }}>{product.name}</h3>
-        <p className="text-muted" style={{ fontSize: 12, minHeight: 32 }}>{product.description}</p>
+        <h3 className="font-display" style={{ fontSize: 16, position: "relative", zIndex: 1 }}>{product.name}</h3>
+        <p className="text-muted" style={{ fontSize: 12, minHeight: 32, position: "relative", zIndex: 1 }}>{product.description}</p>
 
-        <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center justify-between mt-2" style={{ position: "relative", zIndex: 1 }}>
           <div className="flex flex-col">
             {discountPct > 0 && (
               <span className="text-muted" style={{ fontSize: 11, textDecoration: "line-through" }}>{fmtPrice(product.price)}</span>
@@ -3455,7 +3495,12 @@ export default function MaisonStore() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {filteredProducts.map((p, i) => (
                   <div key={p.id} className="fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 0.06}s` }}>
-                    <ProductCard product={p} onOpen={openProduct} globalDiscountPercent={globalDiscountPercent} />
+                    <ProductCard
+                      product={p}
+                      onOpen={openProduct}
+                      globalDiscountPercent={globalDiscountPercent}
+                      categoryMedia={categoryTileMedia[p.category]}
+                    />
                   </div>
                 ))}
               </div>
