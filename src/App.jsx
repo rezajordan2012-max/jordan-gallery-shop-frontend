@@ -1570,11 +1570,20 @@ function ProductCard({ product, onOpen, globalDiscountPercent, categoryMedia }) 
           <CategoryIcon category={product.category} size={54} />
         </div>
       </div>
-      <div className="p-4 flex flex-col gap-1 flex-1" style={{ position: "relative", overflow: "hidden" }}>
+      <div
+        className="p-4 flex flex-col gap-1 flex-1"
+        style={{
+          position: "relative",
+          overflow: "hidden",
+          ...(catMedia ? { textShadow: "0 1px 2px rgba(255,255,255,0.92), 0 0 6px rgba(255,255,255,0.7)" } : {}),
+        }}
+      >
         {catMedia && (
           <>
-            {/* هاله‌ی محو و تارشده از رسانه‌ی همان دسته — کاملاً پشت متن و مقیاس‌شده تا لبه‌ی
-                تارشده هرگز از قاب بیرون نزند و خط‌های محو ناخواسته دیده نشوند. */}
+            {/* هاله‌ی محو رسانه‌ی همان دسته — کاملاً پشت متن، اما این‌بار با بلور و پوششِ سبک‌تر تا
+                خودِ عکس/ویدیو واقعاً «دیده» شود، نه فقط یک رنگ یک‌دست محو؛ مقیاس‌شده تا لبه‌ی
+                تارشده هرگز از قاب بیرون نزند و خط‌های محو ناخواسته دیده نشوند. خوانایی متن با
+                هاله‌ی سفیدِ دور حروف (textShadow روی والد، بالا) تضمین می‌شود، نه با پوشاندن کامل عکس. */}
             <div style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }} aria-hidden="true">
               {catMedia.type === "video" ? (
                 <video
@@ -1583,8 +1592,8 @@ function ProductCard({ product, onOpen, globalDiscountPercent, categoryMedia }) 
                   style={{
                     width: "100%", height: "100%", objectFit: "cover",
                     objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
-                    filter: "blur(16px) saturate(1.15)",
-                    transform: "scale(1.35)",
+                    filter: "blur(9px) saturate(1.2)",
+                    transform: "scale(1.28)",
                   }}
                 />
               ) : (
@@ -1594,20 +1603,20 @@ function ProductCard({ product, onOpen, globalDiscountPercent, categoryMedia }) 
                   style={{
                     width: "100%", height: "100%", objectFit: "cover",
                     objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
-                    filter: "blur(16px) saturate(1.15)",
-                    transform: "scale(1.35)",
+                    filter: "blur(9px) saturate(1.2)",
+                    transform: "scale(1.28)",
                   }}
                 />
               )}
             </div>
-            {/* لایه‌ی نیمه‌شفافِ روشن — تضمین‌کننده‌ی کنتراست و خوانایی کامل متن روی هر رسانه‌ای */}
-            <div style={{ position: "absolute", inset: 0, zIndex: 0, background: "rgba(255,255,255,0.82)" }} aria-hidden="true" />
+            {/* لایه‌ی نیمه‌شفافِ سبک — فقط یک لایه‌ی نازک برای یکدست‌تر شدن رنگ‌ها، نه پوشاندن کامل تصویر */}
+            <div style={{ position: "absolute", inset: 0, zIndex: 0, background: "rgba(255,255,255,0.42)" }} aria-hidden="true" />
           </>
         )}
         <div className="flex items-center justify-between" style={{ position: "relative", zIndex: 1 }}>
           <span className="text-gold" style={{ fontSize: 11 }}>{product.brand}</span>
           {subcategoryLabel(product.category, product.subcategory) && (
-            <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px", background: catMedia ? "rgba(255,255,255,0.6)" : undefined }}>
+            <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px", background: catMedia ? "rgba(255,255,255,0.75)" : undefined }}>
               {subcategoryLabel(product.category, product.subcategory)}
               {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
               {product.facets && facetsSummary(product.category, product.subcategory, product.facets) && ` · ${facetsSummary(product.category, product.subcategory, product.facets)}`}
@@ -1657,8 +1666,9 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
       {catMedia && (
         <>
           {/* هاله‌ی محو رسانه‌ی همان دسته، ثابت پشت کل صفحه‌ی محصول — برای هم‌سویی کامل با پس‌زمینه‌ی
-              کارت‌های همان دسته در فهرست. لایه‌ی سفیدِ نیمه‌شفافِ روی آن، خوانایی همه‌ی متن‌های صفحه
-              (مشخصات، نت‌ها، توضیحات) را تضمین می‌کند. */}
+              کارت‌های همان دسته در فهرست. اینجا هم بلور و پوشش سبک‌تر شده تا خودِ عکس/ویدیو واقعاً
+              دیده شود؛ خوانایی همه‌ی متن‌های صفحه (مشخصات، نت‌ها، توضیحات) با هاله‌ی سفیدِ دور حروف
+              (textShadow روی کانتینر محتوا، پایین‌تر) تضمین می‌شود، نه با پوشاندن کامل رسانه. */}
           <div style={{ position: "fixed", inset: 0, zIndex: -1, overflow: "hidden" }} aria-hidden="true">
             {catMedia.type === "video" ? (
               <video
@@ -1667,8 +1677,8 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 style={{
                   width: "100%", height: "100%", objectFit: "cover",
                   objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
-                  filter: "blur(30px) saturate(1.15)",
-                  transform: "scale(1.2)",
+                  filter: "blur(16px) saturate(1.2)",
+                  transform: "scale(1.15)",
                 }}
               />
             ) : (
@@ -1678,16 +1688,23 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 style={{
                   width: "100%", height: "100%", objectFit: "cover",
                   objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
-                  filter: "blur(30px) saturate(1.15)",
-                  transform: "scale(1.2)",
+                  filter: "blur(16px) saturate(1.2)",
+                  transform: "scale(1.15)",
                 }}
               />
             )}
-            <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.86)" }} />
+            <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.5)" }} />
           </div>
         </>
       )}
-      <section className="px-4 sm:px-8 lg:px-12 max-w-3xl lg:max-w-5xl mx-auto py-6 pb-24" style={{ position: "relative", zIndex: 1 }}>
+      <section
+        className="px-4 sm:px-8 lg:px-12 max-w-3xl lg:max-w-5xl mx-auto py-6 pb-24"
+        style={{
+          position: "relative",
+          zIndex: 1,
+          ...(catMedia ? { textShadow: "0 1px 2px rgba(255,255,255,0.92), 0 0 6px rgba(255,255,255,0.7)" } : {}),
+        }}
+      >
       <div className="lg:flex lg:items-start lg:gap-10">
         <div
           className="rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-96 lg:h-[520px] lg:w-[420px] lg:flex-shrink-0"
