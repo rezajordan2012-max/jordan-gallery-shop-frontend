@@ -1580,10 +1580,10 @@ function ProductCard({ product, onOpen, globalDiscountPercent, categoryMedia }) 
       >
         {catMedia && (
           <>
-            {/* هاله‌ی محو رسانه‌ی همان دسته — کاملاً پشت متن، اما این‌بار با بلور و پوششِ سبک‌تر تا
-                خودِ عکس/ویدیو واقعاً «دیده» شود، نه فقط یک رنگ یک‌دست محو؛ مقیاس‌شده تا لبه‌ی
-                تارشده هرگز از قاب بیرون نزند و خط‌های محو ناخواسته دیده نشوند. خوانایی متن با
-                هاله‌ی سفیدِ دور حروف (textShadow روی والد، بالا) تضمین می‌شود، نه با پوشاندن کامل عکس. */}
+            {/* هاله‌ی محو رسانه‌ی همان دسته — بلوری قوی‌تر و نرم‌تر (به‌جای بلور متوسطِ قبلی که
+                خطوط ریز عکس را به‌شکل لکه‌های ناهموار نشان می‌داد) تا نتیجه یک گرادیانِ ابریشمی و
+                یکدست از رنگ‌های خودِ همان رسانه باشد؛ همراه با اشباع و کنتراست بیشتر برای حس
+                باکیفیت‌تر و پرمایه‌تر. مقیاسِ بزرگ‌تر تضمین می‌کند لبه‌ی بلورشده هرگز از قاب بیرون نزند. */}
             <div style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }} aria-hidden="true">
               {catMedia.type === "video" ? (
                 <video
@@ -1592,8 +1592,8 @@ function ProductCard({ product, onOpen, globalDiscountPercent, categoryMedia }) 
                   style={{
                     width: "100%", height: "100%", objectFit: "cover",
                     objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
-                    filter: "blur(9px) saturate(1.2)",
-                    transform: "scale(1.28)",
+                    filter: "blur(24px) saturate(1.4) contrast(1.06) brightness(1.03)",
+                    transform: "scale(1.5)",
                   }}
                 />
               ) : (
@@ -1603,24 +1603,59 @@ function ProductCard({ product, onOpen, globalDiscountPercent, categoryMedia }) 
                   style={{
                     width: "100%", height: "100%", objectFit: "cover",
                     objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
-                    filter: "blur(9px) saturate(1.2)",
-                    transform: "scale(1.28)",
+                    filter: "blur(24px) saturate(1.4) contrast(1.06) brightness(1.03)",
+                    transform: "scale(1.5)",
                   }}
                 />
               )}
             </div>
-            {/* لایه‌ی نیمه‌شفافِ سبک — فقط یک لایه‌ی نازک برای یکدست‌تر شدن رنگ‌ها، نه پوشاندن کامل تصویر */}
-            <div style={{ position: "absolute", inset: 0, zIndex: 0, background: "rgba(255,255,255,0.42)" }} aria-hidden="true" />
+            {/* گرادیانِ نیمه‌شفاف (به‌جای یک لایه‌ی تخت) — از بالا کمی روشن‌تر به وسط شفاف‌تر و پایین
+                دوباره روشن‌تر، برای عمق و ظرافت بصری بیشتر؛ همچنان کاملاً پشت متن و بدون آسیب به خوانایی. */}
+            <div
+              style={{
+                position: "absolute", inset: 0, zIndex: 0,
+                background: "linear-gradient(165deg, rgba(255,255,255,0.58), rgba(255,255,255,0.3) 45%, rgba(255,255,255,0.56))",
+              }}
+              aria-hidden="true"
+            />
           </>
         )}
         <div className="flex items-center justify-between" style={{ position: "relative", zIndex: 1 }}>
           <span className="text-gold" style={{ fontSize: 11 }}>{product.brand}</span>
-          {subcategoryLabel(product.category, product.subcategory) && (
-            <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px", background: catMedia ? "rgba(255,255,255,0.75)" : undefined }}>
-              {subcategoryLabel(product.category, product.subcategory)}
-              {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
-              {product.facets && facetsSummary(product.category, product.subcategory, product.facets) && ` · ${facetsSummary(product.category, product.subcategory, product.facets)}`}
+          {catMedia ? (
+            /* دایره‌ی کوچک و واضح (بدون بلور) از تصویر/ویدیوی همان دسته — جایگزین برچسبِ متنیِ
+               زیرشاخه/نوع؛ چون خودِ رسانه، دسته‌ی محصول را با یک نگاه نشان می‌دهد. */
+            <span
+              title={subcategoryLabel(product.category, product.subcategory) || CATEGORY_LABEL[product.category]}
+              style={{
+                width: 30, height: 30, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
+                border: "2px solid rgba(255,255,255,0.95)",
+                boxShadow: "0 3px 8px -2px rgba(36,30,61,0.4)",
+                position: "relative", zIndex: 1,
+              }}
+            >
+              {catMedia.type === "video" ? (
+                <video
+                  src={optimizedMediaUrl(catMedia.url, "video")}
+                  autoPlay muted loop playsInline preload="metadata"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%` }}
+                />
+              ) : (
+                <img
+                  src={optimizedMediaUrl(catMedia.url, "image")}
+                  alt={CATEGORY_LABEL[product.category]}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%` }}
+                />
+              )}
             </span>
+          ) : (
+            subcategoryLabel(product.category, product.subcategory) && (
+              <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px" }}>
+                {subcategoryLabel(product.category, product.subcategory)}
+                {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
+                {product.facets && facetsSummary(product.category, product.subcategory, product.facets) && ` · ${facetsSummary(product.category, product.subcategory, product.facets)}`}
+              </span>
+            )
           )}
         </div>
         <h3 className="font-display" style={{ fontSize: 16, position: "relative", zIndex: 1 }}>{product.name}</h3>
@@ -1666,9 +1701,10 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
       {catMedia && (
         <>
           {/* هاله‌ی محو رسانه‌ی همان دسته، ثابت پشت کل صفحه‌ی محصول — برای هم‌سویی کامل با پس‌زمینه‌ی
-              کارت‌های همان دسته در فهرست. اینجا هم بلور و پوشش سبک‌تر شده تا خودِ عکس/ویدیو واقعاً
-              دیده شود؛ خوانایی همه‌ی متن‌های صفحه (مشخصات، نت‌ها، توضیحات) با هاله‌ی سفیدِ دور حروف
-              (textShadow روی کانتینر محتوا، پایین‌تر) تضمین می‌شود، نه با پوشاندن کامل رسانه. */}
+              کارت‌های همان دسته در فهرست. بلور قوی‌تر و نرم‌تر، اشباع/کنتراست بیشتر و گرادیانِ
+              نیمه‌شفاف (به‌جای پوشش تخت) برای ظرافت و کیفیت بصری بالاتر. خوانایی همه‌ی متن‌های صفحه
+              (مشخصات، نت‌ها، توضیحات) با هاله‌ی سفیدِ دور حروف (textShadow روی کانتینر محتوا،
+              پایین‌تر) تضمین می‌شود، نه با پوشاندن کامل رسانه. */}
           <div style={{ position: "fixed", inset: 0, zIndex: -1, overflow: "hidden" }} aria-hidden="true">
             {catMedia.type === "video" ? (
               <video
@@ -1677,8 +1713,8 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 style={{
                   width: "100%", height: "100%", objectFit: "cover",
                   objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
-                  filter: "blur(16px) saturate(1.2)",
-                  transform: "scale(1.15)",
+                  filter: "blur(34px) saturate(1.4) contrast(1.06) brightness(1.03)",
+                  transform: "scale(1.25)",
                 }}
               />
             ) : (
@@ -1688,12 +1724,12 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 style={{
                   width: "100%", height: "100%", objectFit: "cover",
                   objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
-                  filter: "blur(16px) saturate(1.2)",
-                  transform: "scale(1.15)",
+                  filter: "blur(34px) saturate(1.4) contrast(1.06) brightness(1.03)",
+                  transform: "scale(1.25)",
                 }}
               />
             )}
-            <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.5)" }} />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(165deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32) 40%, rgba(255,255,255,0.6))" }} />
           </div>
         </>
       )}
