@@ -1635,13 +1635,14 @@ function ProductCard({ product, onOpen, globalDiscountPercent, categoryMedia }) 
   );
 }
 
-function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
+function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, categoryMedia }) {
   const hasVariants = !!product && product.variants && product.variants.length > 0;
   const [variantId, setVariantId] = useState("");
   const selectedVariant = hasVariants ? product.variants.find((v) => v.id === variantId) : null;
   const displayImage = (selectedVariant && selectedVariant.image) || (product && product.image) || "";
   const discountPct = product ? effectiveDiscountPercent(product, globalDiscountPercent) : 0;
   const finalPrice = product ? discountedPrice(product, globalDiscountPercent) : 0;
+  const catMedia = product && categoryMedia && categoryMedia.url ? normalizeBanner(categoryMedia) : null;
 
   if (!product) {
     return (
@@ -1652,7 +1653,41 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
   }
 
   return (
-    <section className="px-4 sm:px-8 lg:px-12 max-w-3xl lg:max-w-5xl mx-auto py-6 pb-24">
+    <div style={{ position: "relative" }}>
+      {catMedia && (
+        <>
+          {/* هاله‌ی محو رسانه‌ی همان دسته، ثابت پشت کل صفحه‌ی محصول — برای هم‌سویی کامل با پس‌زمینه‌ی
+              کارت‌های همان دسته در فهرست. لایه‌ی سفیدِ نیمه‌شفافِ روی آن، خوانایی همه‌ی متن‌های صفحه
+              (مشخصات، نت‌ها، توضیحات) را تضمین می‌کند. */}
+          <div style={{ position: "fixed", inset: 0, zIndex: -1, overflow: "hidden" }} aria-hidden="true">
+            {catMedia.type === "video" ? (
+              <video
+                src={optimizedMediaUrl(catMedia.url, "video")}
+                autoPlay muted loop playsInline preload="metadata"
+                style={{
+                  width: "100%", height: "100%", objectFit: "cover",
+                  objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
+                  filter: "blur(30px) saturate(1.15)",
+                  transform: "scale(1.2)",
+                }}
+              />
+            ) : (
+              <img
+                src={optimizedMediaUrl(catMedia.url, "image")}
+                alt=""
+                style={{
+                  width: "100%", height: "100%", objectFit: "cover",
+                  objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
+                  filter: "blur(30px) saturate(1.15)",
+                  transform: "scale(1.2)",
+                }}
+              />
+            )}
+            <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.86)" }} />
+          </div>
+        </>
+      )}
+      <section className="px-4 sm:px-8 lg:px-12 max-w-3xl lg:max-w-5xl mx-auto py-6 pb-24" style={{ position: "relative", zIndex: 1 }}>
       <div className="lg:flex lg:items-start lg:gap-10">
         <div
           className="rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-96 lg:h-[520px] lg:w-[420px] lg:flex-shrink-0"
@@ -1875,7 +1910,8 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent }) {
           )}
         </div>
       </div>
-    </section>
+      </section>
+    </div>
   );
 }
 
@@ -3226,6 +3262,10 @@ export default function MaisonStore() {
           onBack={() => window.history.back()}
           onAdd={addToCart}
           globalDiscountPercent={globalDiscountPercent}
+          categoryMedia={(() => {
+            const openProduct = products.find((p) => p.id === openProductId);
+            return openProduct ? categoryTileMedia[openProduct.category] : null;
+          })()}
         />
       ) : (
         <>
