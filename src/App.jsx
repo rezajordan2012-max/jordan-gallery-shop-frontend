@@ -870,6 +870,19 @@ const CATEGORY_CARD_CLASS = {
   electronics: "card-electronics",
 };
 
+// رنگ طلاییِ هم‌رنگ لوگوی جردن — برای حاشیه‌ی باکس‌های دسته‌بندی صفحه‌ی اصلی و برچسبِ انگلیسیِ زیر آن‌ها.
+const LOGO_GOLD = "#D4AF37";
+
+// معادل محاوره‌ای و کوتاه انگلیسی هر باکس دسته‌بندی — زیر هر باکس در صفحه‌ی اصلی نمایش داده می‌شود
+// (دقیقاً مثل کلمات کوتاه انگلیسی زیر تصاویر دسته‌بندی در سایت‌های معتبر بین‌المللی آرایشی).
+const CATEGORY_LABEL_EN = {
+  perfume: "Perfume",
+  sprayAndSplash: "Body Mist",
+  makeup: "Makeup",
+  hygiene: "Care",
+  electronics: "Devices",
+};
+
 // زیرشاخه‌ها یا به‌صورت ساده (رشته) هستند یا تودرتو (شیء با label و types) — این کمک‌تابع‌ها هر دو حالت را پشتیبانی می‌کنند.
 function isNestedSubcategory(sub) {
   return sub && typeof sub === "object";
@@ -1013,17 +1026,25 @@ function productImageStyle(product) {
 
 // اگر آدرس تصویر روی Cloudinary خودمان میزبانی شده باشد (چه از آپلود مستقیم از گالری، چه از
 // شناسایی هوشمند بارکد که سمت سرور روی همین Cloudinary بارگذاری می‌شود)، این تابع با تبدیل‌های
-// خودِ Cloudinary — بدون هیچ سرویس یا هزینه‌ی اضافه — حاشیه‌ی یکنواخت اضافه‌ی دور عکس را خودکار
-// می‌بُرد (e_trim) و عکس را داخل یک قاب مربعیِ با پس‌زمینه‌ی سفیدِ یکپارچه قرار می‌دهد (c_pad,b_white)
-// تا مستقل از اینکه عکس اصلی چه اندازه/نسبتی داشته یا پس‌زمینه‌اش چه رنگی بوده، همیشه با یک قاب
-// تمیز و یکسان در کارت/صفحه‌ی محصول نمایش داده شود. روی لینک‌های خارجیِ غیر Cloudinary (مثلاً وقتی
-// مدیر مستقیم لینک عکس را می‌چسباند) بی‌اثر است و همان لینک اصلی بدون تغییر برگردانده می‌شود.
+// زنجیره‌ایِ خودِ Cloudinary — بدون هیچ سرویس یا هزینه‌ی اضافه‌ی جداگانه از سمت ما — عکس محصول را
+// دقیقاً مثل سایت‌های حرفه‌ای فروش آنلاین آماده می‌کند:
+//   ۱) e_background_removal — پس‌زمینه‌ی اصلی عکس (هر رنگ/بافت/مکانی که باشد) با هوش مصنوعی
+//      Cloudinary به‌طور کامل حذف و شفاف می‌شود؛ فقط خودِ محصول باقی می‌ماند.
+//   ۲) e_trim + c_pad,b_white + اندازه‌ی ثابت — حاشیه‌ی اضافیِ اطراف محصول بریده می‌شود و نتیجه
+//      داخل یک قاب مربعیِ کاملاً سفید و هم‌اندازه با تمام محصولات دیگر جا می‌گیرد، تا همه‌ی
+//      تصاویر سایت هارمونی و اندازه‌ی یکسان داشته باشند.
+// نکته‌ی مهم: مرحله‌ی حذف پس‌زمینه یک افزونه‌ی هوش مصنوعیِ Cloudinary است («Cloudinary AI Background
+// Removal») و باید از پنل Cloudinary → بخش Add-ons روی حساب فعال شده باشد؛ در غیر این صورت این
+// بخش از تبدیل نادیده گرفته می‌شود یا خطا می‌دهد و فقط برش/قاب‌بندی (مرحله‌ی ۲) اعمال می‌ماند.
+// چون این تابع در لحظه‌ی نمایش (نه در لحظه‌ی آپلود) اجرا می‌شود، روی تمام عکس‌های محصولاتِ از قبل
+// ثبت‌شده هم خودکار اعمال می‌شود — نیازی به آپلود دوباره‌ی هیچ عکسی نیست. روی لینک‌های خارجیِ غیر
+// Cloudinary (مثلاً وقتی مدیر مستقیم لینک عکس را می‌چسباند) بی‌اثر است.
 function framedProductImageUrl(url, size = 1000) {
   if (!url || typeof url !== "string") return url;
   const marker = "/upload/";
   const idx = url.indexOf(marker);
   if (!url.includes("res.cloudinary.com") || idx === -1) return url;
-  const transform = `e_trim:10,c_pad,b_white,w_${size},h_${size},q_auto:good,f_auto`;
+  const transform = `e_background_removal/e_trim:10,c_pad,b_white,w_${size},h_${size},q_auto:good,f_auto`;
   return url.slice(0, idx + marker.length) + transform + "/" + url.slice(idx + marker.length);
 }
 
@@ -1211,8 +1232,8 @@ function CategoryTile({ category, media, large, onClick }) {
       type="button"
       onClick={onClick}
       aria-label={CATEGORY_LABEL[category]}
-      className={`${m ? "" : cardClass} category-card rounded-2xl border border-hair w-full relative overflow-hidden block`}
-      style={{ height: large ? 108 : 132 }}
+      className={`${m ? "" : cardClass} category-card rounded-2xl w-full relative overflow-hidden block`}
+      style={{ height: large ? 108 : 132, border: `2.5px solid ${LOGO_GOLD}` }}
     >
       {m ? (
         m.type === "video" ? (
@@ -1532,19 +1553,39 @@ function BarcodeScannerModal({ onDetected, onClose }) {
 // (frosted glass) پشت متن‌ها قرار می‌گیرد — با یک لایه‌ی نیمه‌شفافِ روشن روی آن تا خوانایی فونت‌ها
 // و توضیحات محصول به‌هیچ‌وجه آسیب نبیند. اگر برای آن دسته هنوز رسانه‌ای تنظیم نشده باشد، همان
 // پس‌زمینه‌ی رنگیِ ساده‌ی قبلی (CATEGORY_CARD_CLASS) به‌عنوان جایگزین به‌کار می‌رود.
-function ProductCard({ product, onOpen, globalDiscountPercent, categoryMedia }) {
+function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, categoryMedia }) {
   const displayImage = product.image || "";
   const hasVariants = product.variants && product.variants.length > 0;
   const discountPct = effectiveDiscountPercent(product, globalDiscountPercent);
   const finalPrice = discountedPrice(product, globalDiscountPercent);
   const catMedia = categoryMedia && categoryMedia.url ? normalizeBanner(categoryMedia) : null;
+  // رنگ باکس «افزودن به سبد خرید» دقیقاً همان رنگ اختصاصیِ همان دسته است (مثلاً زرد برای آرایشی،
+  // صورتی برای اسپری و بادی اسپلش) — همان نگاشت رنگیِ از پیش تعریف‌شده برای باکس‌های دسته‌بندی.
+  const ctaColor = CATEGORY_ICON_COLOR[product.category] || "#7B5CF6";
+
+  function handleCardClick() {
+    onOpen(product.id);
+  }
+
+  // اگر محصول طیف رنگ/شماره دارد، باید حتماً از صفحه‌ی اختصاصی محصول انتخاب شود (افزودن مستقیم
+  // بدون انتخاب رنگ ممکن نیست)؛ در غیر این صورت با یک کلیک مستقیماً به سبد خرید اضافه می‌شود.
+  function handleAddClick(e) {
+    e.stopPropagation();
+    if (hasVariants) {
+      onOpen(product.id);
+    } else {
+      onAddToCart(product);
+    }
+  }
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(product.id)}
-      className={`${catMedia ? "" : CATEGORY_CARD_CLASS[product.category]} product-card rounded-xl border border-hair overflow-hidden flex flex-col text-right w-full`}
-      style={{ position: "relative" }}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleCardClick(); } }}
+      className="product-card rounded-xl border border-hair overflow-hidden flex flex-col w-full"
+      style={{ position: "relative", background: "#FFFFFF", cursor: "pointer" }}
     >
       {discountPct > 0 && (
         <span
@@ -1557,6 +1598,8 @@ function ProductCard({ product, onOpen, globalDiscountPercent, categoryMedia }) 
           ٪{discountPct.toLocaleString("fa-IR")} تخفیف
         </span>
       )}
+      {/* تصویر محصول — پس‌زمینه‌ی اصلی عکس خودکار حذف می‌شود (framedProductImageUrl) و محصول
+          تنها روی یک زمینه‌ی کاملاً سفید و هم‌اندازه با همه‌ی محصولات دیگر نمایش داده می‌شود. */}
       <div className="flex items-center justify-center" style={{ background: "#FFFFFF", height: 168, overflow: "hidden" }}>
         {displayImage ? (
           <img
@@ -1570,112 +1613,67 @@ function ProductCard({ product, onOpen, globalDiscountPercent, categoryMedia }) 
           <CategoryIcon category={product.category} size={54} />
         </div>
       </div>
-      <div
-        className="p-4 flex flex-col gap-1 flex-1"
-        style={{
-          position: "relative",
-          overflow: "hidden",
-          ...(catMedia ? { textShadow: "0 1px 2px rgba(255,255,255,0.92), 0 0 6px rgba(255,255,255,0.7)" } : {}),
-        }}
-      >
-        {catMedia && (
-          <>
-            {/* هاله‌ی محو رسانه‌ی همان دسته — بلوری قوی‌تر و نرم‌تر (به‌جای بلور متوسطِ قبلی که
-                خطوط ریز عکس را به‌شکل لکه‌های ناهموار نشان می‌داد) تا نتیجه یک گرادیانِ ابریشمی و
-                یکدست از رنگ‌های خودِ همان رسانه باشد؛ همراه با اشباع و کنتراست بیشتر برای حس
-                باکیفیت‌تر و پرمایه‌تر. مقیاسِ بزرگ‌تر تضمین می‌کند لبه‌ی بلورشده هرگز از قاب بیرون نزند. */}
-            <div style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }} aria-hidden="true">
-              {catMedia.type === "video" ? (
-                <video
-                  src={optimizedMediaUrl(catMedia.url, "video")}
-                  autoPlay muted loop playsInline preload="metadata"
-                  style={{
-                    width: "100%", height: "100%", objectFit: "cover",
-                    objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
-                    filter: "blur(24px) saturate(1.4) contrast(1.06) brightness(1.03)",
-                    transform: "scale(1.5)",
-                  }}
-                />
-              ) : (
-                <img
-                  src={optimizedMediaUrl(catMedia.url, "image")}
-                  alt=""
-                  style={{
-                    width: "100%", height: "100%", objectFit: "cover",
-                    objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%`,
-                    filter: "blur(24px) saturate(1.4) contrast(1.06) brightness(1.03)",
-                    transform: "scale(1.5)",
-                  }}
-                />
-              )}
-            </div>
-            {/* گرادیانِ نیمه‌شفاف (به‌جای یک لایه‌ی تخت) — از بالا کمی روشن‌تر به وسط شفاف‌تر و پایین
-                دوباره روشن‌تر، برای عمق و ظرافت بصری بیشتر؛ همچنان کاملاً پشت متن و بدون آسیب به خوانایی. */}
-            <div
-              style={{
-                position: "absolute", inset: 0, zIndex: 0,
-                background: "linear-gradient(165deg, rgba(255,255,255,0.58), rgba(255,255,255,0.3) 45%, rgba(255,255,255,0.56))",
-              }}
-              aria-hidden="true"
-            />
-          </>
-        )}
-        <div className="flex items-center justify-between" style={{ position: "relative", zIndex: 1 }}>
-          <span className="text-gold" style={{ fontSize: 11 }}>{product.brand}</span>
-          {catMedia ? (
-            /* دایره‌ی کوچک و واضح (بدون بلور) از تصویر/ویدیوی همان دسته — جایگزین برچسبِ متنیِ
-               زیرشاخه/نوع؛ چون خودِ رسانه، دسته‌ی محصول را با یک نگاه نشان می‌دهد. */
-            <span
-              title={subcategoryLabel(product.category, product.subcategory) || CATEGORY_LABEL[product.category]}
-              style={{
-                width: 30, height: 30, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
-                border: "2px solid rgba(255,255,255,0.95)",
-                boxShadow: "0 3px 8px -2px rgba(36,30,61,0.4)",
-                position: "relative", zIndex: 1,
-              }}
-            >
-              {catMedia.type === "video" ? (
-                <video
-                  src={optimizedMediaUrl(catMedia.url, "video")}
-                  autoPlay muted loop playsInline preload="metadata"
-                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%` }}
-                />
-              ) : (
-                <img
-                  src={optimizedMediaUrl(catMedia.url, "image")}
-                  alt={CATEGORY_LABEL[product.category]}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%` }}
-                />
-              )}
-            </span>
-          ) : (
-            subcategoryLabel(product.category, product.subcategory) && (
-              <span className="text-muted" style={{ fontSize: 10, border: "1px solid rgba(123,92,246,0.3)", borderRadius: 999, padding: "2px 8px" }}>
-                {subcategoryLabel(product.category, product.subcategory)}
-                {product.type && ` · ${typeLabel(product.category, product.subcategory, product.type)}`}
-                {product.facets && facetsSummary(product.category, product.subcategory, product.facets) && ` · ${facetsSummary(product.category, product.subcategory, product.facets)}`}
-              </span>
-            )
-          )}
-        </div>
-        <h3 className="font-display" style={{ fontSize: 16, position: "relative", zIndex: 1 }}>{product.name}</h3>
-        <p className="text-muted" style={{ fontSize: 12, minHeight: 32, position: "relative", zIndex: 1 }}>{product.description}</p>
 
-        <div className="flex items-center justify-between mt-2" style={{ position: "relative", zIndex: 1 }}>
-          <div className="flex flex-col">
-            {discountPct > 0 && (
-              <span className="text-muted" style={{ fontSize: 11, textDecoration: "line-through" }}>{fmtPrice(product.price)}</span>
-            )}
-            <span style={{ fontSize: 14, fontWeight: 700, color: discountPct > 0 ? "#FF3E8E" : undefined }}>{fmtPrice(finalPrice)}</span>
-          </div>
-          {hasVariants ? (
-            <span className="text-gold" style={{ fontSize: 10.5 }}>{product.variants.length} رنگ/شماره ›</span>
+      {/* اطلاعات محصول — کاملاً وسط‌چین، دقیقاً به همان ترتیب درخواستی: نام محصول، سپس دایره‌ی
+          نشان‌دهنده‌ی دسته‌بندی، سپس قیمت، و در انتها باکس رنگیِ افزودن به سبد خرید. */}
+      <div className="p-4 flex flex-col items-center text-center gap-2.5 flex-1" style={{ position: "relative" }}>
+        <h3 className="font-display" style={{ fontSize: 15, lineHeight: 1.4, color: "#1D1733" }}>{product.name}</h3>
+
+        {/* دایره‌ی دسته‌بندی — همان تصویر/ویدیوی واضح (بدون بلور) باکس دسته‌بندی صفحه‌ی اصلی */}
+        <span
+          title={CATEGORY_LABEL[product.category]}
+          style={{
+            width: 34, height: 34, borderRadius: "50%", overflow: "hidden", flexShrink: 0,
+            border: `2px solid ${ctaColor}`,
+            boxShadow: "0 3px 8px -2px rgba(36,30,61,0.25)",
+          }}
+        >
+          {catMedia ? (
+            catMedia.type === "video" ? (
+              <video
+                src={optimizedMediaUrl(catMedia.url, "video")}
+                autoPlay muted loop playsInline preload="metadata"
+                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%` }}
+              />
+            ) : (
+              <img
+                src={optimizedMediaUrl(catMedia.url, "image")}
+                alt={CATEGORY_LABEL[product.category]}
+                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: `${catMedia.imagePosX}% ${catMedia.imagePosY}%` }}
+              />
+            )
           ) : (
-            <span className="text-muted" style={{ fontSize: 10.5 }}>مشاهده ›</span>
+            <span style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: `${ctaColor}1A` }}>
+              <CategoryIcon category={product.category} size={18} />
+            </span>
           )}
+        </span>
+
+        <div className="flex flex-col items-center">
+          {discountPct > 0 && (
+            <span className="text-muted" style={{ fontSize: 11, textDecoration: "line-through" }}>{fmtPrice(product.price)}</span>
+          )}
+          <span className="font-display" style={{ fontSize: 15.5, fontWeight: 800, color: "#1D1733" }}>{fmtPrice(finalPrice)}</span>
         </div>
+
+        <button
+          type="button"
+          onClick={handleAddClick}
+          className="w-full rounded-lg"
+          style={{
+            marginTop: 2,
+            padding: "9px 10px",
+            fontSize: 12.5,
+            fontWeight: 700,
+            color: "#FFFFFF",
+            background: ctaColor,
+            boxShadow: `0 6px 14px -6px ${ctaColor}99`,
+          }}
+        >
+          {hasVariants ? "انتخاب و افزودن" : "افزودن به سبد خرید"}
+        </button>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -1759,11 +1757,11 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
 
         <div className="lg:flex-1 lg:min-w-0">
           <div className="flex items-center mb-1">
-            <span className="text-gold" style={{ fontSize: 12 }}>{product.brand}</span>
+            <span className="text-gold" style={{ fontSize: 13, fontWeight: 700 }}>{product.brand}</span>
           </div>
-          <h1 className="font-display" style={{ fontSize: 24, marginBottom: product.nameEn ? 2 : 6 }}>{product.name}</h1>
+          <h1 className="font-display" style={{ fontSize: 26, lineHeight: 1.3, color: "#1D1733", marginBottom: product.nameEn ? 3 : 8 }}>{product.name}</h1>
           {product.nameEn && (
-            <p className="text-muted" style={{ fontSize: 24, marginBottom: 10 }} dir="ltr">{product.nameEn}</p>
+            <p className="text-muted" style={{ fontSize: 22, marginBottom: 12 }} dir="ltr">{product.nameEn}</p>
           )}
           <p style={{ marginBottom: 16 }}>
             {discountPct > 0 && (
@@ -1771,7 +1769,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 {fmtPrice(product.price)}
               </span>
             )}
-            <span style={{ fontSize: 19, fontWeight: 700, color: discountPct > 0 ? "#FF3E8E" : undefined }}>{fmtPrice(finalPrice)}</span>
+            <span className="font-display" style={{ fontSize: 21, fontWeight: 800, color: "#FF3E8E" }}>{fmtPrice(finalPrice)}</span>
             {discountPct > 0 && (
               <span
                 style={{
@@ -1846,16 +1844,23 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 if (specs.length === 0) return null;
                 return (
                   <div className="mb-6">
-                    <h2 className="font-display" style={{ fontSize: 14, marginBottom: 8 }}>مشخصات</h2>
-                    <div className="rounded-xl border border-hair overflow-hidden" style={{ background: "rgba(123,92,246,0.05)" }}>
+                    <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 9, color: "#FF3E8E" }}>مشخصات</h2>
+                    <div
+                      className="rounded-xl border border-hair overflow-hidden"
+                      style={{
+                        background: catMedia ? "rgba(255,255,255,0.55)" : "rgba(123,92,246,0.05)",
+                        backdropFilter: catMedia ? "blur(6px)" : undefined,
+                        WebkitBackdropFilter: catMedia ? "blur(6px)" : undefined,
+                      }}
+                    >
                       {specs.map((s, i) => (
                         <div
                           key={s.label}
                           className="flex items-center justify-between px-4 py-2.5"
                           style={i < specs.length - 1 ? { borderBottom: "1px solid rgba(123,92,246,0.14)" } : undefined}
                         >
-                          <span className="text-muted" style={{ fontSize: 12.5 }}>{s.label}</span>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: "#241E3D" }}>{s.value}</span>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: "#5B5478" }}>{s.label}</span>
+                          <span style={{ fontSize: 13.5, fontWeight: 800, color: "#1D1733" }}>{s.value}</span>
                         </div>
                       ))}
                     </div>
@@ -1865,15 +1870,15 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
 
             const descriptionBlock = product.description && (
               <div className="mb-5">
-                <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>معرفی محصول</h2>
-                <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.description}</p>
+                <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 6, color: "#FF3E8E" }}>معرفی محصول</h2>
+                <p style={{ fontSize: 13.5, fontWeight: 500, color: "#40395C", lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.description}</p>
               </div>
             );
 
             const propertiesBlock = product.properties && (
               <div className="mb-5">
-                <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ویژگی‌ها و خواص</h2>
-                <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.properties}</p>
+                <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 6, color: "#FF3E8E" }}>ویژگی‌ها و خواص</h2>
+                <p style={{ fontSize: 13.5, fontWeight: 500, color: "#40395C", lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.properties}</p>
               </div>
             );
 
@@ -1881,7 +1886,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
               product.category === "perfume" ? (
                 (product.topNotes || product.middleNotes || product.baseNotes) && (
                   <div className="mb-7">
-                    <h2 className="font-display" style={{ fontSize: 14, marginBottom: 10 }}>نت‌های رایحه</h2>
+                    <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 10, color: "#FF3E8E" }}>نت‌های رایحه</h2>
                     {[
                       { label: "Top Notes — نت‌های آغازین", value: product.topNotes, color: "#2563EB", cardClass: "card-perfume-blue" },
                       { label: "Middle Notes — نت‌های میانی", value: product.middleNotes, color: "#D97706", cardClass: "card-beauty" },
@@ -1906,8 +1911,8 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                                     key={i}
                                     className={accord.cardClass}
                                     style={{
-                                      fontSize: 12.5, borderRadius: 999, padding: "6px 14px",
-                                      border: `1px solid ${accord.color}40`, color: "#241E3D",
+                                      fontSize: 12.5, fontWeight: 600, borderRadius: 999, padding: "6px 14px",
+                                      border: `1px solid ${accord.color}40`, color: "#1D1733",
                                     }}
                                   >
                                     {noteName}
@@ -1922,8 +1927,8 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
               ) : (
                 product.ingredients && (
                   <div className="mb-7">
-                    <h2 className="font-display" style={{ fontSize: 14, marginBottom: 5 }}>ترکیبات</h2>
-                    <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.ingredients}</p>
+                    <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 6, color: "#FF3E8E" }}>ترکیبات</h2>
+                    <p style={{ fontSize: 13.5, fontWeight: 500, color: "#40395C", lineHeight: 1.9, whiteSpace: "pre-line" }}>{product.ingredients}</p>
                   </div>
                 )
               );
@@ -3438,6 +3443,12 @@ export default function MaisonStore() {
                     large={isLarge}
                     onClick={() => { selectCategory(c); pushNav({ activeCategory: c, categoryPageOpen: c !== "all" }); }}
                   />
+                  <p
+                    className="font-latin"
+                    style={{ textAlign: "center", fontSize: 12, marginTop: 6, color: LOGO_GOLD, fontWeight: 700, letterSpacing: "0.08em" }}
+                  >
+                    {CATEGORY_LABEL_EN[c]}
+                  </p>
                 </div>
               );
             })}
@@ -3591,6 +3602,7 @@ export default function MaisonStore() {
                     <ProductCard
                       product={p}
                       onOpen={openProduct}
+                      onAddToCart={addToCart}
                       globalDiscountPercent={globalDiscountPercent}
                       categoryMedia={categoryTileMedia[p.category]}
                     />
