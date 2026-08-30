@@ -1025,26 +1025,20 @@ function productImageStyle(product) {
 }
 
 // اگر آدرس تصویر روی Cloudinary خودمان میزبانی شده باشد (چه از آپلود مستقیم از گالری، چه از
-// شناسایی هوشمند بارکد که سمت سرور روی همین Cloudinary بارگذاری می‌شود)، این تابع با تبدیل‌های
-// زنجیره‌ایِ خودِ Cloudinary — بدون هیچ سرویس یا هزینه‌ی اضافه‌ی جداگانه از سمت ما — عکس محصول را
-// دقیقاً مثل سایت‌های حرفه‌ای فروش آنلاین آماده می‌کند:
-//   ۱) e_background_removal — پس‌زمینه‌ی اصلی عکس (هر رنگ/بافت/مکانی که باشد) با هوش مصنوعی
-//      Cloudinary به‌طور کامل حذف و شفاف می‌شود؛ فقط خودِ محصول باقی می‌ماند.
-//   ۲) e_trim + c_pad,b_white + اندازه‌ی ثابت — حاشیه‌ی اضافیِ اطراف محصول بریده می‌شود و نتیجه
-//      داخل یک قاب مربعیِ کاملاً سفید و هم‌اندازه با تمام محصولات دیگر جا می‌گیرد، تا همه‌ی
-//      تصاویر سایت هارمونی و اندازه‌ی یکسان داشته باشند.
-// نکته‌ی مهم: مرحله‌ی حذف پس‌زمینه یک افزونه‌ی هوش مصنوعیِ Cloudinary است («Cloudinary AI Background
-// Removal») و باید از پنل Cloudinary → بخش Add-ons روی حساب فعال شده باشد؛ در غیر این صورت این
-// بخش از تبدیل نادیده گرفته می‌شود یا خطا می‌دهد و فقط برش/قاب‌بندی (مرحله‌ی ۲) اعمال می‌ماند.
-// چون این تابع در لحظه‌ی نمایش (نه در لحظه‌ی آپلود) اجرا می‌شود، روی تمام عکس‌های محصولاتِ از قبل
-// ثبت‌شده هم خودکار اعمال می‌شود — نیازی به آپلود دوباره‌ی هیچ عکسی نیست. روی لینک‌های خارجیِ غیر
-// Cloudinary (مثلاً وقتی مدیر مستقیم لینک عکس را می‌چسباند) بی‌اثر است.
+// شناسایی هوشمند بارکد که سمت سرور روی همین Cloudinary بارگذاری می‌شود)، این تابع فقط اندازه‌ی
+// نمایش را با همه‌ی محصولات دیگر یکسان می‌کند — یک قاب مربعیِ با پس‌زمینه‌ی سفید (c_pad,b_white)
+// که تصویر را بدون هیچ بُرشی (نه از بالا/پایین، نه از چپ/راست) کامل داخل خودش جا می‌دهد. حذف
+// واقعیِ پس‌زمینه‌ی اصلی عکس اینجا انجام نمی‌شود — چون آن به یک تبدیل نمایشیِ لحظه‌ای و به فعال‌بودن
+// یک افزونه‌ی پولیِ اختیاری روی Cloudinary وابسته بود و می‌توانست گاهی لبه‌ی محصول را هم ببُرد؛
+// به‌جایش، حذف پس‌زمینه از قبل و به‌طور قابل‌اتکا در لحظه‌ی آپلود (سمت سرور، با remove.bg) انجام
+// می‌شود، پس تا زمانی که تصویر اینجا می‌رسد، پس‌زمینه‌اش از قبل سفید است و این تابع فقط قاب‌بندیِ
+// یکسان را اضافه می‌کند. روی لینک‌های خارجیِ غیر Cloudinary بی‌اثر است.
 function framedProductImageUrl(url, size = 1000) {
   if (!url || typeof url !== "string") return url;
   const marker = "/upload/";
   const idx = url.indexOf(marker);
   if (!url.includes("res.cloudinary.com") || idx === -1) return url;
-  const transform = `e_background_removal/e_trim:10,c_pad,b_white,w_${size},h_${size},q_auto:good,f_auto`;
+  const transform = `c_pad,b_white,w_${size},h_${size},q_auto:good,f_auto`;
   return url.slice(0, idx + marker.length) + transform + "/" + url.slice(idx + marker.length);
 }
 
@@ -1125,13 +1119,16 @@ function isAdminUser(user) {
   return !!user && typeof user.email === "string" && user.email.toLowerCase() === ADMIN_EMAIL;
 }
 
+// رنگ‌های قراردادیِ هر دسته — نسخه‌ی ملایم‌تر و چشم‌نوازتر (کمی روشن‌تر و کم‌اشباع‌تر از رنگ‌های
+// خام برند) تا هم روی آیکون‌ها، هم روی باکس «افزودن به سبد خرید» و هم زیر باکس‌های دسته‌بندی
+// صفحه‌ی اصلی، پررنگ و خسته‌کننده نباشند.
 const CATEGORY_ICON_COLOR = {
-  perfume: "#FF3E8E",
-  sprayAndSplash: "#FF6FA5",
-  makeup: "#D97706",
-  hairStyling: "#16A34A",
-  hygiene: "#0EA5A4",
-  electronics: "#7B5CF6",
+  perfume: "#F0699E",
+  sprayAndSplash: "#F995B8",
+  makeup: "#D9A441",
+  hairStyling: "#4CAF6D",
+  hygiene: "#3FAFA8",
+  electronics: "#9A87E0",
 };
 
 function CategoryIcon({ category, size = 34 }) {
@@ -2403,11 +2400,14 @@ export default function MaisonStore() {
     await loadProducts();
   }
 
-  async function uploadImage(imageBase64) {
+  // پارامتر removeBackground فقط برای عکس اصلی محصول و طیف‌های رنگ true فرستاده می‌شود (پایین‌تر
+  // در فرم محصول و VariantRowEditor) — نه برای بنرها یا رسانه‌ی باکس‌های دسته‌بندی، چون پس‌زمینه‌ی
+  // آن‌ها خودش بخشی از طراحی است و نباید حذف شود.
+  async function uploadImage(imageBase64, removeBackground) {
     const res = await fetch(`${API_BASE_URL}/api/upload`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ imageBase64 }),
+      body: JSON.stringify({ imageBase64, removeBackground: !!removeBackground }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "آپلود تصویر ناموفق بود");
@@ -3445,7 +3445,15 @@ export default function MaisonStore() {
                   />
                   <p
                     className="font-latin"
-                    style={{ textAlign: "center", fontSize: 12, marginTop: 6, color: LOGO_GOLD, fontWeight: 700, letterSpacing: "0.08em" }}
+                    style={{
+                      textAlign: "center",
+                      fontSize: 13,
+                      marginTop: 7,
+                      color: CATEGORY_ICON_COLOR[c] || LOGO_GOLD,
+                      fontWeight: 800,
+                      letterSpacing: "0.03em",
+                      textShadow: "0 1px 1px rgba(36,30,61,0.06)",
+                    }}
                   >
                     {CATEGORY_LABEL_EN[c]}
                   </p>
@@ -3798,7 +3806,7 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      const url = await onUploadImage(base64);
+      const url = await onUploadImage(base64, true);
       onChange({ ...variant, image: url });
     } catch (err) {
       setError(err.message || "آپلود تصویر ناموفق بود");
@@ -4138,7 +4146,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      const url = await onUploadImage(base64);
+      const url = await onUploadImage(base64, true);
       setForm((f) => ({ ...f, image: url }));
     } catch (err) {
       setFormError(err.message || "آپلود تصویر ناموفق بود");
