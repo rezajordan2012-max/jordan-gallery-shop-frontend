@@ -343,6 +343,11 @@ const FONTS = `
   .menu-tap-ripple {
     animation: menuTapRippleWave 1s cubic-bezier(.1,.5,.4,1) forwards;
   }
+  /* نوارهای افقیِ محصولات پرفروش هر دسته در صفحه‌ی اصلی — اسکرول‌بار پنهان (خودِ حرکت خودکار
+     و اسکرول دستیِ لمسی جایگزین اسکرول‌بار می‌شوند) */
+  .rail-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+  .rail-scroll::-webkit-scrollbar { display: none; }
+
   @media (prefers-reduced-motion: reduce) {
     .menu-tap-word, .menu-tap-ripple { animation: none; opacity: 0; }
   }
@@ -353,6 +358,7 @@ const FONTS = `
     .marquee-track, .cart-bump, .skeleton, .sparkle, .pulse-glow { animation: none; }
     .mist-puff, .wave-flow, .ripple-ring { animation: none; }
     .ray-burst, .hero-halo { animation: none; }
+    .rail-item { transition: none !important; }
   }
 `;
 
@@ -1123,7 +1129,7 @@ function isAdminUser(user) {
 // خام برند) تا هم روی آیکون‌ها، هم روی باکس «افزودن به سبد خرید» و هم زیر باکس‌های دسته‌بندی
 // صفحه‌ی اصلی، پررنگ و خسته‌کننده نباشند.
 const CATEGORY_ICON_COLOR = {
-  perfume: "#F0699E",
+  perfume: "#5B9FD6",
   sprayAndSplash: "#F995B8",
   makeup: "#D9A441",
   hairStyling: "#4CAF6D",
@@ -1211,7 +1217,7 @@ function CategoryIcon({ category, size = 34 }) {
 // پس‌زمینه‌ی رنگیِ قبلی + آیکون گرافیکی پیش‌فرض دسته (بدون متن) جایگزین می‌شود تا باکس خالی نماند.
 // prop «large» فقط برای باکس لوازم برقی شخصی true است (باکس تمام‌عرض، با ارتفاع کمی کمتر).
 function CategoryTile({ category, media, large, onClick }) {
-  const cardClass = CATEGORY_CARD_CLASS[category];
+  const accent = CATEGORY_ICON_COLOR[category] || LOGO_GOLD;
   const m = media && media.url ? normalizeBanner(media) : null;
   const mediaFillStyle = m
     ? {
@@ -1229,8 +1235,15 @@ function CategoryTile({ category, media, large, onClick }) {
       type="button"
       onClick={onClick}
       aria-label={CATEGORY_LABEL[category]}
-      className={`${m ? "" : cardClass} category-card rounded-2xl w-full relative overflow-hidden block`}
-      style={{ height: large ? 108 : 132, border: `2.5px solid ${LOGO_GOLD}` }}
+      className="category-card rounded-2xl w-full relative overflow-hidden block"
+      style={{
+        height: large ? 108 : 132,
+        border: `2.5px solid ${LOGO_GOLD}`,
+        // پیش از آپلود رسانه، پس‌زمینه‌ی جایگزین همیشه از همان رنگ قراردادیِ خودِ این دسته می‌آید
+        // (مثلاً ادکلن همیشه هم‌رنگ خودش است، نه آبیِ ثابتِ قدیمی) — با بقیه‌ی نشانه‌های همان دسته
+        // (دکمه‌ی خرید، حاشیه‌ی دایره، برچسب انگلیسی) کاملاً هماهنگ.
+        background: m ? undefined : `${accent}22`,
+      }}
     >
       {m ? (
         m.type === "video" ? (
@@ -1673,6 +1686,139 @@ function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, cate
     </div>
   );
 }
+
+// نوار افقیِ خودکار برای «پرفروش‌ترین‌های» یک دسته در صفحه‌ی اصلی — حداکثر ۱۰ محصول (که از قبل
+// بر اساس بیشترین خرید مرتب شده‌اند) را به‌صورت یک ریلِ افقی نشان می‌دهد که به‌آرامی و پیوسته
+// (بدون توقف در انتها) حرکت می‌کند، در حالی که هر محصول به‌نوبت و به‌مدت ۲ ثانیه کمی بزرگ‌نمایی
+// می‌شود و به اندازه‌ی عادی برمی‌گردد. با لمس/نگه‌داشتن دست روی یک محصول، فقط حرکت خودکار همان
+// نوار متوقف می‌شود و مشتری می‌تواند با اسکرول دستی آن را به چپ و راست ببرد؛ نوارهای دیگر مستقل
+// و بدون وقفه به کار خودشان ادامه می‌دهند. طراحی خودِ کارت محصول دقیقاً همان ProductCard قبلی است.
+function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalDiscountPercent, categoryMedia }) {
+  const trackRef = useRef(null);
+  const rafRef = useRef(null);
+  const signRef = useRef(1);
+  const pausedRef = useRef(false);
+  const resumeTimerRef = useRef(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const items = useMemo(() => (products || []).slice(0, 10), [products]);
+  const canLoop = items.length > 1;
+  const railItems = canLoop ? [...items, ...items] : items;
+
+  // حرکت خودکارِ آرام و پیوسته با requestAnimationFrame روی scrollLeft واقعیِ کانتینر — نه یک
+  // انیمیشنِ transform جدا — دقیقاً به همین دلیل که وقتی متوقف می‌شود، اسکرول دستیِ لمسیِ مرورگر
+  // بدون هیچ ترفند اضافه‌ای همان‌جا کار می‌کند. علامت واقعیِ scrollLeft در حالت RTL بین مرورگرها
+  // فرق دارد؛ اینجا در همان لحظه‌ی شروع، این علامت را با یک سنجشِ کوچک و بی‌اثر تشخیص می‌دهیم.
+  useEffect(() => {
+    if (!canLoop) return;
+    const el = trackRef.current;
+    if (!el) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const probe = el.scrollLeft;
+    el.scrollLeft = probe + 2;
+    signRef.current = el.scrollLeft > probe ? 1 : -1;
+    el.scrollLeft = probe;
+
+    const speed = 0.4; // پیکسل در هر فریم — سرعتی آرام
+    const dirSign = reverse ? -1 : 1;
+
+    function step() {
+      if (!pausedRef.current && el) {
+        el.scrollLeft += signRef.current * dirSign * speed;
+        const half = el.scrollWidth / 2;
+        const normalized = signRef.current === 1 ? el.scrollLeft : -el.scrollLeft;
+        if (normalized >= half) {
+          el.scrollLeft -= signRef.current * half;
+        } else if (normalized < 0) {
+          el.scrollLeft += signRef.current * half;
+        }
+      }
+      rafRef.current = requestAnimationFrame(step);
+    }
+    rafRef.current = requestAnimationFrame(step);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [canLoop, reverse, items.length]);
+
+  // جلوه‌ی «بزرگ‌نماییِ نوبتی» — هر محصول به‌ترتیب ۲ ثانیه کمی بزرگ می‌شود؛ کاملاً مستقل از حرکت خودکار نوار.
+  useEffect(() => {
+    if (!canLoop) return;
+    const timer = setInterval(() => setActiveIndex((i) => (i + 1) % items.length), 2000);
+    return () => clearInterval(timer);
+  }, [canLoop, items.length]);
+
+  function pauseAuto() {
+    pausedRef.current = true;
+    if (resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
+  }
+  function resumeAutoSoon() {
+    if (resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
+    resumeTimerRef.current = window.setTimeout(() => { pausedRef.current = false; }, 900);
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-2 mb-3 px-1">
+        <Sparkles size={15} color="#FF3E8E" />
+        <h3 className="font-display" style={{ fontSize: 17 }}>{CATEGORY_LABEL[category]}</h3>
+      </div>
+      <div
+        ref={trackRef}
+        className="rail-scroll"
+        onMouseEnter={pauseAuto}
+        onMouseLeave={resumeAutoSoon}
+        onTouchStart={pauseAuto}
+        onTouchEnd={resumeAutoSoon}
+        onPointerDown={pauseAuto}
+        onPointerUp={resumeAutoSoon}
+        style={{
+          display: "flex",
+          gap: 14,
+          overflowX: "auto",
+          overflowY: "hidden",
+          WebkitOverflowScrolling: "touch",
+          paddingBottom: 6,
+          paddingInline: 2,
+        }}
+      >
+        {railItems.map((p, i) => {
+          const originalIndex = i % items.length;
+          const isActive = canLoop && originalIndex === activeIndex;
+          return (
+            <div
+              key={`${p.id}-${i}`}
+              className="rail-item"
+              style={{
+                flex: "0 0 auto",
+                width: 148,
+                transform: isActive ? "scale(1.08)" : "scale(1)",
+                transformOrigin: "center bottom",
+                transition: "transform 0.5s cubic-bezier(.3,.7,.4,1)",
+                position: "relative",
+                zIndex: isActive ? 2 : 1,
+                filter: isActive ? "drop-shadow(0 14px 22px rgba(36,30,61,0.28))" : "none",
+                borderRadius: 12,
+              }}
+            >
+              <ProductCard
+                product={p}
+                onOpen={onOpen}
+                onAddToCart={onAddToCart}
+                globalDiscountPercent={globalDiscountPercent}
+                categoryMedia={categoryMedia}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 
 function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, categoryMedia }) {
   const hasVariants = !!product && product.variants && product.variants.length > 0;
@@ -3599,6 +3745,27 @@ export default function MaisonStore() {
                       <div className="skeleton" style={{ height: 10, width: "90%", borderRadius: 4 }} />
                     </div>
                   </div>
+                ))}
+              </div>
+            ) : !categoryPageOpen ? (
+              // صفحه‌ی اصلی: به‌جای یک شبکه‌ی تخت، ۵ نوار افقیِ خودکار — یکی برای هر دسته‌بندی —
+              // هرکدام حداکثر ۱۰ محصولِ پرفروش همان دسته را نشان می‌دهد. جهت حرکت خودکار هر نوار
+              // با نوار قبلی/بعدی برعکس است (رفتار «reverse» بر اساس شماره‌ی ردیف).
+              <div>
+                {HOME_CATEGORY_ORDER.map((cat, idx) => (
+                  <ProductRail
+                    key={cat}
+                    category={cat}
+                    products={products
+                      .filter((p) => p.category === cat)
+                      .slice()
+                      .sort((a, b) => (Number(b.salesCount) || 0) - (Number(a.salesCount) || 0))}
+                    reverse={idx % 2 === 1}
+                    onOpen={openProduct}
+                    onAddToCart={addToCart}
+                    globalDiscountPercent={globalDiscountPercent}
+                    categoryMedia={categoryTileMedia[cat]}
+                  />
                 ))}
               </div>
             ) : filteredProducts.length === 0 ? (
