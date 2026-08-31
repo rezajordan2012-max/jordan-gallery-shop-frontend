@@ -343,10 +343,22 @@ const FONTS = `
   .menu-tap-ripple {
     animation: menuTapRippleWave 1s cubic-bezier(.1,.5,.4,1) forwards;
   }
-  /* نوارهای افقیِ محصولات پرفروش هر دسته در صفحه‌ی اصلی — اسکرول‌بار پنهان (خودِ حرکت خودکار
-     و اسکرول دستیِ لمسی جایگزین اسکرول‌بار می‌شوند) */
+  /* نوارهای افقیِ محصولات پرفروش هر دسته در صفحه‌ی اصلی — حرکت خودکار با transform (نه با
+     دست‌کاریِ scrollLeft در جاوااسکریپت) پیاده شده، دقیقاً همان تکنیکِ نوار اعلانِ بالای صفحه که
+     از قبل در همین سایت به‌طور قابل‌اتکا کار می‌کند: چون این حرکت روی ترد گرافیکی (GPU) اجرا
+     می‌شود، نه ترد اصلیِ جاوااسکریپت، even وقتی همزمان ۵ نوار در حال حرکتند، هیچ‌کدام برای زمانِ
+     پردازنده با هم رقابت نمی‌کنند و حرکت همیشه صاف و بدون تکان‌خوردگی می‌ماند. اسکرول‌بار هم
+     پنهان است (خودِ حرکت خودکار و اسکرول دستیِ لمسی جایگزینش می‌شوند). */
   .rail-scroll { scrollbar-width: none; -ms-overflow-style: none; }
   .rail-scroll::-webkit-scrollbar { display: none; }
+  @keyframes railSlideLeft {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes railSlideRight {
+    from { transform: translateX(-50%); }
+    to { transform: translateX(0); }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .menu-tap-word, .menu-tap-ripple { animation: none; opacity: 0; }
@@ -359,6 +371,7 @@ const FONTS = `
     .mist-puff, .wave-flow, .ripple-ring { animation: none; }
     .ray-burst, .hero-halo { animation: none; }
     .rail-item { transition: none !important; }
+    .rail-track { animation: none !important; }
   }
 `;
 
@@ -1694,69 +1707,69 @@ function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, cate
 // نوار متوقف می‌شود و مشتری می‌تواند با اسکرول دستی آن را به چپ و راست ببرد؛ نوارهای دیگر مستقل
 // و بدون وقفه به کار خودشان ادامه می‌دهند. طراحی خودِ کارت محصول دقیقاً همان ProductCard قبلی است.
 function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalDiscountPercent, categoryMedia }) {
-  const trackRef = useRef(null);
-  const rafRef = useRef(null);
-  const signRef = useRef(1);
-  const pausedRef = useRef(false);
-  const resumeTimerRef = useRef(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const outerRef = useRef(null); // کانتینر بیرونی — واقعاً قابل‌اسکرولِ دستی (overflow-x: auto)
+  const itemRefs = useRef([]);
+  const detectIntervalRef = useRef(null);
+  const zoomTimeoutRef = useRef(null);
+  const lastEdgeIndexRef = useRef(-1);
+  const [paused, setPaused] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
   const items = useMemo(() => (products || []).slice(0, 10), [products]);
   const canLoop = items.length > 1;
   const railItems = canLoop ? [...items, ...items] : items;
 
-  // حرکت خودکارِ آرام و پیوسته با requestAnimationFrame روی scrollLeft واقعیِ کانتینر — نه یک
-  // انیمیشنِ transform جدا — دقیقاً به همین دلیل که وقتی متوقف می‌شود، اسکرول دستیِ لمسیِ مرورگر
-  // بدون هیچ ترفند اضافه‌ای همان‌جا کار می‌کند. علامت واقعیِ scrollLeft در حالت RTL بین مرورگرها
-  // فرق دارد؛ اینجا در همان لحظه‌ی شروع، این علامت را با یک سنجشِ کوچک و بی‌اثر تشخیص می‌دهیم.
+  // مدت‌زمان یک چرخه‌ی کامل، متناسب با تعداد محصولات محاسبه می‌شود تا سرعتِ حسی حرکت همیشه یک
+  // ریتمِ آرام و طبیعی داشته باشد (نه خیلی تند، نه کسل‌کننده)، صرف‌نظر از اینکه هر دسته چند
+  // محصول دارد. مکثِ بزرگ‌نماییِ هر محصول هم یک عدد ثابت و بی‌ربط نیست، بلکه تقریباً نیمی از
+  // سهمِ زمانیِ خودِ همان محصول از کل چرخه است — یعنی هماهنگ با ریتم واقعیِ حرکت.
+  const cycleSeconds = Math.max(20, items.length * 3.6);
+  const msPerItem = (cycleSeconds * 1000) / Math.max(items.length, 1);
+  const zoomHoldMs = Math.min(2600, Math.max(1200, msPerItem * 0.5));
+  // اگر «آرایشی» به سمت راست حرکت می‌کند، جایگاه ویژه (نقطه‌ی بزرگ‌نمایی) سمتِ راست است و برای
+  // اینکه محصولِ کناری (که سمت چپِ محصولِ فعلی نشسته) به‌ترتیب جای آن را بگیرد، محتوای نوار باید
+  // به چپ سُر بخورد؛ نوار بعدی دقیقاً برعکس (چپ‌محور/راست‌سُر) اجرا می‌شود.
+  const driftAnimation = reverse ? "railSlideRight" : "railSlideLeft";
+
+  // تشخیصِ هندسیِ محصولی که همین الان *کاملاً* در جایگاه ویژه (لبه‌ی سمت راست برای نوارهای عادی،
+  // لبه‌ی سمت چپ برای نوارهای reverse) قرار دارد. هر بار که محصولِ آن جایگاه واقعاً عوض شود
+  // (نه بر اساس شمارشِ دلخواه، بلکه بر اساس موقعیتِ واقعیِ دیده‌شده روی صفحه)، همان محصول برای
+  // مدتی متناسب با ریتم نوار بزرگ‌نمایی می‌شود و بعد بدون توقفِ حرکت، به اندازه‌ی عادی برمی‌گردد.
   useEffect(() => {
     if (!canLoop) return;
-    const el = trackRef.current;
-    if (!el) return;
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const el = outerRef.current;
+    if (!el) return;
 
-    const probe = el.scrollLeft;
-    el.scrollLeft = probe + 2;
-    signRef.current = el.scrollLeft > probe ? 1 : -1;
-    el.scrollLeft = probe;
-
-    const speed = 0.4; // پیکسل در هر فریم — سرعتی آرام
-    const dirSign = reverse ? -1 : 1;
-
-    function step() {
-      if (!pausedRef.current && el) {
-        el.scrollLeft += signRef.current * dirSign * speed;
-        const half = el.scrollWidth / 2;
-        const normalized = signRef.current === 1 ? el.scrollLeft : -el.scrollLeft;
-        if (normalized >= half) {
-          el.scrollLeft -= signRef.current * half;
-        } else if (normalized < 0) {
-          el.scrollLeft += signRef.current * half;
-        }
+    function detect() {
+      const containerRect = el.getBoundingClientRect();
+      let foundIndex = -1;
+      let bestDist = Infinity;
+      itemRefs.current.forEach((node, i) => {
+        if (!node) return;
+        const r = node.getBoundingClientRect();
+        const fullyVisible = r.left >= containerRect.left - 1 && r.right <= containerRect.right + 1;
+        if (!fullyVisible) return;
+        const dist = reverse ? Math.abs(r.left - containerRect.left) : Math.abs(r.right - containerRect.right);
+        if (dist < bestDist) { bestDist = dist; foundIndex = i % items.length; }
+      });
+      if (foundIndex !== -1 && foundIndex !== lastEdgeIndexRef.current) {
+        lastEdgeIndexRef.current = foundIndex;
+        setActiveIndex(foundIndex);
+        if (zoomTimeoutRef.current) window.clearTimeout(zoomTimeoutRef.current);
+        zoomTimeoutRef.current = window.setTimeout(() => setActiveIndex(-1), zoomHoldMs);
       }
-      rafRef.current = requestAnimationFrame(step);
     }
-    rafRef.current = requestAnimationFrame(step);
+
+    detectIntervalRef.current = window.setInterval(detect, 150);
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (detectIntervalRef.current) window.clearInterval(detectIntervalRef.current);
+      if (zoomTimeoutRef.current) window.clearTimeout(zoomTimeoutRef.current);
     };
-  }, [canLoop, reverse, items.length]);
+  }, [canLoop, reverse, items.length, zoomHoldMs]);
 
-  // جلوه‌ی «بزرگ‌نماییِ نوبتی» — هر محصول به‌ترتیب ۲ ثانیه کمی بزرگ می‌شود؛ کاملاً مستقل از حرکت خودکار نوار.
-  useEffect(() => {
-    if (!canLoop) return;
-    const timer = setInterval(() => setActiveIndex((i) => (i + 1) % items.length), 2000);
-    return () => clearInterval(timer);
-  }, [canLoop, items.length]);
-
-  function pauseAuto() {
-    pausedRef.current = true;
-    if (resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
-  }
-  function resumeAutoSoon() {
-    if (resumeTimerRef.current) window.clearTimeout(resumeTimerRef.current);
-    resumeTimerRef.current = window.setTimeout(() => { pausedRef.current = false; }, 900);
-  }
+  function handlePauseStart() { setPaused(true); }
+  function handlePauseEndSoon() { window.setTimeout(() => setPaused(false), 900); }
 
   if (items.length === 0) return null;
 
@@ -1767,53 +1780,61 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
         <h3 className="font-display" style={{ fontSize: 17 }}>{CATEGORY_LABEL[category]}</h3>
       </div>
       <div
-        ref={trackRef}
+        ref={outerRef}
         className="rail-scroll"
-        onMouseEnter={pauseAuto}
-        onMouseLeave={resumeAutoSoon}
-        onTouchStart={pauseAuto}
-        onTouchEnd={resumeAutoSoon}
-        onPointerDown={pauseAuto}
-        onPointerUp={resumeAutoSoon}
-        style={{
-          display: "flex",
-          gap: 14,
-          overflowX: "auto",
-          overflowY: "hidden",
-          WebkitOverflowScrolling: "touch",
-          paddingBottom: 6,
-          paddingInline: 2,
-        }}
+        onMouseEnter={handlePauseStart}
+        onMouseLeave={handlePauseEndSoon}
+        onTouchStart={handlePauseStart}
+        onTouchEnd={handlePauseEndSoon}
+        onPointerDown={handlePauseStart}
+        onPointerUp={handlePauseEndSoon}
+        style={{ overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 6 }}
       >
-        {railItems.map((p, i) => {
-          const originalIndex = i % items.length;
-          const isActive = canLoop && originalIndex === activeIndex;
-          return (
-            <div
-              key={`${p.id}-${i}`}
-              className="rail-item"
-              style={{
-                flex: "0 0 auto",
-                width: 148,
-                transform: isActive ? "scale(1.08)" : "scale(1)",
-                transformOrigin: "center bottom",
-                transition: "transform 0.5s cubic-bezier(.3,.7,.4,1)",
-                position: "relative",
-                zIndex: isActive ? 2 : 1,
-                filter: isActive ? "drop-shadow(0 14px 22px rgba(36,30,61,0.28))" : "none",
-                borderRadius: 12,
-              }}
-            >
-              <ProductCard
-                product={p}
-                onOpen={onOpen}
-                onAddToCart={onAddToCart}
-                globalDiscountPercent={globalDiscountPercent}
-                categoryMedia={categoryMedia}
-              />
-            </div>
-          );
-        })}
+        {/* ردیفِ داخلی — حرکتِ خودکار روی همین لایه با transform انجام می‌شود (GPU-محور، صاف و
+            بدون تکان‌خوردگی)؛ کانتینرِ بیرونی دست‌نخورده می‌ماند، پس اسکرول دستیِ لمسیِ آن همیشه
+            آماده‌ی کار است و هنگام توقفِ خودکار (رویداد لمس/هاور)، بلافاصله در دسترس قرار می‌گیرد. */}
+        <div
+          className="rail-track"
+          style={{
+            display: "flex",
+            gap: 14,
+            width: "max-content",
+            animation: canLoop ? `${driftAnimation} ${cycleSeconds}s linear infinite` : "none",
+            animationPlayState: paused ? "paused" : "running",
+          }}
+        >
+          {railItems.map((p, i) => {
+            const originalIndex = i % items.length;
+            const isActive = canLoop && originalIndex === activeIndex;
+            return (
+              <div
+                key={`${p.id}-${i}`}
+                ref={(node) => { itemRefs.current[i] = node; }}
+                className="rail-item"
+                style={{
+                  flex: "0 0 auto",
+                  width: "calc(50vw - 23px)",
+                  maxWidth: 190,
+                  transform: isActive ? "scale(1.08)" : "scale(1)",
+                  transformOrigin: "center bottom",
+                  transition: "transform 0.55s cubic-bezier(.3,.7,.4,1)",
+                  position: "relative",
+                  zIndex: isActive ? 2 : 1,
+                  filter: isActive ? "drop-shadow(0 14px 22px rgba(36,30,61,0.28))" : "none",
+                  borderRadius: 12,
+                }}
+              >
+                <ProductCard
+                  product={p}
+                  onOpen={onOpen}
+                  onAddToCart={onAddToCart}
+                  globalDiscountPercent={globalDiscountPercent}
+                  categoryMedia={categoryMedia}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
