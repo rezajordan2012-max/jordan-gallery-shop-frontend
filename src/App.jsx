@@ -344,21 +344,13 @@ const FONTS = `
     animation: menuTapRippleWave 1s cubic-bezier(.1,.5,.4,1) forwards;
   }
   /* نوارهای افقیِ محصولات پرفروش هر دسته در صفحه‌ی اصلی — حرکت خودکار با transform (نه با
-     دست‌کاریِ scrollLeft در جاوااسکریپت) پیاده شده، دقیقاً همان تکنیکِ نوار اعلانِ بالای صفحه که
-     از قبل در همین سایت به‌طور قابل‌اتکا کار می‌کند: چون این حرکت روی ترد گرافیکی (GPU) اجرا
-     می‌شود، نه ترد اصلیِ جاوااسکریپت، even وقتی همزمان ۵ نوار در حال حرکتند، هیچ‌کدام برای زمانِ
-     پردازنده با هم رقابت نمی‌کنند و حرکت همیشه صاف و بدون تکان‌خوردگی می‌ماند. اسکرول‌بار هم
-     پنهان است (خودِ حرکت خودکار و اسکرول دستیِ لمسی جایگزینش می‌شوند). */
+     دست‌کاریِ scrollLeft در جاوااسکریپت) پیاده شده، روی ترد گرافیکی (GPU) اجرا می‌شود، نه ترد
+     اصلیِ جاوااسکریپت، پس even وقتی همزمان ۵ نوار در حال حرکتند، هیچ‌کدام برای زمانِ پردازنده با
+     هم رقابت نمی‌کنند و حرکت همیشه صاف و بدون تکان‌خوردگی می‌ماند. کیف‌فریمِ هر نوار به‌صورت
+     اختصاصی و با فاصله‌ی واقعیِ اندازه‌گیری‌شده از DOM ساخته می‌شود (نه یک درصدِ ثابت CSS)، پس
+     اسکرول‌بار هم پنهان است (خودِ حرکت خودکار و اسکرول دستیِ لمسی جایگزینش می‌شوند). */
   .rail-scroll { scrollbar-width: none; -ms-overflow-style: none; }
   .rail-scroll::-webkit-scrollbar { display: none; }
-  @keyframes railSlideLeft {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
-  }
-  @keyframes railSlideRight {
-    from { transform: translateX(-50%); }
-    to { transform: translateX(0); }
-  }
 
   @media (prefers-reduced-motion: reduce) {
     .menu-tap-word, .menu-tap-ripple { animation: none; opacity: 0; }
@@ -1623,7 +1615,7 @@ function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, cate
       )}
       {/* تصویر محصول — پس‌زمینه‌ی اصلی عکس خودکار حذف می‌شود (framedProductImageUrl) و محصول
           تنها روی یک زمینه‌ی کاملاً سفید و هم‌اندازه با همه‌ی محصولات دیگر نمایش داده می‌شود. */}
-      <div className="flex items-center justify-center" style={{ background: "#FFFFFF", height: 168, overflow: "hidden" }}>
+      <div className="flex items-center justify-center" style={{ background: "#FFFFFF", height: 148, overflow: "hidden" }}>
         {displayImage ? (
           <img
             src={framedProductImageUrl(displayImage)}
@@ -1708,65 +1700,54 @@ function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, cate
 // و بدون وقفه به کار خودشان ادامه می‌دهند. طراحی خودِ کارت محصول دقیقاً همان ProductCard قبلی است.
 function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalDiscountPercent, categoryMedia }) {
   const outerRef = useRef(null); // کانتینر بیرونی — واقعاً قابل‌اسکرولِ دستی (overflow-x: auto)
-  const itemRefs = useRef([]);
-  const detectIntervalRef = useRef(null);
-  const zoomTimeoutRef = useRef(null);
-  const lastEdgeIndexRef = useRef(-1);
+  const trackRef = useRef(null); // ردیفِ داخلی — حرکتِ خودکار (transform) روی همین لایه انجام می‌شود
+  const animNameRef = useRef(`railmove_${category}_${reverse ? "r" : "f"}_${Math.random().toString(36).slice(2, 8)}`);
   const [paused, setPaused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  // فاصله‌ی واقعیِ یک دور کامل — نه یک درصدِ CSS حدسی، بلکه عرضِ واقعیِ اندازه‌گیری‌شده از خودِ DOM
+  // بعد از رندر. همین اندازه‌گیریِ مستقیم است که تضمین می‌کند نوار دقیقاً به همان اندازه‌ای که باید
+  // حرکت کند، حرکت کند — نه کمتر (که باعث می‌شد بعد از ۲ محصول، فضای خالی/سفید دیده شود).
+  const [loopWidth, setLoopWidth] = useState(0);
 
-  const items = useMemo(() => (products || []).slice(0, 10), [products]);
+  const items = useMemo(() => (products || []).slice(0, 20), [products]);
   const canLoop = items.length > 1;
   const railItems = canLoop ? [...items, ...items] : items;
 
   // مدت‌زمان یک چرخه‌ی کامل، متناسب با تعداد محصولات محاسبه می‌شود تا سرعتِ حسی حرکت همیشه یک
-  // ریتمِ آرام و طبیعی داشته باشد (نه خیلی تند، نه کسل‌کننده)، صرف‌نظر از اینکه هر دسته چند
-  // محصول دارد. مکثِ بزرگ‌نماییِ هر محصول هم یک عدد ثابت و بی‌ربط نیست، بلکه تقریباً نیمی از
-  // سهمِ زمانیِ خودِ همان محصول از کل چرخه است — یعنی هماهنگ با ریتم واقعیِ حرکت.
-  const cycleSeconds = Math.max(20, items.length * 3.6);
+  // ریتمِ آرام و طبیعی داشته باشد، صرف‌نظر از اینکه هر دسته چند محصول دارد.
+  const cycleSeconds = Math.max(28, items.length * 3.2);
   const msPerItem = (cycleSeconds * 1000) / Math.max(items.length, 1);
-  const zoomHoldMs = Math.min(2600, Math.max(1200, msPerItem * 0.5));
-  // اگر «آرایشی» به سمت راست حرکت می‌کند، جایگاه ویژه (نقطه‌ی بزرگ‌نمایی) سمتِ راست است و برای
-  // اینکه محصولِ کناری (که سمت چپِ محصولِ فعلی نشسته) به‌ترتیب جای آن را بگیرد، محتوای نوار باید
-  // به چپ سُر بخورد؛ نوار بعدی دقیقاً برعکس (چپ‌محور/راست‌سُر) اجرا می‌شود.
-  const driftAnimation = reverse ? "railSlideRight" : "railSlideLeft";
 
-  // تشخیصِ هندسیِ محصولی که همین الان *کاملاً* در جایگاه ویژه (لبه‌ی سمت راست برای نوارهای عادی،
-  // لبه‌ی سمت چپ برای نوارهای reverse) قرار دارد. هر بار که محصولِ آن جایگاه واقعاً عوض شود
-  // (نه بر اساس شمارشِ دلخواه، بلکه بر اساس موقعیتِ واقعیِ دیده‌شده روی صفحه)، همان محصول برای
-  // مدتی متناسب با ریتم نوار بزرگ‌نمایی می‌شود و بعد بدون توقفِ حرکت، به اندازه‌ی عادی برمی‌گردد.
+  // اندازه‌گیریِ دقیقِ عرضِ یک نسخه از فهرست (نیمه‌ی اول ردیفِ دوبل‌شده) — هر بار که تعداد یا
+  // اندازه‌ی محصولات تغییر کند (یا اندازه‌ی صفحه تغییر کند) دوباره محاسبه می‌شود.
+  useLayoutEffect(() => {
+    if (!canLoop) { setLoopWidth(0); return; }
+    function measure() {
+      const el = trackRef.current;
+      if (!el) return;
+      setLoopWidth(el.scrollWidth / 2);
+    }
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (ro && trackRef.current) ro.observe(trackRef.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("resize", measure);
+      if (ro) ro.disconnect();
+    };
+  }, [canLoop, items.length]);
+
+  // جلوه‌ی «بزرگ‌نماییِ نوبتی» — کاملاً هم‌گام با ریتمِ واقعیِ حرکتِ نوار (همان msPerItem که سرعتِ
+  // اسکرول را هم می‌سازد)، پس هر محصول دقیقاً زمانی که در جریانِ طبیعیِ عبور از نوار قرار دارد
+  // نوبتِ بزرگ‌نمایی‌اش می‌رسد؛ ترتیب رفت‌وآمد بین حالتِ عادی و بزرگ خودش را با transition نرم می‌کند.
   useEffect(() => {
     if (!canLoop) return;
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const el = outerRef.current;
-    if (!el) return;
-
-    function detect() {
-      const containerRect = el.getBoundingClientRect();
-      let foundIndex = -1;
-      let bestDist = Infinity;
-      itemRefs.current.forEach((node, i) => {
-        if (!node) return;
-        const r = node.getBoundingClientRect();
-        const fullyVisible = r.left >= containerRect.left - 1 && r.right <= containerRect.right + 1;
-        if (!fullyVisible) return;
-        const dist = reverse ? Math.abs(r.left - containerRect.left) : Math.abs(r.right - containerRect.right);
-        if (dist < bestDist) { bestDist = dist; foundIndex = i % items.length; }
-      });
-      if (foundIndex !== -1 && foundIndex !== lastEdgeIndexRef.current) {
-        lastEdgeIndexRef.current = foundIndex;
-        setActiveIndex(foundIndex);
-        if (zoomTimeoutRef.current) window.clearTimeout(zoomTimeoutRef.current);
-        zoomTimeoutRef.current = window.setTimeout(() => setActiveIndex(-1), zoomHoldMs);
-      }
-    }
-
-    detectIntervalRef.current = window.setInterval(detect, 150);
-    return () => {
-      if (detectIntervalRef.current) window.clearInterval(detectIntervalRef.current);
-      if (zoomTimeoutRef.current) window.clearTimeout(zoomTimeoutRef.current);
-    };
-  }, [canLoop, reverse, items.length, zoomHoldMs]);
+    const timer = window.setInterval(() => {
+      setActiveIndex((i) => (i + 1) % items.length);
+    }, msPerItem);
+    return () => window.clearInterval(timer);
+  }, [canLoop, items.length, msPerItem]);
 
   function handlePauseStart() { setPaused(true); }
   function handlePauseEndSoon() { window.setTimeout(() => setPaused(false), 900); }
@@ -1779,6 +1760,14 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
         <Sparkles size={15} color="#FF3E8E" />
         <h3 className="font-display" style={{ fontSize: 17 }}>{CATEGORY_LABEL[category]}</h3>
       </div>
+      {loopWidth > 0 && (
+        <style>{`
+          @keyframes ${animNameRef.current} {
+            from { transform: translateX(0); }
+            to { transform: translateX(-${loopWidth}px); }
+          }
+        `}</style>
+      )}
       <div
         ref={outerRef}
         className="rail-scroll"
@@ -1790,16 +1779,18 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
         onPointerUp={handlePauseEndSoon}
         style={{ overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 6 }}
       >
-        {/* ردیفِ داخلی — حرکتِ خودکار روی همین لایه با transform انجام می‌شود (GPU-محور، صاف و
-            بدون تکان‌خوردگی)؛ کانتینرِ بیرونی دست‌نخورده می‌ماند، پس اسکرول دستیِ لمسیِ آن همیشه
-            آماده‌ی کار است و هنگام توقفِ خودکار (رویداد لمس/هاور)، بلافاصله در دسترس قرار می‌گیرد. */}
+        {/* ردیفِ داخلی — حرکتِ خودکار روی همین لایه با transform انجام می‌شود (GPU-محور، صاف و بدون
+            تکان‌خوردگی)؛ کانتینرِ بیرونی دست‌نخورده می‌ماند، پس اسکرول دستیِ لمسیِ آن همیشه آماده‌ی
+            کار است. جهتِ نوارهای reverse با animationDirection معکوس می‌شود — نه با یک کیف‌فریمِ
+            جداگانه — تا هیچ‌جا اشتباهِ علامت/جهت پیش نیاید. */}
         <div
+          ref={trackRef}
           className="rail-track"
           style={{
-            display: "flex",
+            display: "inline-flex",
             gap: 14,
-            width: "max-content",
-            animation: canLoop ? `${driftAnimation} ${cycleSeconds}s linear infinite` : "none",
+            animation: loopWidth > 0 ? `${animNameRef.current} ${cycleSeconds}s linear infinite` : "none",
+            animationDirection: reverse ? "reverse" : "normal",
             animationPlayState: paused ? "paused" : "running",
           }}
         >
@@ -1809,7 +1800,6 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
             return (
               <div
                 key={`${p.id}-${i}`}
-                ref={(node) => { itemRefs.current[i] = node; }}
                 className="rail-item"
                 style={{
                   flex: "0 0 auto",
@@ -1839,7 +1829,6 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
     </div>
   );
 }
-
 
 function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, categoryMedia }) {
   const hasVariants = !!product && product.variants && product.variants.length > 0;
@@ -3759,7 +3748,7 @@ export default function MaisonStore() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="rounded-xl border border-hair overflow-hidden">
-                    <div className="skeleton" style={{ height: 168 }} />
+                    <div className="skeleton" style={{ height: 148 }} />
                     <div className="p-4 flex flex-col gap-2">
                       <div className="skeleton" style={{ height: 10, width: "40%", borderRadius: 4 }} />
                       <div className="skeleton" style={{ height: 14, width: "70%", borderRadius: 4 }} />
@@ -3770,8 +3759,11 @@ export default function MaisonStore() {
               </div>
             ) : !categoryPageOpen ? (
               // صفحه‌ی اصلی: به‌جای یک شبکه‌ی تخت، ۵ نوار افقیِ خودکار — یکی برای هر دسته‌بندی —
-              // هرکدام حداکثر ۱۰ محصولِ پرفروش همان دسته را نشان می‌دهد. جهت حرکت خودکار هر نوار
-              // با نوار قبلی/بعدی برعکس است (رفتار «reverse» بر اساس شماره‌ی ردیف).
+              // هرکدام حداکثر ۲۰ محصولِ پرفروش همان دسته را نشان می‌دهد. جهت حرکت خودکار هر نوار
+              // با نوار قبلی/بعدی برعکس است (رفتار «reverse» بر اساس شماره‌ی ردیف). در صورت
+              // تساوی تعداد خرید (مثلاً محصولات تازه‌اضافه‌شده که هنوز صفر فروش دارند)، محصول
+              // جدیدتر (id بزرگ‌تر) زودتر می‌آید — تا محصولی که همین الان اضافه کردی، همیشه در
+              // نوار دیده شود، نه اینکه در انتهای صف محصولاتِ هم‌سطح گم شود.
               <div>
                 {HOME_CATEGORY_ORDER.map((cat, idx) => (
                   <ProductRail
@@ -3780,7 +3772,13 @@ export default function MaisonStore() {
                     products={products
                       .filter((p) => p.category === cat)
                       .slice()
-                      .sort((a, b) => (Number(b.salesCount) || 0) - (Number(a.salesCount) || 0))}
+                      .sort((a, b) => {
+                        const salesDiff = (Number(b.salesCount) || 0) - (Number(a.salesCount) || 0);
+                        if (salesDiff !== 0) return salesDiff;
+                        const numA = parseInt(String(a.id).replace(/\D/g, ""), 10) || 0;
+                        const numB = parseInt(String(b.id).replace(/\D/g, ""), 10) || 0;
+                        return numB - numA;
+                      })}
                     reverse={idx % 2 === 1}
                     onOpen={openProduct}
                     onAddToCart={addToCart}
@@ -4049,7 +4047,7 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
   );
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText, onLookupBarcode }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -4083,127 +4081,107 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   // نتیجه‌ی آخرین «پیشنهاد خودکار» از روی نت‌ها — برای نمایش خلاصه‌ی اینکه چند نت شناسایی شد
   const [noteSuggestResult, setNoteSuggestResult] = useState(null);
 
-  // ویژگی «جستجوی مشخصات ادکلن بر اساس نام محصول» (fraganty.ai) — جایگزین روش قبلیِ آپلود عکس.
-  // مرحله‌ی ۱: مدیر اسم محصول را تایپ می‌کند و لیست کوتاهی از نتایج محتمل نشان داده می‌شود.
-  // مرحله‌ی ۲: با انتخاب یکی از نتایج، جزئیات کامل گرفته می‌شود، نت‌ها و برند به فارسی ترجمه
-  // می‌شوند (با پایگاه‌دانش خودمان)، و فرم پایین خودکار پر می‌شود — همیشه قابل ویرایش دستی.
-  const [perfumeSearchQuery, setPerfumeSearchQuery] = useState("");
-  const [perfumeSearchLoading, setPerfumeSearchLoading] = useState(false);
-  const [perfumeSearchError, setPerfumeSearchError] = useState("");
-  const [perfumeSearchResults, setPerfumeSearchResults] = useState([]);
-  const [perfumeDetailsLoading, setPerfumeDetailsLoading] = useState(false);
-  const [perfumeTranslating, setPerfumeTranslating] = useState(false);
-  const [perfumeFillResult, setPerfumeFillResult] = useState(null);
+  // ویژگی «تشخیص هوشمند از عکسِ صفحه‌ی محصول» — کاملاً رایگان (از همان کلید هوش مصنوعی که برای
+  // بقیه‌ی ابزارهای پنل استفاده می‌شود، بدون نیاز به هیچ سرویس پولی یا کارت بانکی). مدیر عکسِ
+  // صفحه‌ی یک محصول (از هر فروشگاه اینترنتی، از هر دسته‌ای — عطر، آرایشی، بهداشتی، اسپری، لوازم
+  // برقی — و به هر زبانی) را آپلود می‌کند، و فرم پایین خودکار پر می‌شود؛ همیشه قابل ویرایش دستی.
+  const [extractLoading, setExtractLoading] = useState(false);
+  const [extractError, setExtractError] = useState("");
+  const [extractResult, setExtractResult] = useState(null); // { name, brand, priceApplied, referencePriceNote, categoryApplied, subcategoryHint, variantsApplied }
 
-  // کش ساده‌ی نتایج جستجو و جزئیات عطر در حافظه (فقط طول عمر همین صفحه) — چون سهمیه‌ی رایگان
-  // fraganty.ai بسیار محدود است (۲۰ درخواست در ماه، و هر جستجو + هر انتخاب هرکدام یک درخواست
-  // حساب می‌شوند)، این کش از هدررفتن سهمیه با جستجو یا انتخاب تکراریِ همون محصول جلوگیری می‌کند.
-  const perfumeSearchCacheRef = useRef(new Map());
-  const perfumeDetailsCacheRef = useRef(new Map());
-
-  async function handlePerfumeSearch(e) {
-    e.preventDefault();
-    const q = perfumeSearchQuery.trim();
-    if (!q) return;
-    setPerfumeSearchError("");
-    setPerfumeSearchResults([]);
-    setPerfumeFillResult(null);
-    const cacheKey = q.toLowerCase();
-    const cached = perfumeSearchCacheRef.current.get(cacheKey);
-    if (cached) {
-      setPerfumeSearchResults(cached);
-      if (cached.length === 0) setPerfumeSearchError("چیزی پیدا نشد — نام دیگه‌ای امتحان کن (مثلاً فقط اسم برند یا فقط اسم عطر)");
+  async function handleExtractFromScreenshot(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setExtractError("فایل انتخاب‌شده تصویر نیست");
       return;
     }
-    setPerfumeSearchLoading(true);
+    setExtractError("");
+    setExtractResult(null);
+    setExtractLoading(true);
     try {
-      const results = await onSearchPerfume(q);
-      perfumeSearchCacheRef.current.set(cacheKey, results);
-      setPerfumeSearchResults(results);
-      if (results.length === 0) setPerfumeSearchError("چیزی پیدا نشد — نام دیگه‌ای امتحان کن (مثلاً فقط اسم برند یا فقط اسم عطر)");
-    } catch (err) {
-      setPerfumeSearchError(err.message || "جستجو ناموفق بود");
-    } finally {
-      setPerfumeSearchLoading(false);
-    }
-  }
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const info = await onExtractProductInfo(base64);
 
-  async function handlePickPerfumeResult(item) {
-    setPerfumeSearchError("");
-    setPerfumeFillResult(null);
-    setPerfumeDetailsLoading(true);
-    try {
-      let details = perfumeDetailsCacheRef.current.get(item.id);
-      if (!details) {
-        details = await onGetPerfumeDetails(item.id);
-        perfumeDetailsCacheRef.current.set(item.id, details);
-      }
-      // اگر fraganty.ai برای این شناسه با وضعیت موفق (200) ولی بدون داده‌ی واقعی پاسخ بدهد
-      // (مثلاً به‌خاطر شناسه‌ی نامعتبر/قدیمی)، به‌جای پر کردن خاموشِ فرم با مقادیر خالی، خطای
-      // روشن نشان می‌دهیم تا مدیر بداند باید نتیجه‌ی دیگری را امتحان کند یا دستی وارد کند.
-      if (!details || !details.name) {
-        throw new Error("اطلاعات کامل این محصول در fraganty.ai یافت نشد — یک نتیجه‌ی دیگر را امتحان کن یا فیلدها را دستی پر کن.");
-      }
-      const topFa = translateNotesArrayToFa(details.notes && details.notes.top);
-      const middleFa = translateNotesArrayToFa(details.notes && details.notes.middle);
-      const baseFa = translateNotesArrayToFa(details.notes && details.notes.base);
-      const concKey = mapConcentrationLabelToKey(details.concentration);
-      const suggestion = inferPerfumeFacetsFromNotes(topFa, middleFa, baseFa);
+      const categoryApplied = info.categoryGuess && CATEGORY_ORDER.includes(info.categoryGuess) ? info.categoryGuess : "";
+      const variantsFromAi =
+        Array.isArray(info.variants) && info.variants.length > 0
+          ? info.variants
+              .filter((v) => v && v.label)
+              .map((v, i) => ({ id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`, label: v.label, hex: v.hex || "", image: "" }))
+          : [];
 
-      setForm((f) => ({
-        ...f,
-        nameEn: details.name || f.nameEn,
-        brand: translateBrandToFa(details.brand) || f.brand,
-        topNotes: topFa || f.topNotes,
-        middleNotes: middleFa || f.middleNotes,
-        baseNotes: baseFa || f.baseNotes,
-        perfumer:
-          (Array.isArray(details.perfumers) && details.perfumers.map((p) => (typeof p === "string" ? p : p.name)).filter(Boolean).join("، ")) ||
-          f.perfumer,
-        yearMade: details.year ? String(details.year) : f.yearMade,
-        facets: {
-          ...f.facets,
-          ...(concKey ? { concentration: [concKey] } : {}),
-          scentFamily: suggestion.scentFamily,
-          temperament: suggestion.temperament,
-          fragranceNote: suggestion.fragranceNote,
-        },
-      }));
-      setNoteSuggestResult(suggestion);
-      setPerfumeSearchResults([]);
-      setPerfumeSearchQuery("");
-      setPerfumeFillResult({ name: details.name, brand: details.brand, translated: null });
+      setForm((f) => {
+        const next = {
+          ...f,
+          name: f.name || info.name || f.name,
+          nameEn: f.nameEn || info.nameEn || f.nameEn,
+          brand: f.brand || info.brand || f.brand,
+          description: f.description || info.description || f.description,
+          properties: f.properties || info.properties || f.properties,
+          ingredients: f.ingredients || info.ingredients || f.ingredients,
+          volume: f.volume || info.volume || f.volume,
+          topNotes: f.topNotes || info.topNotes || f.topNotes,
+          middleNotes: f.middleNotes || info.middleNotes || f.middleNotes,
+          baseNotes: f.baseNotes || info.baseNotes || f.baseNotes,
+          perfumer: f.perfumer || info.perfumer || f.perfumer,
+          countryOfOrigin: f.countryOfOrigin || info.countryOfOrigin || f.countryOfOrigin,
+          yearMade: f.yearMade || info.yearMade || f.yearMade,
+        };
+        // قیمت فقط وقتی خودکار پر می‌شود که هوش مصنوعی مطمئن بوده قیمت به تومان/ریال است — قیمتِ
+        // ارزهای خارجی هرگز خودکار تبدیل نمی‌شود (برای همین priceToman در آن حالت خالی برمی‌گردد).
+        if (!f.price && info.priceToman) {
+          const digitsOnly = String(info.priceToman).replace(/[^\d]/g, "");
+          if (digitsOnly) next.price = digitsOnly;
+        }
+        if (categoryApplied && f.category !== categoryApplied) {
+          next.category = categoryApplied;
+          next.subcategory = "";
+          next.type = "";
+          next.facets = {};
+        }
+        if (variantsFromAi.length > 0 && (!f.variantsList || f.variantsList.length === 0)) {
+          next.variantsList = variantsFromAi;
+        }
+        return next;
+      });
 
-      // توضیح کوتاه و ویژگی‌ها را جدا و به‌طور کامل فارسی از هوش مصنوعی می‌گیریم (این درخواست از
-      // سهمیه‌ی fraganty.ai نیست، جدا و روی سرویس هوش مصنوعی خودمان است) — اگر ناموفق شد، بقیه‌ی
-      // فرم که همین حالا پر شده دست‌نخورده می‌ماند و فقط این دو فیلد را باید دستی نوشت.
-      setPerfumeTranslating(true);
-      try {
-        const translated = await onTranslatePerfumeText({
-          name: details.name,
-          brand: details.brand,
-          description: details.description,
-          accords: details.accords,
-          seasons: details.seasons,
-          dayNight: details.dayNight,
-          gender: details.gender,
-          rating: details.rating,
-        });
+      const categoryForFacets = categoryApplied || form.category;
+      if (categoryForFacets === "perfume" && (info.topNotes || info.middleNotes || info.baseNotes)) {
+        const concKey = mapConcentrationLabelToKey(info.concentration);
+        const suggestion = inferPerfumeFacetsFromNotes(info.topNotes, info.middleNotes, info.baseNotes);
         setForm((f) => ({
           ...f,
-          description: (translated && translated.description) || f.description,
-          properties: (translated && translated.properties) || f.properties,
+          facets: {
+            ...f.facets,
+            ...(concKey ? { concentration: [concKey] } : {}),
+            scentFamily: suggestion.scentFamily,
+            temperament: suggestion.temperament,
+            fragranceNote: suggestion.fragranceNote,
+          },
         }));
-        setPerfumeFillResult({ name: details.name, brand: details.brand, translated: true });
-      } catch (translateErr) {
-        setPerfumeFillResult({ name: details.name, brand: details.brand, translated: false });
-      } finally {
-        setPerfumeTranslating(false);
+        setNoteSuggestResult(suggestion);
       }
+
+      setExtractResult({
+        name: info.name || info.nameEn || "این محصول",
+        brand: info.brand || "",
+        priceApplied: !form.price && !!info.priceToman,
+        referencePriceNote: info.referencePriceNote || "",
+        categoryApplied,
+        subcategoryHint: info.subcategoryHint || "",
+        variantsApplied: variantsFromAi.length,
+      });
     } catch (err) {
-      setPerfumeSearchError(err.message || "دریافت جزئیات ناموفق بود");
+      setExtractError(err.message || "تشخیص هوشمند ناموفق بود");
     } finally {
-      setPerfumeDetailsLoading(false);
+      setExtractLoading(false);
     }
   }
 
@@ -5216,62 +5194,43 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
 
       <div className="bg-panel border border-hair rounded-lg p-4 mb-4">
         <h3 className="font-display mb-1 flex items-center gap-1.5" style={{ fontSize: 15 }}>
-          <Sparkles size={15} color="#7B5CF6" /> جستجوی مشخصات ادکلن بر اساس نام (رایگان)
+          <Sparkles size={15} color="#7B5CF6" /> تشخیص هوشمند از عکسِ صفحه‌ی محصول (رایگان)
         </h3>
         <p className="text-muted mb-3" style={{ fontSize: 11 }}>
-          اسم عطر (و اگر خواستی برند) رو بنویس — از دیتابیس رایگان fraganty.ai جستجو می‌شود. از میان نتایج، مورد درست را انتخاب کن تا نت‌ها، غلظت، عطار و سال ساخت به‌طور خودکار (و ترجمه‌شده به فارسی از روی پایگاه‌دانش خودمان) در فرم پایین پر شود. نام فارسی محصول باید خودت دستی تایپ کنی چون آوانویسی استاندارد و ثابتی برای همه‌ی اسم‌ها وجود ندارد.
+          یک اسکرین‌شات از صفحه‌ی محصول (از هر فروشگاه اینترنتی یا شبکه‌ی اجتماعی، از هر دسته‌ای — عطر، آرایشی، بهداشتی، اسپری، لوازم برقی — و به هر زبانی) آپلود کن. هوش مصنوعی نام، برند، توضیح، ویژگی‌ها، ترکیبات، حجم، طیف رنگ‌ها و (برای عطر) نت‌ها را استخراج و به فارسی ترجمه می‌کند و فرم پایین را خودکار پر می‌کند — کاملاً رایگان، بدون نیاز به هیچ سرویس پولی. اگر قیمت روی تصویر به تومان بود همان هم پر می‌شود؛ قیمتِ ارزهای خارجی هرگز خودکار تبدیل نمی‌شود (فقط برای اطلاعِ تو نمایش داده می‌شود) چون نرخ و حاشیه‌ی سود را فقط خودت می‌دانی.
         </p>
-        <form onSubmit={handlePerfumeSearch} className="flex items-center gap-2 mb-2">
-          <input
-            placeholder="مثلاً: Lalique Encre Noire"
-            value={perfumeSearchQuery}
-            onChange={(e) => setPerfumeSearchQuery(e.target.value)}
-            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
-            style={{ color: "#241E3D" }}
-            dir="ltr"
-          />
-          <button type="submit" disabled={perfumeSearchLoading} className="btn-gold rounded px-4 py-2 text-sm flex items-center gap-1.5">
-            <Search size={14} /> {perfumeSearchLoading ? "..." : "جستجو"}
-          </button>
-        </form>
+        <label
+          className="btn-gold rounded px-4 py-2 text-sm flex items-center gap-1.5 w-fit"
+          style={{ cursor: extractLoading ? "default" : "pointer", opacity: extractLoading ? 0.6 : 1 }}
+        >
+          <Upload size={14} /> {extractLoading ? "در حال تحلیل تصویر..." : "انتخاب عکس صفحه‌ی محصول"}
+          <input type="file" accept="image/*" onChange={handleExtractFromScreenshot} disabled={extractLoading} style={{ display: "none" }} />
+        </label>
 
-        {perfumeSearchError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 6 }}>{perfumeSearchError}</p>}
+        {extractError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 8 }}>{extractError}</p>}
 
-        {perfumeSearchResults.length > 0 && (
-          <div className="flex flex-col gap-1.5 mt-2">
-            {perfumeSearchResults.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handlePickPerfumeResult(item)}
-                disabled={perfumeDetailsLoading}
-                className="btn-ghost rounded-lg px-3 py-2 text-right flex items-center gap-3"
-              >
-                {item.image ? (
-                  <img src={item.image} alt={item.name} style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
-                ) : (
-                  <span style={{ width: 32, height: 32, borderRadius: 6, background: "rgba(123,92,246,0.12)", flexShrink: 0 }} />
-                )}
-                <span className="flex-1" dir="ltr" style={{ fontSize: 12.5, textAlign: "right" }}>
-                  {item.name} <span className="text-muted">— {item.brand}{item.year ? ` (${item.year})` : ""}</span>
-                </span>
-              </button>
-            ))}
+        {extractResult && (
+          <div className="mt-3 flex flex-col gap-1">
+            <p style={{ fontSize: 12, color: "#0EA5A4" }}>
+              اطلاعاتِ «{extractResult.name}»{extractResult.brand ? ` (${extractResult.brand})` : ""} در فرم پایین پر شد
+              {extractResult.categoryApplied ? ` — دسته‌بندی «${CATEGORY_LABEL[extractResult.categoryApplied]}» هم خودکار انتخاب شد` : ""}
+              {extractResult.variantsApplied > 0 ? ` — ${extractResult.variantsApplied} طیف رنگ هم تشخیص داده شد` : ""}
+              {" — لطفاً همه‌ی فیلدها (به‌خصوص نام فارسی و زیرشاخه/نوع دقیق) را قبل از ذخیره بازبینی و تکمیل کن."}
+            </p>
+            {extractResult.subcategoryHint && (
+              <p className="text-muted" style={{ fontSize: 11.5 }}>
+                پیشنهادِ نوع دقیق محصول از روی تصویر: «{extractResult.subcategoryHint}» — این فقط یک راهنماست، زیرشاخه/نوع را خودت از فرم پایین انتخاب کن.
+              </p>
+            )}
+            {extractResult.priceApplied && (
+              <p style={{ fontSize: 11.5, color: "#D97706" }}>قیمت هم چون روی تصویر به تومان بود خودکار پر شد — حتماً بازبینی کن.</p>
+            )}
+            {extractResult.referencePriceNote && (
+              <p className="text-muted" style={{ fontSize: 11.5 }}>
+                قیمتِ اصلیِ دیده‌شده روی تصویر: «{extractResult.referencePriceNote}» — این مبلغ خودکار در قیمتِ فروش قرار نگرفت؛ خودت با توجه به نرخ ارز و حاشیه‌ی سود، قیمتِ نهایی را به تومان وارد کن.
+              </p>
+            )}
           </div>
-        )}
-        {perfumeDetailsLoading && <p className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>در حال دریافت جزئیات...</p>}
-        {perfumeFillResult && (
-          <p style={{ fontSize: 12, color: "#0EA5A4", marginTop: 8 }}>
-            اطلاعات «{perfumeFillResult.name}» ({perfumeFillResult.brand}) در فرم پایین پر شد
-            {perfumeTranslating
-              ? " — در حال آماده‌سازی توضیح و ویژگی‌های فارسی..."
-              : perfumeFillResult.translated === true
-                ? " (توضیح کوتاه و ویژگی‌ها هم به فارسی آماده و پر شد)"
-                : perfumeFillResult.translated === false
-                  ? " — تهیه‌ی خودکار توضیح و ویژگی‌ها ناموفق بود، این دو فیلد را دستی بنویس"
-                  : ""}
-            {" — لطفاً همه‌ی فیلدها (به‌خصوص نام فارسی) را قبل از ذخیره بازبینی و تکمیل کن."}
-          </p>
         )}
       </div>
 
