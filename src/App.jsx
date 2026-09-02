@@ -4047,6 +4047,60 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
   );
 }
 
+// --- «روش کاملاً رایگان» برای تشخیص از روی عکس: OCR داخل خودِ مرورگر، بدون هوش مصنوعی ---
+// از کتابخانه‌ی متن‌باز و رایگانِ Tesseract.js استفاده می‌کند که کاملاً در مرورگرِ خودِ کاربر اجرا
+// می‌شود — نه روی سرور ما، نه روی هیچ سرویس خارجیِ نیازمند کلید API یا کارت بانکی. فقط فایل‌های
+// زبانِ لازم (فارسی + انگلیسی) یک‌بار از یک CDN عمومی و رایگان (jsDelivr) دانلود می‌شوند. چون این
+// روش فقط متنِ روی تصویر را می‌خواند — نه معنایش را می‌فهمد، نه دسته‌بندی را تشخیص می‌دهد و نه
+// ترجمه می‌کند — دقتش قطعاً از روش هوش مصنوعیِ بالا کمتر است، اما همیشه و برای همیشه رایگان می‌ماند.
+let tesseractModulePromise = null;
+function loadTesseractModule() {
+  if (!tesseractModulePromise) {
+    tesseractModulePromise = import(/* @vite-ignore */ "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.esm.min.js");
+  }
+  return tesseractModulePromise;
+}
+
+function persianDigitsToLatin(str) {
+  const map = { "۰": "0", "۱": "1", "۲": "2", "۳": "3", "۴": "4", "۵": "5", "۶": "6", "۷": "7", "۸": "8", "۹": "9" };
+  return str.replace(/[۰-۹]/g, (d) => map[d] || d);
+}
+
+async function runFreeOcrExtraction(file) {
+  const { createWorker } = await loadTesseractModule();
+  const worker = await createWorker(["fas", "eng"]);
+  try {
+    const { data } = await worker.recognize(file);
+    const rawText = (data.text || "").trim();
+
+    // برای حدسِ اسمِ محصول، خط‌های متنی را با ارتفاعِ کادرشان (bbox) جمع می‌کنیم — بلندترین خط
+    // (یعنی درشت‌ترین فونت روی تصویر) معمولاً همان اسمِ محصول است، دقیقاً مثل چشمِ آدم که اول به
+    // بزرگ‌ترین نوشته‌ی صفحه می‌افتد.
+    const lines = [];
+    (data.blocks || []).forEach((block) => {
+      (block.paragraphs || []).forEach((para) => {
+        (para.lines || []).forEach((line) => {
+          const text = (line.text || "").trim();
+          if (!text) return;
+          const height = line.bbox ? line.bbox.y1 - line.bbox.y0 : 0;
+          lines.push({ text, height });
+        });
+      });
+    });
+
+    const priceMatch = persianDigitsToLatin(rawText).match(/([\d,٬]{4,})\s*(تومان|ریال)/);
+    const priceGuess = priceMatch ? priceMatch[1].replace(/[,٬]/g, "") : "";
+
+    const nameCandidates = lines.filter((l) => l.text.length >= 3 && !/^[\d۰-۹,.\s]+$/.test(l.text));
+    nameCandidates.sort((a, b) => b.height - a.height);
+    const nameGuess = nameCandidates[0] ? nameCandidates[0].text : "";
+
+    return { rawText, priceGuess, nameGuess };
+  } finally {
+    await worker.terminate();
+  }
+}
+
 function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
@@ -4088,6 +4142,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [extractLoading, setExtractLoading] = useState(false);
   const [extractError, setExtractError] = useState("");
   const [extractResult, setExtractResult] = useState(null); // { name, brand, priceApplied, referencePriceNote, categoryApplied, subcategoryHint, variantsApplied }
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrError, setOcrError] = useState("");
+  const [ocrResult, setOcrResult] = useState(null); // { nameApplied, priceApplied, descriptionApplied, rawText }
 
   async function handleExtractFromScreenshot(e) {
     const file = e.target.files && e.target.files[0];
@@ -4182,6 +4239,46 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       setExtractError(err.message || "تشخیص هوشمند ناموفق بود");
     } finally {
       setExtractLoading(false);
+    }
+  }
+
+  // «روش کاملاً رایگان»: OCR داخل خودِ مرورگر — بدون هوش مصنوعی، بدون کلید API، بدون کارت بانکی و
+  // بدون هیچ هزینه‌ای، حالا یا در آینده. فقط متنِ روی تصویر را می‌خواند (نه معنایش را می‌فهمد و نه
+  // ترجمه می‌کند)، پس دقتش از روش هوش مصنوعیِ بالا کمتر است — ولی همیشه کار می‌کند. اسم محصول را
+  // با حدسِ «بلندترین خط متنیِ غیرعددی» و قیمت را با جست‌وجوی الگوی «عدد + تومان/ریال» تشخیص
+  // می‌دهد، و کل متنِ خامِ خوانده‌شده را هم در توضیحات می‌گذارد تا مدیر بتواند سریع کپی‌پیست کند.
+  async function handleFreeOcrExtraction(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setOcrError("فایل انتخاب‌شده تصویر نیست");
+      return;
+    }
+    setOcrError("");
+    setOcrResult(null);
+    setOcrLoading(true);
+    try {
+      const { rawText, priceGuess, nameGuess } = await runFreeOcrExtraction(file);
+      if (!rawText) {
+        setOcrError("هیچ متنی روی تصویر تشخیص داده نشد — یک عکسِ واضح‌تر و بدون زاویه امتحان کن");
+        return;
+      }
+      let nameApplied = false;
+      let priceApplied = false;
+      let descriptionApplied = false;
+      setForm((f) => {
+        const next = { ...f };
+        if (!f.name && nameGuess) { next.name = nameGuess; nameApplied = true; }
+        if (!f.price && priceGuess) { next.price = priceGuess; priceApplied = true; }
+        if (!f.description) { next.description = rawText; descriptionApplied = true; }
+        return next;
+      });
+      setOcrResult({ nameApplied, priceApplied, descriptionApplied, rawText });
+    } catch (err) {
+      setOcrError(err.message || "خواندن متن از تصویر ناموفق بود — دوباره امتحان کن");
+    } finally {
+      setOcrLoading(false);
     }
   }
 
@@ -5194,10 +5291,10 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
 
       <div className="bg-panel border border-hair rounded-lg p-4 mb-4">
         <h3 className="font-display mb-1 flex items-center gap-1.5" style={{ fontSize: 15 }}>
-          <Sparkles size={15} color="#7B5CF6" /> تشخیص هوشمند از عکسِ صفحه‌ی محصول (رایگان)
+          <Sparkles size={15} color="#7B5CF6" /> تشخیص هوشمند از عکسِ صفحه‌ی محصول (نیاز به اعتبار API)
         </h3>
         <p className="text-muted mb-3" style={{ fontSize: 11 }}>
-          یک اسکرین‌شات از صفحه‌ی محصول (از هر فروشگاه اینترنتی یا شبکه‌ی اجتماعی، از هر دسته‌ای — عطر، آرایشی، بهداشتی، اسپری، لوازم برقی — و به هر زبانی) آپلود کن. هوش مصنوعی نام، برند، توضیح، ویژگی‌ها، ترکیبات، حجم، طیف رنگ‌ها و (برای عطر) نت‌ها را استخراج و به فارسی ترجمه می‌کند و فرم پایین را خودکار پر می‌کند — کاملاً رایگان، بدون نیاز به هیچ سرویس پولی. اگر قیمت روی تصویر به تومان بود همان هم پر می‌شود؛ قیمتِ ارزهای خارجی هرگز خودکار تبدیل نمی‌شود (فقط برای اطلاعِ تو نمایش داده می‌شود) چون نرخ و حاشیه‌ی سود را فقط خودت می‌دانی.
+          یک اسکرین‌شات از صفحه‌ی محصول (از هر فروشگاه اینترنتی یا شبکه‌ی اجتماعی، از هر دسته‌ای — عطر، آرایشی، بهداشتی، اسپری، لوازم برقی — و به هر زبانی) آپلود کن. هوش مصنوعی نام، برند، توضیح، ویژگی‌ها، ترکیبات، حجم، طیف رنگ‌ها و (برای عطر) نت‌ها را استخراج و به فارسی ترجمه می‌کند و فرم پایین را خودکار پر می‌کند — از سرویس API خودِ Anthropic استفاده می‌کند که نیاز به اعتبار/موجودی روی حساب دارد (اگر با خطای «Your credit balance is too low» مواجه شدی، از بخشِ «روش کاملاً رایگان» پایین‌تر استفاده کن). اگر قیمت روی تصویر به تومان بود همان هم پر می‌شود؛ قیمتِ ارزهای خارجی هرگز خودکار تبدیل نمی‌شود (فقط برای اطلاعِ تو نمایش داده می‌شود) چون نرخ و حاشیه‌ی سود را فقط خودت می‌دانی.
         </p>
         <label
           className="btn-gold rounded px-4 py-2 text-sm flex items-center gap-1.5 w-fit"
@@ -5230,6 +5327,36 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 قیمتِ اصلیِ دیده‌شده روی تصویر: «{extractResult.referencePriceNote}» — این مبلغ خودکار در قیمتِ فروش قرار نگرفت؛ خودت با توجه به نرخ ارز و حاشیه‌ی سود، قیمتِ نهایی را به تومان وارد کن.
               </p>
             )}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-panel border border-hair rounded-lg p-4 mb-4">
+        <h3 className="font-display mb-1 flex items-center gap-1.5" style={{ fontSize: 15 }}>
+          <Sparkles size={15} color="#0EA5A4" /> روش کاملاً رایگان — تشخیص متن با OCR (بدون هوش مصنوعی)
+        </h3>
+        <p className="text-muted mb-3" style={{ fontSize: 11 }}>
+          این روش هیچ سرویس پولی، کلید API یا کارت بانکی نمی‌خواهد و همیشه رایگان می‌ماند — چون کاملاً داخل همین مرورگر اجرا می‌شود (فقط بارِ اول، فایل‌های زبانِ فارسی/انگلیسی از یک سرور رایگان دانلود می‌شوند، پس ممکن است چند ثانیه طول بکشد). چون این روش فقط متنِ روی تصویر را می‌خواند و معنایش را نمی‌فهمد (نه ترجمه می‌کند، نه دسته‌بندی را تشخیص می‌دهد)، دقتش کمتر از روش هوش مصنوعیِ بالاست: اسمِ محصول را از روی درشت‌ترین نوشته‌ی تصویر حدس می‌زند، قیمت را اگر به‌صورت «عدد + تومان/ریال» روی تصویر باشد پیدا می‌کند، و کل متنِ خامِ خوانده‌شده را هم در «توضیح کوتاه» می‌گذارد تا بتوانی سریع از آن کپی‌پیست کنی.
+        </p>
+        <label
+          className="btn-ghost rounded px-4 py-2 text-sm flex items-center gap-1.5 w-fit"
+          style={{ cursor: ocrLoading ? "default" : "pointer", opacity: ocrLoading ? 0.6 : 1, borderColor: "#0EA5A4", color: "#0EA5A4" }}
+        >
+          <Upload size={14} /> {ocrLoading ? "در حال خواندن متنِ تصویر..." : "انتخاب عکس (روش رایگان)"}
+          <input type="file" accept="image/*" onChange={handleFreeOcrExtraction} disabled={ocrLoading} style={{ display: "none" }} />
+        </label>
+
+        {ocrError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 8 }}>{ocrError}</p>}
+
+        {ocrResult && (
+          <div className="mt-3 flex flex-col gap-1">
+            <p style={{ fontSize: 12, color: "#0EA5A4" }}>
+              متنِ روی تصویر خوانده شد.
+              {ocrResult.nameApplied ? " حدسِ نامِ محصول در فیلد «نام محصول» گذاشته شد." : ""}
+              {ocrResult.priceApplied ? " قیمت هم پیدا و پر شد." : ""}
+              {ocrResult.descriptionApplied ? " کل متنِ خام هم در «توضیح کوتاه» گذاشته شد تا از آن کپی‌پیست کنی." : ""}
+              {" "}لطفاً همه‌ی فیلدها را با دقت بازبینی و تکمیل کن — این حدس‌ها ممکن است دقیق نباشند.
+            </p>
           </div>
         )}
       </div>
