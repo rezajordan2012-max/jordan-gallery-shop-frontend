@@ -1615,7 +1615,7 @@ function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, cate
       )}
       {/* تصویر محصول — پس‌زمینه‌ی اصلی عکس خودکار حذف می‌شود (framedProductImageUrl) و محصول
           تنها روی یک زمینه‌ی کاملاً سفید و هم‌اندازه با همه‌ی محصولات دیگر نمایش داده می‌شود. */}
-      <div className="flex items-center justify-center" style={{ background: "#FFFFFF", height: 148, overflow: "hidden" }}>
+      <div className="flex items-center justify-center" style={{ background: "#FFFFFF", height: 129, overflow: "hidden" }}>
         {displayImage ? (
           <img
             src={framedProductImageUrl(displayImage)}
@@ -1703,51 +1703,50 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
   const trackRef = useRef(null); // ردیفِ داخلی — حرکتِ خودکار (transform) روی همین لایه انجام می‌شود
   const animNameRef = useRef(`railmove_${category}_${reverse ? "r" : "f"}_${Math.random().toString(36).slice(2, 8)}`);
   const [paused, setPaused] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  // فاصله‌ی واقعیِ یک دور کامل — نه یک درصدِ CSS حدسی، بلکه عرضِ واقعیِ اندازه‌گیری‌شده از خودِ DOM
-  // بعد از رندر. همین اندازه‌گیریِ مستقیم است که تضمین می‌کند نوار دقیقاً به همان اندازه‌ای که باید
-  // حرکت کند، حرکت کند — نه کمتر (که باعث می‌شد بعد از ۲ محصول، فضای خالی/سفید دیده شود).
+  // فاصله‌ی واقعیِ یک دور کامل — نه یک درصدِ CSS حدسی، بلکه عرضِ واقعیِ اندازه‌گیری‌شده از خودِ DOM.
+  // این مقدار فقط یک‌بار (بعد از تثبیتِ کاملِ چیدمان) اندازه‌گیری و قفل می‌شود؛ اندازه‌گیریِ مکرر در
+  // حینِ اجرای انیمیشن دقیقاً همان چیزی بود که باعث می‌شد نوار هر چند لحظه یک‌بار بپرد/مکث کند —
+  // چون هر بار کیف‌فریمِ در حالِ اجرا با فاصله‌ی جدید بازتعریف می‌شد.
   const [loopWidth, setLoopWidth] = useState(0);
 
   const items = useMemo(() => (products || []).slice(0, 20), [products]);
   const canLoop = items.length > 1;
   const railItems = canLoop ? [...items, ...items] : items;
 
-  // مدت‌زمان یک چرخه‌ی کامل، متناسب با تعداد محصولات محاسبه می‌شود تا سرعتِ حسی حرکت همیشه یک
-  // ریتمِ آرام و طبیعی داشته باشد، صرف‌نظر از اینکه هر دسته چند محصول دارد.
-  const cycleSeconds = Math.max(28, items.length * 3.2);
-  const msPerItem = (cycleSeconds * 1000) / Math.max(items.length, 1);
+  // سرعتِ متعادل و یکسان برای همه‌ی نوارها — نه خیلی تند، نه کند — صرف‌نظر از تعداد محصولات هر دسته.
+  const cycleSeconds = Math.max(24, items.length * 2.4);
 
-  // اندازه‌گیریِ دقیقِ عرضِ یک نسخه از فهرست (نیمه‌ی اول ردیفِ دوبل‌شده) — هر بار که تعداد یا
-  // اندازه‌ی محصولات تغییر کند (یا اندازه‌ی صفحه تغییر کند) دوباره محاسبه می‌شود.
+  // اندازه‌گیریِ عرضِ یک نسخه از فهرست، فقط یک‌بار بعد از این‌که چیدمان کاملاً تثبیت شد (دو فریمِ
+  // پیاپی صبر می‌کنیم تا فونت/عکس‌ها اثر خودشان را روی چیدمان گذاشته باشند)، و فقط با تغییرِ واقعیِ
+  // اندازه‌ی صفحه (نه هر تکانِ جزئیِ محتوا) دوباره محاسبه می‌شود.
   useLayoutEffect(() => {
     if (!canLoop) { setLoopWidth(0); return; }
+    let cancelled = false;
+    let raf2 = null;
     function measure() {
+      if (cancelled) return;
       const el = trackRef.current;
       if (!el) return;
-      setLoopWidth(el.scrollWidth / 2);
+      const w = el.scrollWidth / 2;
+      if (w > 0) setLoopWidth(w);
     }
-    measure();
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    if (ro && trackRef.current) ro.observe(trackRef.current);
-    window.addEventListener("resize", measure);
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(measure);
+    });
+    let resizeTimer = null;
+    function onResize() {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(measure, 200);
+    }
+    window.addEventListener("resize", onResize);
     return () => {
-      window.removeEventListener("resize", measure);
-      if (ro) ro.disconnect();
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+      window.clearTimeout(resizeTimer);
+      window.removeEventListener("resize", onResize);
     };
   }, [canLoop, items.length]);
-
-  // جلوه‌ی «بزرگ‌نماییِ نوبتی» — کاملاً هم‌گام با ریتمِ واقعیِ حرکتِ نوار (همان msPerItem که سرعتِ
-  // اسکرول را هم می‌سازد)، پس هر محصول دقیقاً زمانی که در جریانِ طبیعیِ عبور از نوار قرار دارد
-  // نوبتِ بزرگ‌نمایی‌اش می‌رسد؛ ترتیب رفت‌وآمد بین حالتِ عادی و بزرگ خودش را با transition نرم می‌کند.
-  useEffect(() => {
-    if (!canLoop) return;
-    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = window.setInterval(() => {
-      setActiveIndex((i) => (i + 1) % items.length);
-    }, msPerItem);
-    return () => window.clearInterval(timer);
-  }, [canLoop, items.length, msPerItem]);
 
   function handlePauseStart() { setPaused(true); }
   function handlePauseEndSoon() { window.setTimeout(() => setPaused(false), 900); }
@@ -1794,36 +1793,21 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
             animationPlayState: paused ? "paused" : "running",
           }}
         >
-          {railItems.map((p, i) => {
-            const originalIndex = i % items.length;
-            const isActive = canLoop && originalIndex === activeIndex;
-            return (
-              <div
-                key={`${p.id}-${i}`}
-                className="rail-item"
-                style={{
-                  flex: "0 0 auto",
-                  width: "calc(50vw - 23px)",
-                  maxWidth: 190,
-                  transform: isActive ? "scale(1.08)" : "scale(1)",
-                  transformOrigin: "center bottom",
-                  transition: "transform 0.55s cubic-bezier(.3,.7,.4,1)",
-                  position: "relative",
-                  zIndex: isActive ? 2 : 1,
-                  filter: isActive ? "drop-shadow(0 14px 22px rgba(36,30,61,0.28))" : "none",
-                  borderRadius: 12,
-                }}
-              >
-                <ProductCard
-                  product={p}
-                  onOpen={onOpen}
-                  onAddToCart={onAddToCart}
-                  globalDiscountPercent={globalDiscountPercent}
-                  categoryMedia={categoryMedia}
-                />
-              </div>
-            );
-          })}
+          {railItems.map((p, i) => (
+            <div
+              key={`${p.id}-${i}`}
+              className="rail-item"
+              style={{ flex: "0 0 auto", width: "calc(50vw - 23px)", maxWidth: 190 }}
+            >
+              <ProductCard
+                product={p}
+                onOpen={onOpen}
+                onAddToCart={onAddToCart}
+                globalDiscountPercent={globalDiscountPercent}
+                categoryMedia={categoryMedia}
+              />
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -3748,7 +3732,7 @@ export default function MaisonStore() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="rounded-xl border border-hair overflow-hidden">
-                    <div className="skeleton" style={{ height: 148 }} />
+                    <div className="skeleton" style={{ height: 129 }} />
                     <div className="p-4 flex flex-col gap-2">
                       <div className="skeleton" style={{ height: 10, width: "40%", borderRadius: 4 }} />
                       <div className="skeleton" style={{ height: 14, width: "70%", borderRadius: 4 }} />
