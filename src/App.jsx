@@ -1708,7 +1708,7 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
   // حینِ اجرای انیمیشن دقیقاً همان چیزی بود که باعث می‌شد نوار هر چند لحظه یک‌بار بپرد/مکث کند.
   const [loopWidth, setLoopWidth] = useState(0);
 
-  const items = useMemo(() => (products || []).slice(0, 20), [products]);
+  const items = useMemo(() => (products || []).slice(0, 10), [products]);
   const canLoop = items.length > 1;
   // نکته‌ی مهم: اگر یک دسته محصولِ کمی داشته باشد (مثلاً ۲-۳ تا)، حتی دو نسخه از آن هم ممکن است
   // عرضش از عرضِ خودِ صفحه کمتر باشد — دقیقاً همان‌جایی که در میانه‌ی حرکت، یک فضای خالیِ سفید
@@ -1718,8 +1718,8 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
   const repeatCount = !canLoop ? 1 : items.length <= 2 ? 10 : items.length <= 4 ? 6 : items.length <= 8 ? 4 : 3;
   const railItems = canLoop ? Array.from({ length: repeatCount }, () => items).flat() : items;
 
-  // سرعتِ ثابت و یکسان برای همه‌ی نوارها (پیکسل بر ثانیه) — دقیقاً همان سرعتی که در دسته‌ی «ادکلن»
-  // حس خوبی داشت؛ چون سرعت اینجا بر اساسِ فاصله‌ی واقعیِ اندازه‌گیری‌شده محاسبه می‌شود (نه تعداد
+  // سرعتِ ثابت و یکسان برای همه‌ی نوارها (پیکسل بر ثانیه) — همان سرعتی که در دسته‌ی «ادکلن» حس
+  // خوبی داشت؛ چون سرعت اینجا بر اساسِ فاصله‌ی واقعیِ اندازه‌گیری‌شده محاسبه می‌شود (نه تعداد
   // محصولات)، همه‌ی نوارها — صرف‌نظر از تعداد محصولاتشان — دقیقاً با همین یک سرعتِ واحد حرکت می‌کنند.
   const RAIL_SPEED_PX_PER_SEC = 30;
   const cycleSeconds = loopWidth > 0 ? loopWidth / RAIL_SPEED_PX_PER_SEC : 0;
@@ -1761,6 +1761,31 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
 
   if (items.length === 0) return null;
 
+  const cardStyle = { flex: "0 0 auto", width: "calc(50vw - 16px)", maxWidth: 210 };
+
+  // اگر این دسته صفر یا فقط یک محصول دارد، هیچ نواری برای حرکت لازم نیست — به‌جای یک کانتینرِ
+  // تمام‌عرضِ خالی (که دقیقاً همان فضای سفیدِ گزارش‌شده را ایجاد می‌کرد)، فقط همان یک کارت را با
+  // اندازه‌ی طبیعیِ خودش نشان می‌دهیم، بدون هیچ فضای اضافه‌ی کنارش.
+  if (!canLoop) {
+    return (
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <Sparkles size={15} color="#FF3E8E" />
+          <h3 className="font-display" style={{ fontSize: 17 }}>{CATEGORY_LABEL[category]}</h3>
+        </div>
+        <div style={cardStyle}>
+          <ProductCard
+            product={items[0]}
+            onOpen={onOpen}
+            onAddToCart={onAddToCart}
+            globalDiscountPercent={globalDiscountPercent}
+            categoryMedia={categoryMedia}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-8">
       <div className="flex items-center gap-2 mb-3 px-1">
@@ -1770,8 +1795,8 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
       {loopWidth > 0 && (
         <style>{`
           @keyframes ${animNameRef.current} {
-            from { transform: translateX(0); }
-            to { transform: translateX(-${loopWidth}px); }
+            from { transform: translateX(${reverse ? `-${loopWidth}px` : "0"}); }
+            to { transform: translateX(${reverse ? "0" : `-${loopWidth}px`}); }
           }
         `}</style>
       )}
@@ -1788,8 +1813,9 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
       >
         {/* ردیفِ داخلی — حرکتِ خودکار روی همین لایه با transform انجام می‌شود (GPU-محور، صاف و بدون
             تکان‌خوردگی)؛ کانتینرِ بیرونی دست‌نخورده می‌ماند، پس اسکرول دستیِ لمسیِ آن همیشه آماده‌ی
-            کار است. جهتِ نوارهای reverse با animationDirection معکوس می‌شود — نه با یک کیف‌فریمِ
-            جداگانه — تا هیچ‌جا اشتباهِ علامت/جهت پیش نیاید. */}
+            کار است. جهتِ حرکتِ هر نوار مستقیماً داخل خودِ کیف‌فریم تعریف شده (نه با
+            animation-direction) تا نوارهای پشتِ‌سرهم همیشه، بدون هیچ ابهامی، دقیقاً برعکسِ هم
+            حرکت کنند. */}
         <div
           ref={trackRef}
           className="rail-track"
@@ -1798,16 +1824,11 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
             flexWrap: "nowrap",
             gap: 14,
             animation: loopWidth > 0 ? `${animNameRef.current} ${cycleSeconds}s linear infinite` : "none",
-            animationDirection: reverse ? "reverse" : "normal",
             animationPlayState: paused ? "paused" : "running",
           }}
         >
           {railItems.map((p, i) => (
-            <div
-              key={`${p.id}-${i}`}
-              className="rail-item"
-              style={{ flex: "0 0 auto", width: "calc(50vw - 16px)", maxWidth: 210 }}
-            >
+            <div key={`${p.id}-${i}`} className="rail-item" style={cardStyle}>
               <ProductCard
                 product={p}
                 onOpen={onOpen}
