@@ -1703,22 +1703,30 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
   const trackRef = useRef(null); // ردیفِ داخلی — حرکتِ خودکار (transform) روی همین لایه انجام می‌شود
   const animNameRef = useRef(`railmove_${category}_${reverse ? "r" : "f"}_${Math.random().toString(36).slice(2, 8)}`);
   const [paused, setPaused] = useState(false);
-  // فاصله‌ی واقعیِ یک دور کامل — نه یک درصدِ CSS حدسی، بلکه عرضِ واقعیِ اندازه‌گیری‌شده از خودِ DOM.
+  // فاصله‌ی واقعیِ «یک دور» — نه یک درصدِ CSS حدسی، بلکه عرضِ واقعیِ اندازه‌گیری‌شده از خودِ DOM.
   // این مقدار فقط یک‌بار (بعد از تثبیتِ کاملِ چیدمان) اندازه‌گیری و قفل می‌شود؛ اندازه‌گیریِ مکرر در
-  // حینِ اجرای انیمیشن دقیقاً همان چیزی بود که باعث می‌شد نوار هر چند لحظه یک‌بار بپرد/مکث کند —
-  // چون هر بار کیف‌فریمِ در حالِ اجرا با فاصله‌ی جدید بازتعریف می‌شد.
+  // حینِ اجرای انیمیشن دقیقاً همان چیزی بود که باعث می‌شد نوار هر چند لحظه یک‌بار بپرد/مکث کند.
   const [loopWidth, setLoopWidth] = useState(0);
 
   const items = useMemo(() => (products || []).slice(0, 20), [products]);
   const canLoop = items.length > 1;
-  const railItems = canLoop ? [...items, ...items] : items;
+  // نکته‌ی مهم: اگر یک دسته محصولِ کمی داشته باشد (مثلاً ۲-۳ تا)، حتی دو نسخه از آن هم ممکن است
+  // عرضش از عرضِ خودِ صفحه کمتر باشد — دقیقاً همان‌جایی که در میانه‌ی حرکت، یک فضای خالیِ سفید
+  // دیده می‌شد (چون به‌سادگی محتوای واقعیِ کافی برای پر کردنِ صفحه وجود نداشت). برای همین، فهرست
+  // را بسته به تعدادِ محصولاتِ همان دسته، چند بار تکرار می‌کنیم تا همیشه چند برابرِ عرضِ صفحه
+  // محتوای واقعی وجود داشته باشد و هیچ‌وقت جایی خالی نماند.
+  const repeatCount = !canLoop ? 1 : items.length <= 2 ? 10 : items.length <= 4 ? 6 : items.length <= 8 ? 4 : 3;
+  const railItems = canLoop ? Array.from({ length: repeatCount }, () => items).flat() : items;
 
-  // سرعتِ متعادل و یکسان برای همه‌ی نوارها — نه خیلی تند، نه کند — صرف‌نظر از تعداد محصولات هر دسته.
-  const cycleSeconds = Math.max(24, items.length * 2.4);
+  // سرعتِ ثابت و یکسان برای همه‌ی نوارها (پیکسل بر ثانیه) — دقیقاً همان سرعتی که در دسته‌ی «ادکلن»
+  // حس خوبی داشت؛ چون سرعت اینجا بر اساسِ فاصله‌ی واقعیِ اندازه‌گیری‌شده محاسبه می‌شود (نه تعداد
+  // محصولات)، همه‌ی نوارها — صرف‌نظر از تعداد محصولاتشان — دقیقاً با همین یک سرعتِ واحد حرکت می‌کنند.
+  const RAIL_SPEED_PX_PER_SEC = 30;
+  const cycleSeconds = loopWidth > 0 ? loopWidth / RAIL_SPEED_PX_PER_SEC : 0;
 
-  // اندازه‌گیریِ عرضِ یک نسخه از فهرست، فقط یک‌بار بعد از این‌که چیدمان کاملاً تثبیت شد (دو فریمِ
-  // پیاپی صبر می‌کنیم تا فونت/عکس‌ها اثر خودشان را روی چیدمان گذاشته باشند)، و فقط با تغییرِ واقعیِ
-  // اندازه‌ی صفحه (نه هر تکانِ جزئیِ محتوا) دوباره محاسبه می‌شود.
+  // اندازه‌گیریِ عرضِ «یک دور» (یعنی عرضِ کلِ ردیف تقسیم بر تعداد تکرار)، فقط یک‌بار بعد از این‌که
+  // چیدمان کاملاً تثبیت شد (دو فریمِ پیاپی صبر می‌کنیم تا فونت/عکس‌ها اثر خودشان را روی چیدمان
+  // گذاشته باشند)، و فقط با تغییرِ واقعیِ اندازه‌ی صفحه (نه هر تکانِ جزئیِ محتوا) دوباره محاسبه می‌شود.
   useLayoutEffect(() => {
     if (!canLoop) { setLoopWidth(0); return; }
     let cancelled = false;
@@ -1727,7 +1735,7 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
       if (cancelled) return;
       const el = trackRef.current;
       if (!el) return;
-      const w = el.scrollWidth / 2;
+      const w = el.scrollWidth / repeatCount;
       if (w > 0) setLoopWidth(w);
     }
     const raf1 = requestAnimationFrame(() => {
@@ -1746,7 +1754,7 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
       window.clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
     };
-  }, [canLoop, items.length]);
+  }, [canLoop, items.length, repeatCount]);
 
   function handlePauseStart() { setPaused(true); }
   function handlePauseEndSoon() { window.setTimeout(() => setPaused(false), 900); }
@@ -1787,6 +1795,7 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
           className="rail-track"
           style={{
             display: "inline-flex",
+            flexWrap: "nowrap",
             gap: 14,
             animation: loopWidth > 0 ? `${animNameRef.current} ${cycleSeconds}s linear infinite` : "none",
             animationDirection: reverse ? "reverse" : "normal",
@@ -1797,7 +1806,7 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
             <div
               key={`${p.id}-${i}`}
               className="rail-item"
-              style={{ flex: "0 0 auto", width: "calc(50vw - 23px)", maxWidth: 190 }}
+              style={{ flex: "0 0 auto", width: "calc(50vw - 16px)", maxWidth: 210 }}
             >
               <ProductCard
                 product={p}
