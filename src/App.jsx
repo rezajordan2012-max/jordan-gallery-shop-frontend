@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
 import {
   ShoppingBag, ShoppingCart, X, Plus, Minus, Trash2, LayoutDashboard,
-  Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock, Upload, Search, Camera
+  Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock, Upload, Search, Camera, Link as LinkIcon
 } from "lucide-react";
 // برای اسکن بارکد با دوربین — کتابخانه‌ی رایگان و متن‌باز ZXing. قبل از دیپلوی، این پکیج را نصب کن:
 //   npm install @zxing/browser
@@ -1708,7 +1708,7 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
   // حینِ اجرای انیمیشن دقیقاً همان چیزی بود که باعث می‌شد نوار هر چند لحظه یک‌بار بپرد/مکث کند.
   const [loopWidth, setLoopWidth] = useState(0);
 
-  const items = useMemo(() => (products || []).slice(0, 10), [products]);
+  const items = useMemo(() => (products || []).slice(0, 20), [products]);
   const canLoop = items.length > 1;
   // نکته‌ی مهم: اگر یک دسته محصولِ کمی داشته باشد (مثلاً ۲-۳ تا)، حتی دو نسخه از آن هم ممکن است
   // عرضش از عرضِ خودِ صفحه کمتر باشد — دقیقاً همان‌جایی که در میانه‌ی حرکت، یک فضای خالیِ سفید
@@ -1718,8 +1718,8 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
   const repeatCount = !canLoop ? 1 : items.length <= 2 ? 10 : items.length <= 4 ? 6 : items.length <= 8 ? 4 : 3;
   const railItems = canLoop ? Array.from({ length: repeatCount }, () => items).flat() : items;
 
-  // سرعتِ ثابت و یکسان برای همه‌ی نوارها (پیکسل بر ثانیه) — همان سرعتی که در دسته‌ی «ادکلن» حس
-  // خوبی داشت؛ چون سرعت اینجا بر اساسِ فاصله‌ی واقعیِ اندازه‌گیری‌شده محاسبه می‌شود (نه تعداد
+  // سرعتِ ثابت و یکسان برای همه‌ی نوارها (پیکسل بر ثانیه) — دقیقاً همان سرعتی که در دسته‌ی «ادکلن»
+  // حس خوبی داشت؛ چون سرعت اینجا بر اساسِ فاصله‌ی واقعیِ اندازه‌گیری‌شده محاسبه می‌شود (نه تعداد
   // محصولات)، همه‌ی نوارها — صرف‌نظر از تعداد محصولاتشان — دقیقاً با همین یک سرعتِ واحد حرکت می‌کنند.
   const RAIL_SPEED_PX_PER_SEC = 30;
   const cycleSeconds = loopWidth > 0 ? loopWidth / RAIL_SPEED_PX_PER_SEC : 0;
@@ -1761,31 +1761,6 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
 
   if (items.length === 0) return null;
 
-  const cardStyle = { flex: "0 0 auto", width: "calc(50vw - 16px)", maxWidth: 210 };
-
-  // اگر این دسته صفر یا فقط یک محصول دارد، هیچ نواری برای حرکت لازم نیست — به‌جای یک کانتینرِ
-  // تمام‌عرضِ خالی (که دقیقاً همان فضای سفیدِ گزارش‌شده را ایجاد می‌کرد)، فقط همان یک کارت را با
-  // اندازه‌ی طبیعیِ خودش نشان می‌دهیم، بدون هیچ فضای اضافه‌ی کنارش.
-  if (!canLoop) {
-    return (
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-3 px-1">
-          <Sparkles size={15} color="#FF3E8E" />
-          <h3 className="font-display" style={{ fontSize: 17 }}>{CATEGORY_LABEL[category]}</h3>
-        </div>
-        <div style={cardStyle}>
-          <ProductCard
-            product={items[0]}
-            onOpen={onOpen}
-            onAddToCart={onAddToCart}
-            globalDiscountPercent={globalDiscountPercent}
-            categoryMedia={categoryMedia}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="mb-8">
       <div className="flex items-center gap-2 mb-3 px-1">
@@ -1795,8 +1770,8 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
       {loopWidth > 0 && (
         <style>{`
           @keyframes ${animNameRef.current} {
-            from { transform: translateX(${reverse ? `-${loopWidth}px` : "0"}); }
-            to { transform: translateX(${reverse ? "0" : `-${loopWidth}px`}); }
+            from { transform: translateX(0); }
+            to { transform: translateX(-${loopWidth}px); }
           }
         `}</style>
       )}
@@ -1813,9 +1788,8 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
       >
         {/* ردیفِ داخلی — حرکتِ خودکار روی همین لایه با transform انجام می‌شود (GPU-محور، صاف و بدون
             تکان‌خوردگی)؛ کانتینرِ بیرونی دست‌نخورده می‌ماند، پس اسکرول دستیِ لمسیِ آن همیشه آماده‌ی
-            کار است. جهتِ حرکتِ هر نوار مستقیماً داخل خودِ کیف‌فریم تعریف شده (نه با
-            animation-direction) تا نوارهای پشتِ‌سرهم همیشه، بدون هیچ ابهامی، دقیقاً برعکسِ هم
-            حرکت کنند. */}
+            کار است. جهتِ نوارهای reverse با animationDirection معکوس می‌شود — نه با یک کیف‌فریمِ
+            جداگانه — تا هیچ‌جا اشتباهِ علامت/جهت پیش نیاید. */}
         <div
           ref={trackRef}
           className="rail-track"
@@ -1824,11 +1798,16 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
             flexWrap: "nowrap",
             gap: 14,
             animation: loopWidth > 0 ? `${animNameRef.current} ${cycleSeconds}s linear infinite` : "none",
+            animationDirection: reverse ? "reverse" : "normal",
             animationPlayState: paused ? "paused" : "running",
           }}
         >
           {railItems.map((p, i) => (
-            <div key={`${p.id}-${i}`} className="rail-item" style={cardStyle}>
+            <div
+              key={`${p.id}-${i}`}
+              className="rail-item"
+              style={{ flex: "0 0 auto", width: "calc(50vw - 16px)", maxWidth: 210 }}
+            >
               <ProductCard
                 product={p}
                 onOpen={onOpen}
@@ -2594,6 +2573,30 @@ export default function MaisonStore() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "تشخیص هوشمند ناموفق بود");
+    return data;
+  }
+
+  // قابلیت جدید Gemini: تحلیل مستقیم لینک صفحه محصول — فقط نتیجه را به فرم مدیریت برمی‌گرداند.
+  async function importProductFromUrl(url) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/import-product-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "تحلیل لینک محصول ناموفق بود");
+    return data;
+  }
+
+  // قابلیت جدید Gemini Vision + جستجوی وب: تحلیل عکس ادکلن و یافتن مشخصات واقعی آن.
+  async function analyzePerfumeImageWithGemini(imageBase64) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/analyze-perfume-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ imageBase64 }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "تحلیل عکس ادکلن ناموفق بود");
     return data;
   }
 
@@ -3473,6 +3476,8 @@ export default function MaisonStore() {
           onGetPerfumeDetails={getPerfumeDetails}
           onTranslatePerfumeText={translatePerfumeText}
           onLookupBarcode={lookupBarcode}
+          onImportProductFromUrl={importProductFromUrl}
+          onAnalyzePerfumeImage={analyzePerfumeImageWithGemini}
         />
       ) : view === "account" && user ? (
         <AccountPage
@@ -4115,7 +4120,7 @@ async function runFreeOcrExtraction(file) {
   }
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -4156,6 +4161,14 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [extractLoading, setExtractLoading] = useState(false);
   const [extractError, setExtractError] = useState("");
   const [extractResult, setExtractResult] = useState(null); // { name, brand, priceApplied, referencePriceNote, categoryApplied, subcategoryHint, variantsApplied }
+  // ابزارهای جدید Gemini — نتیجه فقط فرم را پر می‌کند و مستقیماً در دیتابیس ذخیره نمی‌شود.
+  const [geminiUrl, setGeminiUrl] = useState("");
+  const [geminiUrlLoading, setGeminiUrlLoading] = useState(false);
+  const [geminiUrlError, setGeminiUrlError] = useState("");
+  const [geminiUrlResult, setGeminiUrlResult] = useState(null);
+  const [geminiImageLoading, setGeminiImageLoading] = useState(false);
+  const [geminiImageError, setGeminiImageError] = useState("");
+  const [geminiImageResult, setGeminiImageResult] = useState(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrError, setOcrError] = useState("");
   const [ocrResult, setOcrResult] = useState(null); // { nameApplied, priceApplied, descriptionApplied, rawText }
@@ -4253,6 +4266,120 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       setExtractError(err.message || "تشخیص هوشمند ناموفق بود");
     } finally {
       setExtractLoading(false);
+    }
+  }
+
+  function applyGeminiPerfumeResult(info, sourceLabel) {
+    if (!info) return;
+    const categoryApplied = info.categoryGuess && CATEGORY_ORDER.includes(info.categoryGuess) ? info.categoryGuess : "perfume";
+    const variantsFromAi = Array.isArray(info.variants) ? info.variants.filter((v) => v && v.label).map((v, i) => ({
+      id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+      label: v.label,
+      hex: v.hex || "",
+      image: "",
+    })) : [];
+    const currentForm = form;
+    setForm((f) => {
+      const next = {
+        ...f,
+        name: info.name || info.nameEn || f.name,
+        nameEn: info.nameEn || f.nameEn,
+        brand: info.brand || f.brand,
+        description: info.description || f.description,
+        properties: info.properties || f.properties,
+        ingredients: info.ingredients || f.ingredients,
+        volume: info.volume || f.volume,
+        topNotes: info.topNotes || f.topNotes,
+        middleNotes: info.middleNotes || f.middleNotes,
+        baseNotes: info.baseNotes || f.baseNotes,
+        perfumer: info.perfumer || f.perfumer,
+        countryOfOrigin: info.countryOfOrigin || f.countryOfOrigin,
+        yearMade: info.yearMade || f.yearMade,
+        barcode: info.barcode || f.barcode,
+        longevity: info.longevity || f.longevity,
+        sillage: info.sillage || f.sillage,
+      };
+      if (info.priceToman && !f.price) next.price = String(info.priceToman).replace(/[^\d]/g, "");
+      if (info.imageUrl) next.image = info.imageUrl;
+      if (categoryApplied) {
+        next.category = categoryApplied;
+        if (categoryApplied !== f.category) { next.subcategory = ""; next.type = ""; next.facets = {}; }
+        if (categoryApplied === "perfume") {
+          const g = String(info.gender || "").toLowerCase();
+          const genderSub = /مرد|male|man|men/.test(g) ? "menPerfume" : /زن|female|woman|women/.test(g) ? "womenPerfume" : /یونیسکس|unisex/.test(g) ? "unisexPerfume" : "";
+          if (genderSub) next.subcategory = genderSub;
+        }
+      }
+      if (variantsFromAi.length) next.variantsList = variantsFromAi;
+      return next;
+    });
+
+    if (categoryApplied === "perfume") {
+      const concKey = mapConcentrationLabelToKey(info.concentration);
+      const suggestion = inferPerfumeFacetsFromNotes(info.topNotes, info.middleNotes, info.baseNotes);
+      setForm((f) => ({
+        ...f,
+        category: "perfume",
+        facets: {
+          ...f.facets,
+          ...(concKey ? { concentration: [concKey] } : {}),
+          ...(suggestion.totalCount ? {
+            scentFamily: suggestion.scentFamily,
+            temperament: suggestion.temperament,
+            fragranceNote: suggestion.fragranceNote,
+          } : {}),
+        },
+      }));
+      setNoteSuggestResult(suggestion);
+    }
+    setGeminiUrlResult(sourceLabel === "url" ? info : null);
+    setGeminiImageResult(sourceLabel === "image" ? info : null);
+  }
+
+  async function handleGeminiUrlImport(e) {
+    e.preventDefault();
+    const url = geminiUrl.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      setGeminiUrlError("لطفاً لینک کامل صفحه محصول را با https:// وارد کن");
+      return;
+    }
+    setGeminiUrlError("");
+    setGeminiUrlResult(null);
+    setGeminiUrlLoading(true);
+    try {
+      const info = await onImportProductFromUrl(url);
+      applyGeminiPerfumeResult(info, "url");
+    } catch (err) {
+      setGeminiUrlError(err.message || "تحلیل لینک ناموفق بود");
+    } finally {
+      setGeminiUrlLoading(false);
+    }
+  }
+
+  async function handleGeminiPerfumeImage(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setGeminiImageError("فایل انتخاب‌شده تصویر نیست");
+      return;
+    }
+    setGeminiImageError("");
+    setGeminiImageResult(null);
+    setGeminiImageLoading(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const info = await onAnalyzePerfumeImage(base64);
+      applyGeminiPerfumeResult(info, "image");
+    } catch (err) {
+      setGeminiImageError(err.message || "تحلیل عکس ناموفق بود");
+    } finally {
+      setGeminiImageLoading(false);
     }
   }
 
@@ -5301,6 +5428,62 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         </button>
         {catTileSaved && <span className="text-gold" style={{ fontSize: 12, marginRight: 10 }}>ذخیره شد ✓</span>}
         {catTileError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 6 }}>{catTileError}</p>}
+      </div>
+
+      {/* ================= ابزارهای جدید Gemini — بدون تغییر در فرم/ذخیره‌سازی فعلی ================= */}
+      <div className="bg-panel border border-hair rounded-lg p-4 mb-4">
+        <h3 className="font-display mb-1 flex items-center gap-1.5" style={{ fontSize: 15 }}>
+          <LinkIcon size={15} color="#7B5CF6" /> ورود محصول با لینک + Gemini
+        </h3>
+        <p className="text-muted mb-3" style={{ fontSize: 11, lineHeight: 1.8 }}>
+          لینک صفحه‌ی واقعی محصول را وارد کن. سرور محتوای صفحه را دریافت می‌کند و Gemini اطلاعات محصول را استخراج می‌کند؛ نتیجه فقط در فرم پایین قرار می‌گیرد و تا وقتی خودت «افزودن محصول» را نزنی ذخیره نمی‌شود.
+        </p>
+        <form onSubmit={handleGeminiUrlImport} className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={geminiUrl}
+            onChange={(e) => setGeminiUrl(e.target.value)}
+            placeholder="https://example.com/product/..."
+            className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
+            style={{ color: "#241E3D" }}
+            dir="ltr"
+            disabled={geminiUrlLoading}
+          />
+          <button type="submit" disabled={geminiUrlLoading || !geminiUrl.trim()} className="btn-gold rounded px-4 py-2 text-sm flex items-center justify-center gap-1.5">
+            <Sparkles size={14} /> {geminiUrlLoading ? "در حال تحلیل صفحه..." : "استخراج با Gemini"}
+          </button>
+        </form>
+        {geminiUrlError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 8 }}>{geminiUrlError}</p>}
+        {geminiUrlResult && (
+          <p style={{ fontSize: 12, color: "#0EA5A4", marginTop: 8 }}>
+            اطلاعات «{geminiUrlResult.name || geminiUrlResult.nameEn || "محصول"}»{geminiUrlResult.brand ? ` (${geminiUrlResult.brand})` : ""} در فرم پایین قرار گرفت. قبل از ذخیره همه فیلدها را بررسی کن.
+          </p>
+        )}
+      </div>
+
+      <div className="bg-panel border border-hair rounded-lg p-4 mb-4">
+        <h3 className="font-display mb-1 flex items-center gap-1.5" style={{ fontSize: 15 }}>
+          <Sparkles size={15} color="#0EA5A4" /> آپلود عکس ادکلن + یافتن مشخصات با Gemini
+        </h3>
+        <p className="text-muted mb-3" style={{ fontSize: 11, lineHeight: 1.8 }}>
+          عکس واضح بطری یا جعبه ادکلن را انتخاب کن. Gemini تصویر را می‌خواند و با جستجوی وب مشخصات قابل‌تأیید مثل نام، برند، حجم، جنسیت، غلظت، نت‌ها، عطار و سال را پیدا می‌کند. نتیجه مستقیماً در فرم قرار می‌گیرد و ذخیره خودکار انجام نمی‌شود.
+        </p>
+        <label
+          className="btn-gold rounded px-4 py-2 text-sm flex items-center gap-1.5 w-fit"
+          style={{ cursor: geminiImageLoading ? "default" : "pointer", opacity: geminiImageLoading ? 0.6 : 1 }}
+        >
+          <Upload size={14} /> {geminiImageLoading ? "در حال شناسایی و جستجوی مشخصات..." : "آپلود عکس ادکلن"}
+          <input type="file" accept="image/*" onChange={handleGeminiPerfumeImage} disabled={geminiImageLoading} style={{ display: "none" }} />
+        </label>
+        {geminiImageError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 8 }}>{geminiImageError}</p>}
+        {geminiImageResult && (
+          <div className="mt-3 flex flex-col gap-1">
+            <p style={{ fontSize: 12, color: "#0EA5A4" }}>
+              «{geminiImageResult.name || geminiImageResult.nameEn || "ادکلن"}»{geminiImageResult.brand ? ` — ${geminiImageResult.brand}` : ""} شناسایی شد و مشخصات در فرم پایین قرار گرفت. لطفاً نتیجه را بررسی کن.
+            </p>
+            {geminiImageResult.confidence && <p className="text-muted" style={{ fontSize: 11 }}>اطمینان شناسایی: {geminiImageResult.confidence}</p>}
+            {geminiImageResult.sourceNote && <p className="text-muted" style={{ fontSize: 11 }}>{geminiImageResult.sourceNote}</p>}
+          </div>
+        )}
       </div>
 
       <div className="bg-panel border border-hair rounded-lg p-4 mb-4">
