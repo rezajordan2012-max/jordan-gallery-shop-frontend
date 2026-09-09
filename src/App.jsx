@@ -437,10 +437,15 @@ const PERFUME_FACETS = [
   },
 ];
 
-// ماندگاری و پخش بوی ادکلن — هر کدام یک مقدار تک‌انتخابی از این سه گزینه (نه بخشی از PERFUME_FACETS
-// چون این‌ها فیلتر جستجو نیستند، بلکه فقط مشخصات نمایشی هر محصول‌اند)
-const PERFUME_LONGEVITY_OPTIONS = { low: "کم", medium: "متوسط", high: "زیاد" };
-const PERFUME_SILLAGE_OPTIONS = { low: "کم", medium: "متوسط", high: "زیاد" };
+// «عملکرد ادکلن» — به‌جای گزینه‌های متنی قبلی (کم/متوسط/زیاد)، حالا هر محصول سه امتیاز عددی
+// (از ۱۰) دارد: رایحه (Scent)، ماندگاری (Longevity) و پخش بو (Sillage) — دقیقاً مثل نمودارهای
+// خطیِ رنگی که در صفحه‌ی هر عطر روی Fragrantica نمایش داده می‌شود. هر امتیاز همراه با تعداد
+// رأی‌ها (ratings) ذخیره می‌شود. کلیدها با فیلدهای محصول یکی هستند: {key}Score و {key}Ratings.
+const PERFUME_PERFORMANCE_META = [
+  { key: "scent", label: "رایحه", color: "#5B9FD6" },
+  { key: "longevity", label: "ماندگاری", color: "#FF3E8E" },
+  { key: "sillage", label: "پخش بو", color: "#7B5CF6" },
+];
 
 // ---------------------------------------------------------------------------------
 // پایگاه‌دانشِ نت‌های عطر — هر نت به سه دسته نگاشت شده: حس رایحه (scentFamily)،
@@ -581,6 +586,54 @@ const NOTE_ALIAS_MAP = NOTE_ENTRIES.reduce((map, entry) => {
   return map;
 }, {});
 
+// ---------------------------------------------------------------------------------
+// پایگاه‌دانشِ «آکوردهای اصلی» (Main Accords) — همان کلمات کلیدیِ خلاصه‌ای که سایت‌هایی مثل
+// Fragrantica زیر عنوان «Main accords» برای هر عطر نشان می‌دهند (مثلاً Resinous, Smoky, Spicy,
+// Powdery, Woody, Citrus, White Floral, Patchouli, Warm Spicy, Fresh Spicy, Musky, Sweet).
+// این آکوردها واژگانی جدا از نت‌های تک‌تکِ عطر (NOTE_ENTRIES) دارند، پس نگاشتِ مستقلِ خودشان را
+// به سه دسته‌ی «حس رایحه»، «طبع» و «گروه بویایی» دارند. مدیر می‌تواند این آکوردها را از صفحه‌ی
+// همان عطر در Fragrantica کپی کند (فقط اسم‌ها، با ویرگول جدا) و پیشنهاد خودکار همین‌ها را هم
+// (در کنار نت‌ها) برای پر کردن فیلترها به‌کار می‌برد.
+const ACCORD_ENTRIES = [
+  { aliases: ["resinous", "رزینی"], scentFamily: ["resinous"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  { aliases: ["smoky", "دودی"], scentFamily: ["smoky"], temperament: ["warm"], fragranceGroup: ["woody"] },
+  { aliases: ["spicy", "ادویه‌ای"], scentFamily: ["sharp"], temperament: ["warm"], fragranceGroup: ["spicy"] },
+  { aliases: ["warm spicy", "ادویه‌ای گرم"], scentFamily: ["sharp"], temperament: ["warm"], fragranceGroup: ["spicy"] },
+  { aliases: ["fresh spicy", "ادویه‌ای تازه"], scentFamily: ["sharp", "fresh"], temperament: ["cool"], fragranceGroup: ["spicy"] },
+  { aliases: ["powdery", "پودری"], scentFamily: ["powdery"], temperament: ["moderate"], fragranceGroup: ["floral"] },
+  { aliases: ["woody", "چوبی"], scentFamily: ["dry"], temperament: ["moderate"], fragranceGroup: ["woody"] },
+  { aliases: ["citrus", "citrusy", "مرکباتی"], scentFamily: ["fresh", "sour"], temperament: ["cool"], fragranceGroup: ["citrusy"] },
+  { aliases: ["floral", "گلی"], scentFamily: ["soft"], temperament: ["moderate"], fragranceGroup: ["floral"] },
+  { aliases: ["white floral", "گل سفید"], scentFamily: ["soft", "sweet"], temperament: ["moderate"], fragranceGroup: ["floral"] },
+  { aliases: ["yellow floral", "گل زرد"], scentFamily: ["soft"], temperament: ["moderate"], fragranceGroup: ["floral"] },
+  { aliases: ["patchouli", "پچولی"], scentFamily: ["earthy", "dry"], temperament: ["warm"], fragranceGroup: ["chypre", "woody"] },
+  { aliases: ["musky", "مشکی"], scentFamily: ["musky"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  { aliases: ["sweet", "شیرین"], scentFamily: ["sweet"], temperament: ["warm"], fragranceGroup: ["gourmand"] },
+  { aliases: ["amber", "آمبری"], scentFamily: ["resinous", "sweet"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  { aliases: ["aromatic", "آروماتیک"], scentFamily: ["fresh", "herbal"], temperament: ["cool"], fragranceGroup: ["aromatic"] },
+  { aliases: ["fruity", "میوه‌ای"], scentFamily: ["sweet", "fresh"], temperament: ["cool"], fragranceGroup: ["fruity"] },
+  { aliases: ["green", "سبز"], scentFamily: ["fresh", "herbal"], temperament: ["cool"], fragranceGroup: ["green"] },
+  { aliases: ["aquatic", "marine", "دریایی"], scentFamily: ["aquatic", "fresh"], temperament: ["cool"], fragranceGroup: ["aquatic"] },
+  { aliases: ["leather", "leathery", "چرمی"], scentFamily: ["leathery"], temperament: ["warm"], fragranceGroup: ["leather"] },
+  { aliases: ["gourmand", "گورماند"], scentFamily: ["sweet", "creamy"], temperament: ["warm"], fragranceGroup: ["gourmand"] },
+  { aliases: ["tobacco", "تنباکویی"], scentFamily: ["sweet", "smoky"], temperament: ["warm"], fragranceGroup: ["tobacco"] },
+  { aliases: ["chypre", "شیپر"], scentFamily: ["mossy", "earthy"], temperament: ["moderate"], fragranceGroup: ["chypre"] },
+  { aliases: ["fougere", "fougère", "فوژه"], scentFamily: ["herbal", "clean"], temperament: ["cool"], fragranceGroup: ["fougere"] },
+  { aliases: ["earthy", "خاکی"], scentFamily: ["earthy"], temperament: ["moderate"], fragranceGroup: ["chypre"] },
+  { aliases: ["vanilla", "وانیلی"], scentFamily: ["sweet", "creamy"], temperament: ["warm"], fragranceGroup: ["gourmand"] },
+  { aliases: ["oud", "aoud", "عودی"], scentFamily: ["smoky", "resinous", "earthy"], temperament: ["warm"], fragranceGroup: ["woody", "amber"] },
+  { aliases: ["balsamic", "بالزامیک"], scentFamily: ["resinous", "sweet"], temperament: ["warm"], fragranceGroup: ["amber"] },
+  { aliases: ["soapy", "صابونی"], scentFamily: ["soapy", "clean"], temperament: ["cool"], fragranceGroup: ["aromatic"] },
+  { aliases: ["mossy", "خزه‌ای"], scentFamily: ["mossy", "earthy"], temperament: ["moderate"], fragranceGroup: ["chypre"] },
+];
+
+const ACCORD_ALIAS_MAP = ACCORD_ENTRIES.reduce((map, entry) => {
+  entry.aliases.forEach((alias) => {
+    map[normalizeNoteName(alias)] = entry;
+  });
+  return map;
+}, {});
+
 // از روی نت‌های آغازین/میانی/پایه‌ی وارد‌شده (فارسی یا انگلیسی، با هر تعداد نت در هر آکورد)،
 // محتمل‌ترین گزینه‌های «حس رایحه»، «طبع» و «گروه بویایی» را با شمارش فراوانی برچسب‌های
 // نگاشت‌شده‌ی هر نت پیشنهاد می‌دهد. نتیجه هرگز چیزی را قفل نمی‌کند — فقط مقدار اولیه‌ی facets
@@ -645,10 +698,19 @@ function mapConcentrationLabelToKey(label) {
   return null;
 }
 
-function inferPerfumeFacetsFromNotes(topNotes, middleNotes, baseNotes) {
+function inferPerfumeFacetsFromNotes(topNotes, middleNotes, baseNotes, mainAccords) {
   const allNotes = [topNotes, middleNotes, baseNotes]
     .filter(Boolean)
     .join("،")
+    .split(/[,،]/)
+    .map((n) => n.trim())
+    .filter(Boolean);
+
+  // آکوردهای اصلی (main accords) — همان کلمات کلیدیِ سطح‌بالا (مثل Resinous, Smoky, Spicy) که
+  // معمولاً دقیق‌تر و خلاصه‌تر از تک‌تکِ نت‌ها، جانِ کلیِ رایحه را نشان می‌دهند؛ برای همین وزنشان
+  // در شمارش (به‌جای ۱، عدد ACCORD_WEIGHT) بیشتر از یک نتِ ساده است.
+  const ACCORD_WEIGHT = 2;
+  const accordsList = (mainAccords || "")
     .split(/[,،]/)
     .map((n) => n.trim())
     .filter(Boolean);
@@ -669,6 +731,18 @@ function inferPerfumeFacetsFromNotes(topNotes, middleNotes, baseNotes) {
     (entry.fragranceGroup || []).forEach((k) => { counts.fragranceGroup[k] = (counts.fragranceGroup[k] || 0) + 1; });
   });
 
+  accordsList.forEach((accordRaw) => {
+    const entry = ACCORD_ALIAS_MAP[normalizeNoteName(accordRaw)] || NOTE_ALIAS_MAP[normalizeNoteName(accordRaw)];
+    if (!entry) {
+      unmatched.push(accordRaw);
+      return;
+    }
+    matched.push(accordRaw);
+    (entry.scentFamily || []).forEach((k) => { counts.scentFamily[k] = (counts.scentFamily[k] || 0) + ACCORD_WEIGHT; });
+    (entry.temperament || []).forEach((k) => { counts.temperament[k] = (counts.temperament[k] || 0) + ACCORD_WEIGHT; });
+    (entry.fragranceGroup || []).forEach((k) => { counts.fragranceGroup[k] = (counts.fragranceGroup[k] || 0) + ACCORD_WEIGHT; });
+  });
+
   function topKeys(countObj, max) {
     return Object.entries(countObj)
       .sort((a, b) => b[1] - a[1])
@@ -682,7 +756,7 @@ function inferPerfumeFacetsFromNotes(topNotes, middleNotes, baseNotes) {
     fragranceNote: topKeys(counts.fragranceGroup, 4),
 
     matchedCount: matched.length,
-    totalCount: allNotes.length,
+    totalCount: allNotes.length + accordsList.length,
     unmatched,
   };
 }
@@ -1708,7 +1782,7 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
   // حینِ اجرای انیمیشن دقیقاً همان چیزی بود که باعث می‌شد نوار هر چند لحظه یک‌بار بپرد/مکث کند.
   const [loopWidth, setLoopWidth] = useState(0);
 
-  const items = useMemo(() => (products || []).slice(0, 20), [products]);
+  const items = useMemo(() => (products || []).slice(0, 10), [products]);
   const canLoop = items.length > 1;
   // نکته‌ی مهم: اگر یک دسته محصولِ کمی داشته باشد (مثلاً ۲-۳ تا)، حتی دو نسخه از آن هم ممکن است
   // عرضش از عرضِ خودِ صفحه کمتر باشد — دقیقاً همان‌جایی که در میانه‌ی حرکت، یک فضای خالیِ سفید
@@ -1721,6 +1795,12 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
   // سرعتِ ثابت و یکسان برای همه‌ی نوارها (پیکسل بر ثانیه) — دقیقاً همان سرعتی که در دسته‌ی «ادکلن»
   // حس خوبی داشت؛ چون سرعت اینجا بر اساسِ فاصله‌ی واقعیِ اندازه‌گیری‌شده محاسبه می‌شود (نه تعداد
   // محصولات)، همه‌ی نوارها — صرف‌نظر از تعداد محصولاتشان — دقیقاً با همین یک سرعتِ واحد حرکت می‌کنند.
+  // نکته‌ی مهم: این عددِ پیکسلی («loopWidth») فقط برای محاسبه‌ی *سرعت* (مدت‌زمانِ یک دور) استفاده
+  // می‌شود، نه برای مقصدِ خودِ انیمیشن — مقصدِ حرکت با درصد (پایین‌تر، در کیف‌فریم) تعیین می‌شود،
+  // چون درصد نسبت به عرضِ واقعیِ خودِ عنصر محاسبه می‌شود و همیشه دقیقاً روی مرزِ بین دو کپیِ
+  // پشت‌سرهم می‌نشیند؛ یعنی حتی اگر این اندازه‌گیریِ پیکسلی هر از گاهی (مثلاً پیش از بارگذاریِ
+  // کاملِ عکس‌ها) کمی نادقیق باشد، دیگر هرگز باعثِ فاصله‌ی خالیِ سفید یا پرش در حلقه نمی‌شود —
+  // فقط سرعتِ حرکت را کمی تغییر می‌دهد، نه صحتِ حلقه را.
   const RAIL_SPEED_PX_PER_SEC = 30;
   const cycleSeconds = loopWidth > 0 ? loopWidth / RAIL_SPEED_PX_PER_SEC : 0;
 
@@ -1771,7 +1851,7 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
         <style>{`
           @keyframes ${animNameRef.current} {
             from { transform: translateX(0); }
-            to { transform: translateX(-${loopWidth}px); }
+            to { transform: translateX(-${(100 / repeatCount).toFixed(6)}%); }
           }
         `}</style>
       )}
@@ -1969,8 +2049,6 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                   { label: "برند", value: product.brand },
                   { label: "حجم", value: product.volume ? `${product.volume} میل` : "" },
                   { label: "غلظت مواد معطر", value: facetGroupValues(product.category, product.subcategory, "concentration", product.facets) },
-                  { label: "ماندگاری", value: PERFUME_LONGEVITY_OPTIONS[product.longevity] },
-                  { label: "پخش بو", value: PERFUME_SILLAGE_OPTIONS[product.sillage] },
                   { label: "گروه بویایی", value: facetGroupValues(product.category, product.subcategory, "fragranceNote", product.facets) },
                   { label: "طبع", value: facetGroupValues(product.category, product.subcategory, "temperament", product.facets) },
                   { label: "حس رایحه", value: facetGroupValues(product.category, product.subcategory, "scentFamily", product.facets) },
@@ -1978,7 +2056,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                   { label: "کشور سازنده", value: product.countryOfOrigin },
                   { label: "سال ساخت", value: product.yearMade },
                   {
-                    label: "امتیاز کاربران فرگرانتیکا",
+                    label: "امتیاز کاربران",
                     value: product.fragranticaRating ? (
                       <>
                         <span style={{ color: "#2563EB" }}>{product.fragranticaRating}</span>
@@ -2009,6 +2087,57 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                           <span style={{ fontSize: 13.5, fontWeight: 800, color: "#1D1733" }}>{s.value}</span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                );
+              })();
+
+            // «عملکرد ادکلن» — سه نمودار خطیِ رنگی برای رایحه/ماندگاری/پخش بو، دقیقاً هم‌سبک با
+            // نمودارهای Fragrantica: یک نوار افقیِ پرشده به‌اندازه‌ی امتیاز (از ۱۰)، عدد بزرگِ
+            // امتیاز و تعداد رأی‌ها زیرش. هر ردیف فقط وقتی نمایش داده می‌شود که مدیر برایش امتیاز
+            // ثبت کرده باشد.
+            const performanceBlock =
+              product.category === "perfume" &&
+              (() => {
+                const rows = PERFUME_PERFORMANCE_META.filter((meta) => {
+                  const score = product[`${meta.key}Score`];
+                  return Number.isFinite(Number(score)) && Number(score) > 0;
+                });
+                if (rows.length === 0) return null;
+                return (
+                  <div className="mb-7">
+                    <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 12, color: "#FF3E8E" }}>عملکرد ادکلن</h2>
+                    <div className="flex flex-col gap-5">
+                      {rows.map((meta) => {
+                        const score = Number(product[`${meta.key}Score`]) || 0;
+                        const ratingsCount = Number(product[`${meta.key}Ratings`]) || 0;
+                        const pct = Math.max(0, Math.min(100, (score / 10) * 100));
+                        return (
+                          <div key={meta.key}>
+                            <p className="font-latin" style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", color: meta.color, marginBottom: 6, textTransform: "uppercase" }}>
+                              {meta.label}
+                            </p>
+                            <div
+                              style={{
+                                width: "100%", height: 10, borderRadius: 999,
+                                background: `${meta.color}22`, overflow: "hidden",
+                              }}
+                            >
+                              <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: meta.color, transition: "width 0.4s ease" }} />
+                            </div>
+                            <p style={{ marginTop: 6 }}>
+                              <span className="font-display" style={{ fontSize: 26, fontWeight: 800, color: meta.color }}>
+                                {score.toLocaleString("en-US", { minimumFractionDigits: score % 1 === 0 ? 0 : 1 })}
+                              </span>
+                              {ratingsCount > 0 && (
+                                <span className="text-muted" style={{ fontSize: 13, marginInlineStart: 8 }}>
+                                  {ratingsCount.toLocaleString("fa-IR")} رأی
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -2086,6 +2215,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 <>
                   {notesOrIngredientsBlock}
                   {propertiesBlock}
+                  {performanceBlock}
                   {specsBlock}
                   {descriptionBlock}
                 </>
@@ -2145,7 +2275,6 @@ function AccountPage({ user, orders, loading, error, onRetry, onLogout, onBack }
 
   return (
     <section className="px-4 sm:px-8 lg:px-12 max-w-3xl mx-auto py-6 pb-24">
-      {/* کارت پروفایل */}
       <div className="bg-panel border border-hair rounded-2xl p-5 mb-5 flex items-center gap-4">
         <div
           className="flex items-center justify-center flex-shrink-0"
@@ -2167,7 +2296,6 @@ function AccountPage({ user, orders, loading, error, onRetry, onLogout, onBack }
         </button>
       </div>
 
-      {/* آمار خرید */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-panel-2 border border-hair rounded-xl p-3 text-center">
           <p className="font-display" style={{ fontSize: 20, color: "#FF3E8E" }}>{orders.length.toLocaleString("fa-IR")}</p>
@@ -2183,7 +2311,6 @@ function AccountPage({ user, orders, loading, error, onRetry, onLogout, onBack }
         </div>
       </div>
 
-      {/* تاریخچه‌ی سفارش‌ها */}
       <div className="flex items-center gap-2 mb-3">
         <Sparkles size={15} color="#FF3E8E" />
         <h2 className="font-display" style={{ fontSize: 16 }}>تاریخچه‌ی خرید</h2>
@@ -3987,7 +4114,7 @@ export default function MaisonStore() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", longevity: "", sillage: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", volume: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
+  return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", mainAccords: "", scentScore: "", scentRatings: "", longevityScore: "", longevityRatings: "", sillageScore: "", sillageRatings: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", volume: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
 function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
@@ -4214,6 +4341,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           topNotes: f.topNotes || info.topNotes || f.topNotes,
           middleNotes: f.middleNotes || info.middleNotes || f.middleNotes,
           baseNotes: f.baseNotes || info.baseNotes || f.baseNotes,
+          mainAccords: f.mainAccords || info.mainAccords || f.mainAccords,
           perfumer: f.perfumer || info.perfumer || f.perfumer,
           countryOfOrigin: f.countryOfOrigin || info.countryOfOrigin || f.countryOfOrigin,
           yearMade: f.yearMade || info.yearMade || f.yearMade,
@@ -4237,9 +4365,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       });
 
       const categoryForFacets = categoryApplied || form.category;
-      if (categoryForFacets === "perfume" && (info.topNotes || info.middleNotes || info.baseNotes)) {
+      if (categoryForFacets === "perfume" && (info.topNotes || info.middleNotes || info.baseNotes || info.mainAccords)) {
         const concKey = mapConcentrationLabelToKey(info.concentration);
-        const suggestion = inferPerfumeFacetsFromNotes(info.topNotes, info.middleNotes, info.baseNotes);
+        const suggestion = inferPerfumeFacetsFromNotes(info.topNotes, info.middleNotes, info.baseNotes, info.mainAccords);
         setForm((f) => ({
           ...f,
           facets: {
@@ -4292,12 +4420,17 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         topNotes: info.topNotes || f.topNotes,
         middleNotes: info.middleNotes || f.middleNotes,
         baseNotes: info.baseNotes || f.baseNotes,
+        mainAccords: info.mainAccords || f.mainAccords,
         perfumer: info.perfumer || f.perfumer,
         countryOfOrigin: info.countryOfOrigin || f.countryOfOrigin,
         yearMade: info.yearMade || f.yearMade,
         barcode: info.barcode || f.barcode,
-        longevity: info.longevity || f.longevity,
-        sillage: info.sillage || f.sillage,
+        scentScore: (f.scentScore === "" || f.scentScore == null) && Number.isFinite(Number(info.scentScore)) ? String(info.scentScore) : f.scentScore,
+        scentRatings: (f.scentRatings === "" || f.scentRatings == null) && Number.isFinite(Number(info.scentRatings)) ? String(info.scentRatings) : f.scentRatings,
+        longevityScore: (f.longevityScore === "" || f.longevityScore == null) && Number.isFinite(Number(info.longevityScore)) ? String(info.longevityScore) : f.longevityScore,
+        longevityRatings: (f.longevityRatings === "" || f.longevityRatings == null) && Number.isFinite(Number(info.longevityRatings)) ? String(info.longevityRatings) : f.longevityRatings,
+        sillageScore: (f.sillageScore === "" || f.sillageScore == null) && Number.isFinite(Number(info.sillageScore)) ? String(info.sillageScore) : f.sillageScore,
+        sillageRatings: (f.sillageRatings === "" || f.sillageRatings == null) && Number.isFinite(Number(info.sillageRatings)) ? String(info.sillageRatings) : f.sillageRatings,
       };
       if (info.priceToman && !f.price) next.price = String(info.priceToman).replace(/[^\d]/g, "");
       if (info.imageUrl) next.image = info.imageUrl;
@@ -4316,7 +4449,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
 
     if (categoryApplied === "perfume") {
       const concKey = mapConcentrationLabelToKey(info.concentration);
-      const suggestion = inferPerfumeFacetsFromNotes(info.topNotes, info.middleNotes, info.baseNotes);
+      const suggestion = inferPerfumeFacetsFromNotes(info.topNotes, info.middleNotes, info.baseNotes, info.mainAccords);
       setForm((f) => ({
         ...f,
         category: "perfume",
@@ -4444,8 +4577,8 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         const ext = result.external;
         // پیشنهاد خودکار حس رایحه/طبع/گروه بویایی فقط وقتی معنا دارد که نت‌ها موجود باشند —
         // نت‌ها فقط از لایه‌ی هوش مصنوعی (در صورت فعال بودن) می‌آیند، نه از پایگاه‌ی رایگان.
-        const hasNotes = ext.topNotes || ext.middleNotes || ext.baseNotes;
-        const suggestion = hasNotes ? inferPerfumeFacetsFromNotes(ext.topNotes, ext.middleNotes, ext.baseNotes) : null;
+        const hasNotes = ext.topNotes || ext.middleNotes || ext.baseNotes || ext.mainAccords;
+        const suggestion = hasNotes ? inferPerfumeFacetsFromNotes(ext.topNotes, ext.middleNotes, ext.baseNotes, ext.mainAccords) : null;
         const concKey = ext.concentration ? mapConcentrationLabelToKey(ext.concentration) : null;
 
         setForm((f) => ({
@@ -4461,6 +4594,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           topNotes: f.topNotes || ext.topNotes || f.topNotes,
           middleNotes: f.middleNotes || ext.middleNotes || f.middleNotes,
           baseNotes: f.baseNotes || ext.baseNotes || f.baseNotes,
+          mainAccords: f.mainAccords || ext.mainAccords || f.mainAccords,
           perfumer: f.perfumer || ext.perfumer || f.perfumer,
           countryOfOrigin: f.countryOfOrigin || ext.countryOfOrigin || f.countryOfOrigin,
           yearMade: f.yearMade || ext.yearMade || f.yearMade,
@@ -4501,7 +4635,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   }
 
   function applyNoteSuggestion() {
-    const result = inferPerfumeFacetsFromNotes(form.topNotes, form.middleNotes, form.baseNotes);
+    const result = inferPerfumeFacetsFromNotes(form.topNotes, form.middleNotes, form.baseNotes, form.mainAccords);
     setForm((f) => ({
       ...f,
       facets: {
@@ -4799,8 +4933,13 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       topNotes: p.topNotes || "",
       middleNotes: p.middleNotes || "",
       baseNotes: p.baseNotes || "",
-      longevity: p.longevity || "",
-      sillage: p.sillage || "",
+      mainAccords: p.mainAccords || "",
+      scentScore: p.scentScore != null ? String(p.scentScore) : "",
+      scentRatings: p.scentRatings != null ? String(p.scentRatings) : "",
+      longevityScore: p.longevityScore != null ? String(p.longevityScore) : "",
+      longevityRatings: p.longevityRatings != null ? String(p.longevityRatings) : "",
+      sillageScore: p.sillageScore != null ? String(p.sillageScore) : "",
+      sillageRatings: p.sillageRatings != null ? String(p.sillageRatings) : "",
       perfumer: p.perfumer || "",
       countryOfOrigin: p.countryOfOrigin || "",
       yearMade: p.yearMade || "",
@@ -4837,6 +4976,12 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       imagePosX: Number(form.imagePosX) || 50,
       imagePosY: Number(form.imagePosY) || 50,
       imageZoom: Number(form.imageZoom) || 1,
+      scentScore: form.scentScore !== "" ? Number(form.scentScore) : undefined,
+      scentRatings: form.scentRatings !== "" ? Number(form.scentRatings) : undefined,
+      longevityScore: form.longevityScore !== "" ? Number(form.longevityScore) : undefined,
+      longevityRatings: form.longevityRatings !== "" ? Number(form.longevityRatings) : undefined,
+      sillageScore: form.sillageScore !== "" ? Number(form.sillageScore) : undefined,
+      sillageRatings: form.sillageRatings !== "" ? Number(form.sillageRatings) : undefined,
       ...(variants.length > 0 ? { variants } : { variants: undefined }),
     };
     try {
@@ -5699,6 +5844,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             </select>
           )
         )}
+
         <div className="flex flex-col gap-1">
           <input
             placeholder="قیمت (تومان)"
@@ -5756,6 +5902,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             style={{ color: "#241E3D", minHeight: 70 }}
           />
         </div>
+
         {form.category === "perfume" ? (
           <div className="sm:col-span-2 flex flex-col gap-3">
             <label className="text-muted" style={{ fontSize: 12 }}>
@@ -5790,6 +5937,21 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
                 style={{ color: "#241E3D" }}
               />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-gold" style={{ fontSize: 11.5 }}>Main Accords — آکوردهای اصلی (اختیاری)</label>
+              <input
+                placeholder="مثال: Resinous, Smoky, Spicy, Powdery, Woody — از بخش Main accords در Fragrantica کپی کن"
+                value={form.mainAccords}
+                onChange={(e) => setForm({ ...form, mainAccords: e.target.value })}
+                className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+                style={{ color: "#241E3D" }}
+                dir="ltr"
+              />
+              <p className="text-muted" style={{ fontSize: 10.5 }}>
+                این آکوردها هم مثل نت‌ها در پیشنهاد خودکار «حس رایحه / طبع / گروه بویایی» پایین‌تر استفاده می‌شوند — و چون خلاصه‌ترین توصیف رایحه‌اند، وزنشان در پیشنهاد بیشتر است.
+              </p>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -5828,43 +5990,48 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             />
           </div>
         )}
+
         {form.category === "perfume" && (
           <div className="sm:col-span-2 flex flex-col gap-3 bg-panel-2 border border-hair rounded-lg p-3">
-            <label className="text-muted" style={{ fontSize: 12 }}>مشخصات ادکلن</label>
+            <label className="text-muted" style={{ fontSize: 12 }}>عملکرد ادکلن</label>
+            <p className="text-muted" style={{ fontSize: 10.5, marginTop: -8 }}>
+              برای هر مشخصه، یک امتیاز از ۱۰ (مثل نمودارهای Fragrantica) و تعداد رأی‌ها را وارد کن. اگر امتیازی برای یک مشخصه وارد نکنی، آن نمودار در صفحه‌ی محصول نمایش داده نمی‌شود.
+            </p>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-gold" style={{ fontSize: 11.5 }}>ماندگاری</label>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(PERFUME_LONGEVITY_OPTIONS).map(([k, v]) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setForm({ ...form, longevity: form.longevity === k ? "" : k })}
-                    className="btn-ghost rounded-full px-3 py-1 text-xs"
-                    style={form.longevity === k ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
-                  >
-                    {v}
-                  </button>
-                ))}
+            {PERFUME_PERFORMANCE_META.map((meta) => (
+              <div key={meta.key} className="flex items-center gap-2 flex-wrap">
+                <span className="font-latin" style={{ fontSize: 11.5, fontWeight: 700, color: meta.color, minWidth: 78 }}>{meta.label}</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  placeholder="امتیاز از ۱۰"
+                  value={form[`${meta.key}Score`]}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const n = Number(v);
+                    if (v === "" || (Number.isFinite(n) && n >= 0 && n <= 10)) {
+                      setForm({ ...form, [`${meta.key}Score`]: v });
+                    }
+                  }}
+                  className="bg-panel border border-hair rounded px-3 py-2 text-sm"
+                  style={{ color: "#241E3D", width: 100 }}
+                  dir="ltr"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="تعداد رأی"
+                  value={form[`${meta.key}Ratings`]}
+                  onChange={(e) => setForm({ ...form, [`${meta.key}Ratings`]: e.target.value.replace(/[^\d]/g, "") })}
+                  className="bg-panel border border-hair rounded px-3 py-2 text-sm"
+                  style={{ color: "#241E3D", width: 100 }}
+                  dir="ltr"
+                />
               </div>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-gold" style={{ fontSize: 11.5 }}>پخش بو</label>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(PERFUME_SILLAGE_OPTIONS).map(([k, v]) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setForm({ ...form, sillage: form.sillage === k ? "" : k })}
-                    className="btn-ghost rounded-full px-3 py-1 text-xs"
-                    style={form.sillage === k ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : { opacity: 0.85 }}
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
-            </div>
+            ))}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <input
@@ -5895,7 +6062,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                   min="0"
                   max="10"
                   step="0.1"
-                  placeholder="امتیاز فرگرانتیکا (مثلاً 6.3)"
+                  placeholder="امتیاز کاربران (مثلاً 6.3)"
                   value={form.fragranticaRating}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -5927,6 +6094,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             </div>
           </div>
         )}
+
         <div className="sm:col-span-2 flex flex-col gap-1">
           <label className="text-muted" style={{ fontSize: 12 }}>
             تصویر اصلی محصول
@@ -6080,6 +6248,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             </div>
           )}
         </div>
+
         <div className="sm:col-span-2 flex flex-col gap-2">
           <label className="text-muted" style={{ fontSize: 12 }}>
             طیف رنگ / شماره‌ها (اختیاری — برای محصولاتی مثل رژلب، سایه و رژگونه که مشتری باید رنگ انتخاب کند)
