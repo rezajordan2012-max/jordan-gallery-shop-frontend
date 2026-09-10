@@ -447,6 +447,13 @@ const PERFUME_PERFORMANCE_META = [
   { key: "sillage", label: "پخش بو", color: "#7B5CF6" },
 ];
 
+// پالتِ رنگیِ گردشیِ برچسب‌های «ترکیب بویایی» (Main Accords) در صفحه‌ی محصول — دقیقاً به همان
+// حسِ رنگی‌ای که سایت‌های عطر (مثل Fragrantica یا ویجتِ Smell & Feel) برای هر آکورد یک دایره‌ی
+// رنگی جدا نشان می‌دهند؛ چون تعداد آکوردهای هر عطر متغیر است، رنگ‌ها به‌صورت چرخشی به‌ترتیب
+// روی آکوردها اعمال می‌شوند (آکورد اول رنگ اول، دومی رنگ دوم، و اگر آکوردها بیشتر از رنگ‌ها
+// بودند، از اول پالت دوباره شروع می‌شود).
+const MAIN_ACCORD_COLOR_PALETTE = ["#A78BFA", "#F98FA0", "#B23A6B", "#5FB8A8", "#D7C7A8", "#5B9FD6", "#D9A441", "#4CAF6D"];
+
 // ---------------------------------------------------------------------------------
 // پایگاه‌دانشِ نت‌های عطر — هر نت به سه دسته نگاشت شده: حس رایحه (scentFamily)،
 // طبع (temperament) و گروه بویایی (fragranceGroup). این نگاشت بر پایه‌ی طبقه‌بندی رایج
@@ -2157,6 +2164,33 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
               </div>
             );
 
+            // «ترکیب بویایی» (Main Accords) — همان برچسب‌های رنگیِ خلاصه‌ای که روی صفحه‌ی مبدأ
+            // (مثلاً Fragrantica) زیرِ عنوانِ «Main accords» می‌آیند؛ اینجا هر آکورد یک دایره‌ی
+            // رنگی به همراه متنش نمایش داده می‌شود. این بخش، طبق درخواست، بالای «نت‌های رایحه» می‌آید.
+            const mainAccordsBlock =
+              product.category === "perfume" &&
+              product.mainAccords &&
+              (() => {
+                const accords = product.mainAccords
+                  .split(/[,،]/)
+                  .map((a) => a.trim())
+                  .filter(Boolean);
+                if (accords.length === 0) return null;
+                return (
+                  <div className="mb-6">
+                    <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 10, color: "#FF3E8E" }}>ترکیب بویایی</h2>
+                    <div className="flex flex-wrap gap-x-5 gap-y-2.5">
+                      {accords.map((accord, i) => (
+                        <span key={i} className="flex items-center gap-2">
+                          <span style={{ width: 11, height: 11, borderRadius: "50%", background: MAIN_ACCORD_COLOR_PALETTE[i % MAIN_ACCORD_COLOR_PALETTE.length], flexShrink: 0 }} />
+                          <span style={{ fontSize: 13.5, fontWeight: 600, color: "#40395C" }}>{accord}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })();
+
             const notesOrIngredientsBlock =
               product.category === "perfume" ? (
                 (product.topNotes || product.middleNotes || product.baseNotes) && (
@@ -2208,14 +2242,15 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 )
               );
 
-            // ترتیب درخواستی برای صفحات ادکلن: ترکیبات رایحه ← ویژگی‌ها و خواص ← مشخصات ← معرفی محصول
-            // (ترکیبات رایحه و مشخصات جای هم را عوض کردند، و معرفی محصول درست زیر مشخصات آمده)
+            // ترتیب درخواستی برای صفحات ادکلن: ترکیب بویایی ← ترکیبات رایحه ← عملکرد رایحه
+            // (نمودار) ← ویژگی‌ها و خواص ← مشخصات ← معرفی محصول.
             if (product.category === "perfume") {
               return (
                 <>
+                  {mainAccordsBlock}
                   {notesOrIngredientsBlock}
-                  {propertiesBlock}
                   {performanceBlock}
+                  {propertiesBlock}
                   {specsBlock}
                   {descriptionBlock}
                 </>
