@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
 import {
   ShoppingBag, ShoppingCart, X, Plus, Minus, Trash2, LayoutDashboard,
@@ -1791,13 +1790,18 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
   const [loopWidth, setLoopWidth] = useState(0);
 
   const items = useMemo(() => (products || []).slice(0, 10), [products]);
-  const canLoop = items.length > 1;
-  // نکته‌ی مهم: اگر یک دسته محصولِ کمی داشته باشد (مثلاً ۲-۳ تا)، حتی دو نسخه از آن هم ممکن است
-  // عرضش از عرضِ خودِ صفحه کمتر باشد — دقیقاً همان‌جایی که در میانه‌ی حرکت، یک فضای خالیِ سفید
+  // نکته‌ی کلیدی: حتی وقتی یک دسته فقط یک محصول دارد، باز هم باید «حلقه» تشکیل شود (همان یک
+  // محصول چندین بار پشتِ‌سرهم تکرار شود) — وگرنه دقیقاً همان‌جایی که تعداد محصولاتِ یک دسته کم
+  // است (مثلاً هنوز فقط یکی اضافه شده)، به‌جای چرخشِ پیوسته، یک کارتِ تنها با یک فضای خالیِ
+  // بزرگ کنارش می‌ماند. برای همین، آستانه‌ی «قابلِ حلقه‌شدن» از «بیشتر از ۱ محصول» به «حداقل ۱
+  // محصول» تغییر کرد.
+  const canLoop = items.length >= 1;
+  // نکته‌ی مهم: اگر یک دسته محصولِ کمی داشته باشد (مثلاً ۱ تا ۳ تا)، حتی چند نسخه از آن هم ممکن
+  // است عرضش از عرضِ خودِ صفحه کمتر باشد — دقیقاً همان‌جایی که در میانه‌ی حرکت، یک فضای خالیِ سفید
   // دیده می‌شد (چون به‌سادگی محتوای واقعیِ کافی برای پر کردنِ صفحه وجود نداشت). برای همین، فهرست
   // را بسته به تعدادِ محصولاتِ همان دسته، چند بار تکرار می‌کنیم تا همیشه چند برابرِ عرضِ صفحه
   // محتوای واقعی وجود داشته باشد و هیچ‌وقت جایی خالی نماند.
-  const repeatCount = !canLoop ? 1 : items.length <= 2 ? 10 : items.length <= 4 ? 6 : items.length <= 8 ? 4 : 3;
+  const repeatCount = !canLoop ? 1 : items.length <= 2 ? 14 : items.length <= 4 ? 8 : items.length <= 8 ? 4 : 3;
   const railItems = canLoop ? Array.from({ length: repeatCount }, () => items).flat() : items;
 
   // سرعتِ ثابت و یکسان برای همه‌ی نوارها (پیکسل بر ثانیه) — دقیقاً همان سرعتی که در دسته‌ی «ادکلن»
