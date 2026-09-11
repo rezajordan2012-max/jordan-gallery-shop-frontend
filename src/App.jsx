@@ -2181,16 +2181,26 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                   .map((a) => a.trim())
                   .filter(Boolean);
                 if (accords.length === 0) return null;
+                // ترتیبِ آکوردها همان ترتیبِ شدت/اهمیتِ آن‌ها روی صفحه‌ی مبدأ است — آکوردِ اول
+                // قوی‌ترین حسِ رایحه را دارد، پس دایره‌اش هم بزرگ‌تر است؛ اندازه‌ی دایره‌ها به‌ترتیب
+                // از یک حداکثر به یک حداقل کم می‌شود (وقتی فقط یک آکورد باشد، اندازه‌ی حداکثر می‌گیرد).
+                const MAX_DOT = 15;
+                const MIN_DOT = 7;
                 return (
                   <div className="mb-6">
                     <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 10, color: "#FF3E8E" }}>ترکیب بویایی</h2>
                     <div className="flex flex-wrap gap-x-5 gap-y-2.5">
-                      {accords.map((accord, i) => (
-                        <span key={i} className="flex items-center gap-2">
-                          <span style={{ width: 11, height: 11, borderRadius: "50%", background: MAIN_ACCORD_COLOR_PALETTE[i % MAIN_ACCORD_COLOR_PALETTE.length], flexShrink: 0 }} />
-                          <span style={{ fontSize: 13.5, fontWeight: 600, color: "#40395C" }}>{accord}</span>
-                        </span>
-                      ))}
+                      {accords.map((accord, i) => {
+                        const dotSize = accords.length > 1
+                          ? Math.round(MAX_DOT - ((MAX_DOT - MIN_DOT) * (i / (accords.length - 1))))
+                          : MAX_DOT;
+                        return (
+                          <span key={i} className="flex items-center gap-2">
+                            <span style={{ width: dotSize, height: dotSize, borderRadius: "50%", background: MAIN_ACCORD_COLOR_PALETTE[i % MAIN_ACCORD_COLOR_PALETTE.length], flexShrink: 0 }} />
+                            <span style={{ fontSize: 13.5, fontWeight: 600, color: "#40395C" }}>{accord}</span>
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 );
