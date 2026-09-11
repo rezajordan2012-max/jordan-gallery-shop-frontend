@@ -6495,16 +6495,30 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             {!imageSearchLoading && imageSearchResults.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
                 {imageSearchResults.map((r, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => pickImageSearchResult(r.url)}
-                    className="rounded-lg overflow-hidden border border-hair"
-                    style={{ height: 92, background: "#FFFFFF", padding: 0 }}
-                    title={r.source || ""}
-                  >
-                    <img src={r.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  </button>
+                  <div key={i} className="rounded-lg overflow-hidden border border-hair" style={{ background: "#FFFFFF" }}>
+                    <button
+                      type="button"
+                      onClick={() => pickImageSearchResult(r.url)}
+                      className="w-full overflow-hidden"
+                      style={{ height: 92, background: "#FFFFFF", padding: 0, display: "block" }}
+                      title={r.title || r.domain || "انتخاب این عکس"}
+                    >
+                      <img src={r.url} alt={r.title || ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </button>
+                    {r.source && (
+                      <a
+                        href={r.source}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="block text-center text-muted"
+                        style={{ fontSize: 9.5, padding: "4px 3px", textDecoration: "underline" }}
+                        title={r.source}
+                      >
+                        منبع تصویر
+                      </a>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -6514,7 +6528,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               </p>
             )}
             <p className="text-muted mt-3" style={{ fontSize: 10.5 }}>
-              روی هر عکس بزن تا مستقیماً برای همین فیلد ذخیره شود — همه‌ی این عکس‌ها از قبل روی سرورِ خودمان آپلود شده‌اند.
+              روی هر عکس بزن تا مستقیماً برای همین فیلد ذخیره شود. «منبع تصویر» صفحه‌ی اصلیِ منبع را باز می‌کند؛ عکس انتخاب‌شده قبل از ذخیره روی Cloudinary خودمان قرار می‌گیرد.
             </p>
           </div>
         </div>
