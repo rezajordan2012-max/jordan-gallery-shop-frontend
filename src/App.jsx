@@ -2821,6 +2821,20 @@ export default function MaisonStore() {
     return data;
   }
 
+  // جستجوی عکسِ محصول (یا یک رنگِ خاص) در اینترنت — چند نامزدِ عکس (از قبل روی Cloudinary
+  // خودمان آپلودشده) برمی‌گرداند تا مدیر خودش با یک کلیک بهترین را برای «تصویر اصلی محصول» یا
+  // هرکدام از «طیف‌های رنگ» انتخاب کند.
+  async function searchProductImage(query) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/search-product-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ query }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "جستجوی عکس ناموفق بود");
+    return data.results || [];
+  }
+
   async function updateHeroBanners(banners) {
     const res = await fetch(`${API_BASE_URL}/api/settings`, {
       method: "PUT",
@@ -3653,6 +3667,7 @@ export default function MaisonStore() {
           onGetPerfumeDetails={getPerfumeDetails}
           onTranslatePerfumeText={translatePerfumeText}
           onLookupBarcode={lookupBarcode}
+          onSearchProductImage={searchProductImage}
           onImportProductFromUrl={importProductFromUrl}
           onAnalyzePerfumeImage={analyzePerfumeImageWithGemini}
         />
@@ -4167,7 +4182,7 @@ function emptyForm() {
   return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", mainAccords: "", scentScore: "", scentRatings: "", longevityScore: "", longevityRatings: "", sillageScore: "", sillageRatings: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", volume: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
-function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
+function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenImageSearch, productContext }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
@@ -4232,6 +4247,13 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage }) {
           {uploading ? "در حال آپلود..." : variant.image ? "تغییر عکس این رنگ" : "افزودن عکس این رنگ"}
           <input type="file" accept="image/*" onChange={handleFile} disabled={uploading} style={{ display: "none" }} />
         </label>
+        <button
+          type="button"
+          onClick={() => onOpenImageSearch(variant.id, `${productContext || ""} ${variant.label || ""}`.trim())}
+          className="btn-ghost rounded px-3 py-1.5 text-xs flex items-center gap-1.5"
+        >
+          <Search size={13} /> جستجوی عکس
+        </button>
         {variant.image && (
           <button type="button" onClick={() => onChange({ ...variant, image: "" })} className="text-muted" style={{ fontSize: 11 }}>
             حذف عکس
@@ -4297,7 +4319,7 @@ async function runFreeOcrExtraction(file) {
   }
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -4682,6 +4704,54 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     } finally {
       setBarcodeLookupLoading(false);
     }
+  }
+
+  // جستجوی عکس در اینترنت — یک پنجره‌ی مشترک برای هم «تصویر اصلی محصول» هم هرکدام از «طیف‌های
+  // رنگ». imageSearchTarget می‌تواند "main" (برای تصویر اصلی) یا id یکی از variantsList باشد؛
+  // با انتخابِ یک نتیجه، فقط همان فیلدِ مقصد پر می‌شود.
+  const [imageSearchTarget, setImageSearchTarget] = useState(null);
+  const [imageSearchQuery, setImageSearchQuery] = useState("");
+  const [imageSearchLoading, setImageSearchLoading] = useState(false);
+  const [imageSearchResults, setImageSearchResults] = useState([]);
+  const [imageSearchError, setImageSearchError] = useState("");
+
+  function openImageSearch(target, defaultQuery) {
+    setImageSearchTarget(target);
+    setImageSearchQuery(defaultQuery || "");
+    setImageSearchResults([]);
+    setImageSearchError("");
+  }
+
+  function closeImageSearch() {
+    setImageSearchTarget(null);
+    setImageSearchResults([]);
+    setImageSearchError("");
+  }
+
+  async function runImageSearch() {
+    const q = imageSearchQuery.trim();
+    if (!q) return;
+    setImageSearchLoading(true);
+    setImageSearchError("");
+    setImageSearchResults([]);
+    try {
+      const results = await onSearchProductImage(q);
+      setImageSearchResults(results);
+      if (results.length === 0) setImageSearchError("عکسی پیدا نشد — عبارتِ جستجو را دقیق‌تر یا متفاوت امتحان کن.");
+    } catch (err) {
+      setImageSearchError(err.message || "جستجوی عکس ناموفق بود");
+    } finally {
+      setImageSearchLoading(false);
+    }
+  }
+
+  function pickImageSearchResult(url) {
+    if (imageSearchTarget === "main") {
+      setForm((f) => ({ ...f, image: url }));
+    } else if (imageSearchTarget) {
+      setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) => (v.id === imageSearchTarget ? { ...v, image: url } : v)) }));
+    }
+    closeImageSearch();
   }
 
   function applyNoteSuggestion() {
@@ -6164,6 +6234,13 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 style={{ display: "none" }}
               />
             </label>
+            <button
+              type="button"
+              onClick={() => openImageSearch("main", `${form.brand} ${form.name}`.trim())}
+              className="btn-ghost rounded px-3 py-2 text-xs flex items-center gap-2"
+            >
+              <Search size={14} /> جستجوی عکس در اینترنت
+            </button>
             <input
               placeholder="یا لینک عکس را اینجا بچسبان: https://example.com/image.jpg"
               value={form.image}
@@ -6310,6 +6387,8 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               onChange={(next) => setForm((f) => ({ ...f, variantsList: f.variantsList.map((x) => (x.id === v.id ? next : x)) }))}
               onRemove={() => setForm((f) => ({ ...f, variantsList: f.variantsList.filter((x) => x.id !== v.id) }))}
               onUploadImage={onUploadImage}
+              onOpenImageSearch={openImageSearch}
+              productContext={`${form.brand} ${form.name}`.trim()}
             />
           ))}
           <button
@@ -6381,6 +6460,64 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           onDetected={handleBarcodeDetected}
           onClose={() => setScannerOpen(false)}
         />
+      )}
+
+      {imageSearchTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(36,30,61,0.5)" }} onClick={closeImageSearch}>
+          <div className="bg-panel rounded-lg p-5 w-full border border-hair" style={{ maxWidth: 460, maxHeight: "82vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-display flex items-center gap-1.5" style={{ fontSize: 16 }}>
+                <Search size={16} color="#7B5CF6" /> جستجوی عکس در اینترنت
+              </h3>
+              <button onClick={closeImageSearch}><X size={18} color="#241E3D" /></button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); runImageSearch(); }} className="flex items-center gap-2 mb-3">
+              <input
+                autoFocus
+                value={imageSearchQuery}
+                onChange={(e) => setImageSearchQuery(e.target.value)}
+                placeholder="مثلاً: کرم پودر میبلین فیت می شماره ۲۱۰"
+                className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
+                style={{ color: "#241E3D" }}
+              />
+              <button type="submit" disabled={imageSearchLoading || !imageSearchQuery.trim()} className="btn-gold rounded px-4 py-2 text-sm flex items-center gap-1.5 flex-shrink-0">
+                {imageSearchLoading ? "..." : "جستجو"}
+              </button>
+            </form>
+            {imageSearchError && <p style={{ fontSize: 12, color: "#D6336C", marginBottom: 10 }}>{imageSearchError}</p>}
+            {imageSearchLoading && (
+              <div className="grid grid-cols-3 gap-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="skeleton rounded-lg" style={{ height: 92 }} />
+                ))}
+              </div>
+            )}
+            {!imageSearchLoading && imageSearchResults.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {imageSearchResults.map((r, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => pickImageSearchResult(r.url)}
+                    className="rounded-lg overflow-hidden border border-hair"
+                    style={{ height: 92, background: "#FFFFFF", padding: 0 }}
+                    title={r.source || ""}
+                  >
+                    <img src={r.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </button>
+                ))}
+              </div>
+            )}
+            {!imageSearchLoading && !imageSearchError && imageSearchResults.length === 0 && (
+              <p className="text-muted" style={{ fontSize: 11.5 }}>
+                عبارتِ جستجو را (اسم محصول، برند، و در صورتِ نیاز شماره/نامِ رنگ) دقیق بنویس و «جستجو» را بزن.
+              </p>
+            )}
+            <p className="text-muted mt-3" style={{ fontSize: 10.5 }}>
+              روی هر عکس بزن تا مستقیماً برای همین فیلد ذخیره شود — همه‌ی این عکس‌ها از قبل روی سرورِ خودمان آپلود شده‌اند.
+            </p>
+          </div>
+        </div>
       )}
     </section>
   );
