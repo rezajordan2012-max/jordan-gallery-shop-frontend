@@ -684,6 +684,27 @@ function translateNoteToFa(noteNameEn) {
   return faAlias || noteNameEn;
 }
 
+// همان کار را برای «ترکیب بویایی» (Main Accords) انجام می‌دهد — از پایگاه‌دانشِ آکوردها
+// (ACCORD_ALIAS_MAP) نزدیک‌ترین معادلِ فارسیِ ثبت‌شده برای همان آکورد را برمی‌گرداند.
+function translateAccordToFa(accordNameEn) {
+  const entry = ACCORD_ALIAS_MAP[normalizeNoteName(accordNameEn)];
+  if (!entry) return accordNameEn;
+  const faAlias = entry.aliases.find((a) => /[\u0600-\u06FF]/.test(a));
+  return faAlias || accordNameEn;
+}
+
+// یک نت/آکوردِ انگلیسی را همراه با معادلِ فارسیِ نزدیکش (اگر پیدا شد) در پرانتز برمی‌گرداند —
+// مثلاً «Woody (چوبی)». اگر معادلی پیدا نشود (یا همان کلمه‌ی انگلیسی برگردد)، فقط خودِ کلمه‌ی
+// اصلی بدون هیچ پرانتزی نمایش داده می‌شود؛ این‌طور صفحه هیچ‌وقت با یک پرانتزِ خالی یا تکراری
+// (مثل «Woody (Woody)») شلوغ نمی‌شود.
+function withFaHint(term, translateFn) {
+  const clean = (term || "").trim();
+  if (!clean) return clean;
+  const fa = translateFn(clean);
+  if (!fa || fa.trim().toLowerCase() === clean.toLowerCase()) return clean;
+  return `${clean} (${fa})`;
+}
+
 // آرایه‌ای از نت‌های fraganty.ai (مثل [{name:"Lemon"}, ...]) را به یک رشته‌ی فارسی با ویرگول جدا می‌کند.
 function translateNotesArrayToFa(notesArr) {
   if (!Array.isArray(notesArr) || notesArr.length === 0) return "";
@@ -2197,7 +2218,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                         return (
                           <span key={i} className="flex items-center gap-2">
                             <span style={{ width: dotSize, height: dotSize, borderRadius: "50%", background: MAIN_ACCORD_COLOR_PALETTE[i % MAIN_ACCORD_COLOR_PALETTE.length], flexShrink: 0 }} />
-                            <span style={{ fontSize: 13.5, fontWeight: 600, color: "#40395C" }}>{accord}</span>
+                            <span style={{ fontSize: 13.5, fontWeight: 600, color: "#40395C" }}>{withFaHint(accord, translateAccordToFa)}</span>
                           </span>
                         );
                       })}
@@ -2239,7 +2260,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                                       border: `1px solid ${accord.color}40`, color: "#1D1733",
                                     }}
                                   >
-                                    {noteName}
+                                    {withFaHint(noteName, translateNoteToFa)}
                                   </span>
                                 ))}
                             </div>
@@ -6495,30 +6516,16 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             {!imageSearchLoading && imageSearchResults.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
                 {imageSearchResults.map((r, i) => (
-                  <div key={i} className="rounded-lg overflow-hidden border border-hair" style={{ background: "#FFFFFF" }}>
-                    <button
-                      type="button"
-                      onClick={() => pickImageSearchResult(r.url)}
-                      className="w-full overflow-hidden"
-                      style={{ height: 92, background: "#FFFFFF", padding: 0, display: "block" }}
-                      title={r.title || r.domain || "انتخاب این عکس"}
-                    >
-                      <img src={r.url} alt={r.title || ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    </button>
-                    {r.source && (
-                      <a
-                        href={r.source}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="block text-center text-muted"
-                        style={{ fontSize: 9.5, padding: "4px 3px", textDecoration: "underline" }}
-                        title={r.source}
-                      >
-                        منبع تصویر
-                      </a>
-                    )}
-                  </div>
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => pickImageSearchResult(r.url)}
+                    className="rounded-lg overflow-hidden border border-hair"
+                    style={{ height: 92, background: "#FFFFFF", padding: 0 }}
+                    title={r.source || ""}
+                  >
+                    <img src={r.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </button>
                 ))}
               </div>
             )}
@@ -6528,7 +6535,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               </p>
             )}
             <p className="text-muted mt-3" style={{ fontSize: 10.5 }}>
-              روی هر عکس بزن تا مستقیماً برای همین فیلد ذخیره شود. «منبع تصویر» صفحه‌ی اصلیِ منبع را باز می‌کند؛ عکس انتخاب‌شده قبل از ذخیره روی Cloudinary خودمان قرار می‌گیرد.
+              روی هر عکس بزن تا مستقیماً برای همین فیلد ذخیره شود — همه‌ی این عکس‌ها از قبل روی سرورِ خودمان آپلود شده‌اند.
             </p>
           </div>
         </div>
