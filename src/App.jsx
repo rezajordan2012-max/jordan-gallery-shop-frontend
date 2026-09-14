@@ -4799,7 +4799,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [variantUrlAddedCount, setVariantUrlAddedCount] = useState(0);
 
   async function handleExtractVariantsFromUrl(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     const url = variantUrlInput.trim();
     if (!/^https?:\/\//i.test(url)) {
       setVariantUrlError("لطفاً لینک کامل صفحه محصول را با https:// وارد کن");
@@ -6465,10 +6465,13 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             <p className="text-muted" style={{ fontSize: 10.5, lineHeight: 1.8 }}>
               لینکِ صفحه‌ی محصول (مثلاً صفحه‌ی همین رژلب توی فروشگاهِ اصلی‌اش) را بچسبان — این ابزار برخلافِ «ورود محصول با لینک»، فقط و فقط دنبالِ طیفِ رنگِ همان محصول می‌گردد (نه عکسِ اصلی، نه نام، نه توضیح یا هیچ فیلدِ دیگر) و ردیف‌های رنگ را خودکار به لیستِ پایین اضافه می‌کند.
             </p>
-            <form onSubmit={handleExtractVariantsFromUrl} className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 value={variantUrlInput}
                 onChange={(e) => setVariantUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); handleExtractVariantsFromUrl(); }
+                }}
                 placeholder="https://..."
                 className="bg-panel border border-hair rounded px-3 py-2 text-sm flex-1"
                 style={{ color: "#241E3D" }}
@@ -6476,13 +6479,14 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 disabled={variantUrlLoading}
               />
               <button
-                type="submit"
+                type="button"
+                onClick={() => handleExtractVariantsFromUrl()}
                 disabled={variantUrlLoading || !variantUrlInput.trim()}
                 className="btn-gold rounded px-4 py-2 text-sm flex items-center justify-center gap-1.5 flex-shrink-0"
               >
                 <Sparkles size={13} /> {variantUrlLoading ? "در حال استخراج..." : "استخراج طیف رنگ"}
               </button>
-            </form>
+            </div>
             {variantUrlError && <p style={{ fontSize: 11.5, color: "#D6336C" }}>{variantUrlError}</p>}
             {variantUrlAddedCount > 0 && (
               <p style={{ fontSize: 11.5, color: "#0EA5A4" }}>
