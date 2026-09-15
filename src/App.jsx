@@ -684,6 +684,27 @@ function translateNoteToFa(noteNameEn) {
   return faAlias || noteNameEn;
 }
 
+// همان کار را برای «ترکیب بویایی» (Main Accords) انجام می‌دهد — از پایگاه‌دانشِ آکوردها
+// (ACCORD_ALIAS_MAP) نزدیک‌ترین معادلِ فارسیِ ثبت‌شده برای همان آکورد را برمی‌گرداند.
+function translateAccordToFa(accordNameEn) {
+  const entry = ACCORD_ALIAS_MAP[normalizeNoteName(accordNameEn)];
+  if (!entry) return accordNameEn;
+  const faAlias = entry.aliases.find((a) => /[\u0600-\u06FF]/.test(a));
+  return faAlias || accordNameEn;
+}
+
+// یک نت/آکوردِ انگلیسی را همراه با معادلِ فارسیِ نزدیکش (اگر پیدا شد) در پرانتز برمی‌گرداند —
+// مثلاً «Woody (چوبی)». اگر معادلی پیدا نشود (یا همان کلمه‌ی انگلیسی برگردد)، فقط خودِ کلمه‌ی
+// اصلی بدون هیچ پرانتزی نمایش داده می‌شود؛ این‌طور صفحه هیچ‌وقت با یک پرانتزِ خالی یا تکراری
+// (مثل «Woody (Woody)») شلوغ نمی‌شود.
+function withFaHint(term, translateFn) {
+  const clean = (term || "").trim();
+  if (!clean) return clean;
+  const fa = translateFn(clean);
+  if (!fa || fa.trim().toLowerCase() === clean.toLowerCase()) return clean;
+  return `${clean} (${fa})`;
+}
+
 // آرایه‌ای از نت‌های fraganty.ai (مثل [{name:"Lemon"}, ...]) را به یک رشته‌ی فارسی با ویرگول جدا می‌کند.
 function translateNotesArrayToFa(notesArr) {
   if (!Array.isArray(notesArr) || notesArr.length === 0) return "";
@@ -2197,7 +2218,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                         return (
                           <span key={i} className="flex items-center gap-2">
                             <span style={{ width: dotSize, height: dotSize, borderRadius: "50%", background: MAIN_ACCORD_COLOR_PALETTE[i % MAIN_ACCORD_COLOR_PALETTE.length], flexShrink: 0 }} />
-                            <span style={{ fontSize: 13.5, fontWeight: 600, color: "#40395C" }}>{accord}</span>
+                            <span style={{ fontSize: 13.5, fontWeight: 600, color: "#40395C" }}>{withFaHint(accord, translateAccordToFa)}</span>
                           </span>
                         );
                       })}
@@ -2239,7 +2260,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                                       border: `1px solid ${accord.color}40`, color: "#1D1733",
                                     }}
                                   >
-                                    {noteName}
+                                    {withFaHint(noteName, translateNoteToFa)}
                                   </span>
                                 ))}
                             </div>
@@ -2833,6 +2854,20 @@ export default function MaisonStore() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "جستجوی عکس ناموفق بود");
     return data.results || [];
+  }
+
+  // استخراجِ «فقط طیف رنگ» از لینکِ یک صفحه‌ی محصول — برخلافِ «ورود محصول با لینک» که همه‌ی
+  // فیلدها را پر می‌کند، این یکی کاملاً روی پیدا کردنِ رنگ‌های محصول متمرکز است و بقیه‌ی
+  // فیلدهای فرم (نام، عکسِ اصلی، توضیح و غیره) را دست‌نخورده می‌گذارد.
+  async function extractVariantsFromUrl(url) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/extract-variants-from-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "استخراج طیف رنگ ناموفق بود");
+    return data.variants || [];
   }
 
   async function updateHeroBanners(banners) {
@@ -3668,6 +3703,7 @@ export default function MaisonStore() {
           onTranslatePerfumeText={translatePerfumeText}
           onLookupBarcode={lookupBarcode}
           onSearchProductImage={searchProductImage}
+          onExtractVariantsFromUrl={extractVariantsFromUrl}
           onImportProductFromUrl={importProductFromUrl}
           onAnalyzePerfumeImage={analyzePerfumeImageWithGemini}
         />
@@ -4319,7 +4355,7 @@ async function runFreeOcrExtraction(file) {
   }
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onExtractVariantsFromUrl, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -4752,6 +4788,47 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) => (v.id === imageSearchTarget ? { ...v, image: url } : v)) }));
     }
     closeImageSearch();
+  }
+
+  // استخراجِ «فقط طیف رنگ» از لینکِ یک صفحه‌ی محصول — کاملاً مستقل از «ورود محصول با لینک»؛ این
+  // ابزار فقط ردیف‌های طیفِ رنگ را (زیر همین بخش از فرم) پر می‌کند و کاری به عکسِ اصلی، نام،
+  // توضیح یا هیچ فیلدِ دیگری ندارد.
+  const [variantUrlInput, setVariantUrlInput] = useState("");
+  const [variantUrlLoading, setVariantUrlLoading] = useState(false);
+  const [variantUrlError, setVariantUrlError] = useState("");
+  const [variantUrlAddedCount, setVariantUrlAddedCount] = useState(0);
+
+  async function handleExtractVariantsFromUrl(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const url = variantUrlInput.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      setVariantUrlError("لطفاً لینک کامل صفحه محصول را با https:// وارد کن");
+      return;
+    }
+    setVariantUrlError("");
+    setVariantUrlAddedCount(0);
+    setVariantUrlLoading(true);
+    try {
+      const found = await onExtractVariantsFromUrl(url);
+      const mapped = (found || [])
+        .filter((v) => v && v.label)
+        .map((v, i) => ({
+          id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          label: v.label,
+          hex: v.hex || "",
+          image: v.image || "",
+        }));
+      if (mapped.length === 0) {
+        setVariantUrlError("هیچ طیف رنگی روی این صفحه پیدا نشد — می‌تونی رنگ‌ها رو دستی از پایین اضافه کنی.");
+        return;
+      }
+      setForm((f) => ({ ...f, variantsList: [...(f.variantsList || []), ...mapped] }));
+      setVariantUrlAddedCount(mapped.length);
+    } catch (err) {
+      setVariantUrlError(err.message || "استخراج طیف رنگ ناموفق بود");
+    } finally {
+      setVariantUrlLoading(false);
+    }
   }
 
   function applyNoteSuggestion() {
@@ -6380,6 +6457,44 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           <label className="text-muted" style={{ fontSize: 12 }}>
             طیف رنگ / شماره‌ها (اختیاری — برای محصولاتی مثل رژلب، سایه و رژگونه که مشتری باید رنگ انتخاب کند)
           </label>
+
+          <div className="bg-panel-2 border border-hair rounded-lg p-3 flex flex-col gap-2">
+            <label className="text-gold flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700 }}>
+              <LinkIcon size={13} /> استخراج طیف رنگ از لینک محصول
+            </label>
+            <p className="text-muted" style={{ fontSize: 10.5, lineHeight: 1.8 }}>
+              لینکِ صفحه‌ی محصول (مثلاً صفحه‌ی همین رژلب توی فروشگاهِ اصلی‌اش) را بچسبان — این ابزار برخلافِ «ورود محصول با لینک»، فقط و فقط دنبالِ طیفِ رنگِ همان محصول می‌گردد (نه عکسِ اصلی، نه نام، نه توضیح یا هیچ فیلدِ دیگر) و ردیف‌های رنگ را خودکار به لیستِ پایین اضافه می‌کند.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                value={variantUrlInput}
+                onChange={(e) => setVariantUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); handleExtractVariantsFromUrl(); }
+                }}
+                placeholder="https://..."
+                className="bg-panel border border-hair rounded px-3 py-2 text-sm flex-1"
+                style={{ color: "#241E3D" }}
+                dir="ltr"
+                disabled={variantUrlLoading}
+              />
+              <button
+                type="button"
+                onClick={() => handleExtractVariantsFromUrl()}
+                disabled={variantUrlLoading || !variantUrlInput.trim()}
+                className="btn-gold rounded px-4 py-2 text-sm flex items-center justify-center gap-1.5 flex-shrink-0"
+              >
+                <Sparkles size={13} /> {variantUrlLoading ? "در حال استخراج..." : "استخراج طیف رنگ"}
+              </button>
+            </div>
+            {variantUrlError && <p style={{ fontSize: 11.5, color: "#D6336C" }}>{variantUrlError}</p>}
+            {variantUrlAddedCount > 0 && (
+              <p style={{ fontSize: 11.5, color: "#0EA5A4" }}>
+                {variantUrlAddedCount.toLocaleString("fa-IR")} رنگ پیدا شد و به لیستِ پایین اضافه شد — لطفاً قبل از ذخیره بازبینی کن.
+              </p>
+            )}
+          </div>
+
           {(form.variantsList || []).map((v) => (
             <VariantRowEditor
               key={v.id}
