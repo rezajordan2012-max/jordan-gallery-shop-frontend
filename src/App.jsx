@@ -1346,9 +1346,6 @@ function CategoryTile({ category, media, large, onClick }) {
       style={{
         height: large ? 108 : 132,
         border: `2.5px solid ${LOGO_GOLD}`,
-        // پیش از آپلود رسانه، پس‌زمینه‌ی جایگزین همیشه از همان رنگ قراردادیِ خودِ این دسته می‌آید
-        // (مثلاً ادکلن همیشه هم‌رنگ خودش است، نه آبیِ ثابتِ قدیمی) — با بقیه‌ی نشانه‌های همان دسته
-        // (دکمه‌ی خرید، حاشیه‌ی دایره، برچسب انگلیسی) کاملاً هماهنگ.
         background: m ? undefined : `${accent}22`,
       }}
     >
@@ -1487,7 +1484,6 @@ function TrueAlphaVideo({ src, style, className, renderWidth = 300 }) {
       if (cancelled) return;
       if (video.readyState >= 2 && video.videoWidth > 0) {
         if (!sizedRef.current) {
-          // منبع یک فریم دوبل است: کل ارتفاعش رو نیمه‌ی رنگ (بالا) + نیمه‌ی آلفا (پایین) تشکیل می‌ده
           tempCanvas.width = renderWidth;
           tempCanvas.height = Math.round((video.videoHeight / video.videoWidth) * renderWidth);
           outWidth = tempCanvas.width;
@@ -1508,11 +1504,10 @@ function TrueAlphaVideo({ src, style, className, renderWidth = 300 }) {
           for (let x = 0; x < outWidth; x++) {
             const ci = colorRowStart + x * 4;
             const ai = alphaRowStart + x * 4;
-            const di = ci; // خروجی هم‌اندازه‌ی نیمه‌ی رنگ است، شاخص یکسان
+            const di = ci;
             dst8[di] = src8[ci];
             dst8[di + 1] = src8[ci + 1];
             dst8[di + 2] = src8[ci + 2];
-            // میانگین سه کانال ماسک آلفا برای کاهش خطای فشرده‌سازی رنگ (کروما ساب‌سمپلینگ)
             dst8[di + 3] = (src8[ai] + src8[ai + 1] + src8[ai + 2]) / 3;
           }
         }
@@ -1624,7 +1619,6 @@ function BarcodeScannerModal({ onDetected, onClose }) {
           if (result) {
             onDetected(result.getText());
           }
-          // NotFoundException در هر فریمی که بارکد پیدا نشود عادی است؛ نادیده گرفته می‌شود.
         }
       )
       .catch((e) => {
@@ -1664,28 +1658,19 @@ function BarcodeScannerModal({ onDetected, onClose }) {
 }
 
 
-// کارت محصول در فهرست/کاتالوگ. پس‌زمینه‌ی بخش «اطلاعات محصول» (برند، نام، توضیح، قیمت) دیگر یک
-// رنگ تخت (آبی/زرد/...) بر اساس دسته نیست؛ اگر مدیر برای همان دسته (مثلاً آرایشی) در بخش «رسانه‌ی
-// باکس‌های دسته‌بندی» عکس یا ویدیو تنظیم کرده باشد، همان رسانه به‌صورت یک هاله‌ی محو و تارشده
-// (frosted glass) پشت متن‌ها قرار می‌گیرد — با یک لایه‌ی نیمه‌شفافِ روشن روی آن تا خوانایی فونت‌ها
-// و توضیحات محصول به‌هیچ‌وجه آسیب نبیند. اگر برای آن دسته هنوز رسانه‌ای تنظیم نشده باشد، همان
-// پس‌زمینه‌ی رنگیِ ساده‌ی قبلی (CATEGORY_CARD_CLASS) به‌عنوان جایگزین به‌کار می‌رود.
+// کارت محصول در فهرست/کاتالوگ.
 function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, categoryMedia }) {
   const displayImage = product.image || "";
   const hasVariants = product.variants && product.variants.length > 0;
   const discountPct = effectiveDiscountPercent(product, globalDiscountPercent);
   const finalPrice = discountedPrice(product, globalDiscountPercent);
   const catMedia = categoryMedia && categoryMedia.url ? normalizeBanner(categoryMedia) : null;
-  // رنگ باکس «افزودن به سبد خرید» دقیقاً همان رنگ اختصاصیِ همان دسته است (مثلاً زرد برای آرایشی،
-  // صورتی برای اسپری و بادی اسپلش) — همان نگاشت رنگیِ از پیش تعریف‌شده برای باکس‌های دسته‌بندی.
   const ctaColor = CATEGORY_ICON_COLOR[product.category] || "#7B5CF6";
 
   function handleCardClick() {
     onOpen(product.id);
   }
 
-  // اگر محصول طیف رنگ/شماره دارد، باید حتماً از صفحه‌ی اختصاصی محصول انتخاب شود (افزودن مستقیم
-  // بدون انتخاب رنگ ممکن نیست)؛ در غیر این صورت با یک کلیک مستقیماً به سبد خرید اضافه می‌شود.
   function handleAddClick(e) {
     e.stopPropagation();
     if (hasVariants) {
@@ -1715,8 +1700,6 @@ function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, cate
           ٪{discountPct.toLocaleString("fa-IR")} تخفیف
         </span>
       )}
-      {/* تصویر محصول — پس‌زمینه‌ی اصلی عکس خودکار حذف می‌شود (framedProductImageUrl) و محصول
-          تنها روی یک زمینه‌ی کاملاً سفید و هم‌اندازه با همه‌ی محصولات دیگر نمایش داده می‌شود. */}
       <div className="flex items-center justify-center" style={{ background: "#FFFFFF", height: 129, overflow: "hidden" }}>
         {displayImage ? (
           <img
@@ -1731,12 +1714,9 @@ function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, cate
         </div>
       </div>
 
-      {/* اطلاعات محصول — کاملاً وسط‌چین، دقیقاً به همان ترتیب درخواستی: نام محصول، سپس دایره‌ی
-          نشان‌دهنده‌ی دسته‌بندی، سپس قیمت، و در انتها باکس رنگیِ افزودن به سبد خرید. */}
       <div className="p-4 flex flex-col items-center text-center gap-2.5 flex-1" style={{ position: "relative" }}>
         <h3 className="font-display" style={{ fontSize: 15, lineHeight: 1.4, color: "#1D1733" }}>{product.name}</h3>
 
-        {/* دایره‌ی دسته‌بندی — همان تصویر/ویدیوی واضح (بدون بلور) باکس دسته‌بندی صفحه‌ی اصلی */}
         <span
           title={CATEGORY_LABEL[product.category]}
           style={{
@@ -1794,52 +1774,22 @@ function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, cate
   );
 }
 
-// نوار افقیِ خودکار برای «پرفروش‌ترین‌های» یک دسته در صفحه‌ی اصلی — حداکثر ۱۰ محصول (که از قبل
-// بر اساس بیشترین خرید مرتب شده‌اند) را به‌صورت یک ریلِ افقی نشان می‌دهد که به‌آرامی و پیوسته
-// (بدون توقف در انتها) حرکت می‌کند، در حالی که هر محصول به‌نوبت و به‌مدت ۲ ثانیه کمی بزرگ‌نمایی
-// می‌شود و به اندازه‌ی عادی برمی‌گردد. با لمس/نگه‌داشتن دست روی یک محصول، فقط حرکت خودکار همان
-// نوار متوقف می‌شود و مشتری می‌تواند با اسکرول دستی آن را به چپ و راست ببرد؛ نوارهای دیگر مستقل
-// و بدون وقفه به کار خودشان ادامه می‌دهند. طراحی خودِ کارت محصول دقیقاً همان ProductCard قبلی است.
+// نوار افقیِ خودکار برای «پرفروش‌ترین‌های» یک دسته در صفحه‌ی اصلی.
 function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalDiscountPercent, categoryMedia }) {
-  const outerRef = useRef(null); // کانتینر بیرونی — واقعاً قابل‌اسکرولِ دستی (overflow-x: auto)
-  const trackRef = useRef(null); // ردیفِ داخلی — حرکتِ خودکار (transform) روی همین لایه انجام می‌شود
+  const outerRef = useRef(null);
+  const trackRef = useRef(null);
   const animNameRef = useRef(`railmove_${category}_${reverse ? "r" : "f"}_${Math.random().toString(36).slice(2, 8)}`);
   const [paused, setPaused] = useState(false);
-  // فاصله‌ی واقعیِ «یک دور» — نه یک درصدِ CSS حدسی، بلکه عرضِ واقعیِ اندازه‌گیری‌شده از خودِ DOM.
-  // این مقدار فقط یک‌بار (بعد از تثبیتِ کاملِ چیدمان) اندازه‌گیری و قفل می‌شود؛ اندازه‌گیریِ مکرر در
-  // حینِ اجرای انیمیشن دقیقاً همان چیزی بود که باعث می‌شد نوار هر چند لحظه یک‌بار بپرد/مکث کند.
   const [loopWidth, setLoopWidth] = useState(0);
 
   const items = useMemo(() => (products || []).slice(0, 10), [products]);
-  // نکته‌ی کلیدی: حتی وقتی یک دسته فقط یک محصول دارد، باز هم باید «حلقه» تشکیل شود (همان یک
-  // محصول چندین بار پشتِ‌سرهم تکرار شود) — وگرنه دقیقاً همان‌جایی که تعداد محصولاتِ یک دسته کم
-  // است (مثلاً هنوز فقط یکی اضافه شده)، به‌جای چرخشِ پیوسته، یک کارتِ تنها با یک فضای خالیِ
-  // بزرگ کنارش می‌ماند. برای همین، آستانه‌ی «قابلِ حلقه‌شدن» از «بیشتر از ۱ محصول» به «حداقل ۱
-  // محصول» تغییر کرد.
   const canLoop = items.length >= 1;
-  // نکته‌ی مهم: اگر یک دسته محصولِ کمی داشته باشد (مثلاً ۱ تا ۳ تا)، حتی چند نسخه از آن هم ممکن
-  // است عرضش از عرضِ خودِ صفحه کمتر باشد — دقیقاً همان‌جایی که در میانه‌ی حرکت، یک فضای خالیِ سفید
-  // دیده می‌شد (چون به‌سادگی محتوای واقعیِ کافی برای پر کردنِ صفحه وجود نداشت). برای همین، فهرست
-  // را بسته به تعدادِ محصولاتِ همان دسته، چند بار تکرار می‌کنیم تا همیشه چند برابرِ عرضِ صفحه
-  // محتوای واقعی وجود داشته باشد و هیچ‌وقت جایی خالی نماند.
   const repeatCount = !canLoop ? 1 : items.length <= 2 ? 14 : items.length <= 4 ? 8 : items.length <= 8 ? 4 : 3;
   const railItems = canLoop ? Array.from({ length: repeatCount }, () => items).flat() : items;
 
-  // سرعتِ ثابت و یکسان برای همه‌ی نوارها (پیکسل بر ثانیه) — دقیقاً همان سرعتی که در دسته‌ی «ادکلن»
-  // حس خوبی داشت؛ چون سرعت اینجا بر اساسِ فاصله‌ی واقعیِ اندازه‌گیری‌شده محاسبه می‌شود (نه تعداد
-  // محصولات)، همه‌ی نوارها — صرف‌نظر از تعداد محصولاتشان — دقیقاً با همین یک سرعتِ واحد حرکت می‌کنند.
-  // نکته‌ی مهم: این عددِ پیکسلی («loopWidth») فقط برای محاسبه‌ی *سرعت* (مدت‌زمانِ یک دور) استفاده
-  // می‌شود، نه برای مقصدِ خودِ انیمیشن — مقصدِ حرکت با درصد (پایین‌تر، در کیف‌فریم) تعیین می‌شود،
-  // چون درصد نسبت به عرضِ واقعیِ خودِ عنصر محاسبه می‌شود و همیشه دقیقاً روی مرزِ بین دو کپیِ
-  // پشت‌سرهم می‌نشیند؛ یعنی حتی اگر این اندازه‌گیریِ پیکسلی هر از گاهی (مثلاً پیش از بارگذاریِ
-  // کاملِ عکس‌ها) کمی نادقیق باشد، دیگر هرگز باعثِ فاصله‌ی خالیِ سفید یا پرش در حلقه نمی‌شود —
-  // فقط سرعتِ حرکت را کمی تغییر می‌دهد، نه صحتِ حلقه را.
   const RAIL_SPEED_PX_PER_SEC = 30;
   const cycleSeconds = loopWidth > 0 ? loopWidth / RAIL_SPEED_PX_PER_SEC : 0;
 
-  // اندازه‌گیریِ عرضِ «یک دور» (یعنی عرضِ کلِ ردیف تقسیم بر تعداد تکرار)، فقط یک‌بار بعد از این‌که
-  // چیدمان کاملاً تثبیت شد (دو فریمِ پیاپی صبر می‌کنیم تا فونت/عکس‌ها اثر خودشان را روی چیدمان
-  // گذاشته باشند)، و فقط با تغییرِ واقعیِ اندازه‌ی صفحه (نه هر تکانِ جزئیِ محتوا) دوباره محاسبه می‌شود.
   useLayoutEffect(() => {
     if (!canLoop) { setLoopWidth(0); return; }
     let cancelled = false;
@@ -1899,10 +1849,6 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
         onPointerUp={handlePauseEndSoon}
         style={{ overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 6 }}
       >
-        {/* ردیفِ داخلی — حرکتِ خودکار روی همین لایه با transform انجام می‌شود (GPU-محور، صاف و بدون
-            تکان‌خوردگی)؛ کانتینرِ بیرونی دست‌نخورده می‌ماند، پس اسکرول دستیِ لمسیِ آن همیشه آماده‌ی
-            کار است. جهتِ نوارهای reverse با animationDirection معکوس می‌شود — نه با یک کیف‌فریمِ
-            جداگانه — تا هیچ‌جا اشتباهِ علامت/جهت پیش نیاید. */}
         <div
           ref={trackRef}
           className="rail-track"
@@ -1957,11 +1903,6 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
     <div style={{ position: "relative" }}>
       {catMedia && (
         <>
-          {/* هاله‌ی محو رسانه‌ی همان دسته، ثابت پشت کل صفحه‌ی محصول — برای هم‌سویی کامل با پس‌زمینه‌ی
-              کارت‌های همان دسته در فهرست. بلور قوی‌تر و نرم‌تر، اشباع/کنتراست بیشتر و گرادیانِ
-              نیمه‌شفاف (به‌جای پوشش تخت) برای ظرافت و کیفیت بصری بالاتر. خوانایی همه‌ی متن‌های صفحه
-              (مشخصات، نت‌ها، توضیحات) با هاله‌ی سفیدِ دور حروف (textShadow روی کانتینر محتوا،
-              پایین‌تر) تضمین می‌شود، نه با پوشاندن کامل رسانه. */}
           <div style={{ position: "fixed", inset: 0, zIndex: -1, overflow: "hidden" }} aria-hidden="true">
             {catMedia.type === "video" ? (
               <video
@@ -2125,10 +2066,6 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 );
               })();
 
-            // «عملکرد ادکلن» — سه نمودار خطیِ رنگی برای رایحه/ماندگاری/پخش بو، دقیقاً هم‌سبک با
-            // نمودارهای Fragrantica: یک نوار افقیِ پرشده به‌اندازه‌ی امتیاز (از ۱۰)، عدد بزرگِ
-            // امتیاز و تعداد رأی‌ها زیرش. هر ردیف فقط وقتی نمایش داده می‌شود که مدیر برایش امتیاز
-            // ثبت کرده باشد.
             const performanceBlock =
               product.category === "perfume" &&
               (() => {
@@ -2190,9 +2127,6 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
               </div>
             );
 
-            // «ترکیب بویایی» (Main Accords) — همان برچسب‌های رنگیِ خلاصه‌ای که روی صفحه‌ی مبدأ
-            // (مثلاً Fragrantica) زیرِ عنوانِ «Main accords» می‌آیند؛ اینجا هر آکورد یک دایره‌ی
-            // رنگی به همراه متنش نمایش داده می‌شود. این بخش، طبق درخواست، بالای «نت‌های رایحه» می‌آید.
             const mainAccordsBlock =
               product.category === "perfume" &&
               product.mainAccords &&
@@ -2202,9 +2136,6 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                   .map((a) => a.trim())
                   .filter(Boolean);
                 if (accords.length === 0) return null;
-                // ترتیبِ آکوردها همان ترتیبِ شدت/اهمیتِ آن‌ها روی صفحه‌ی مبدأ است — آکوردِ اول
-                // قوی‌ترین حسِ رایحه را دارد، پس دایره‌اش هم بزرگ‌تر است؛ اندازه‌ی دایره‌ها به‌ترتیب
-                // از یک حداکثر به یک حداقل کم می‌شود (وقتی فقط یک آکورد باشد، اندازه‌ی حداکثر می‌گیرد).
                 const MAX_DOT = 15;
                 const MIN_DOT = 7;
                 return (
@@ -2278,8 +2209,6 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 )
               );
 
-            // ترتیب درخواستی برای صفحات ادکلن: ترکیب بویایی ← ترکیبات رایحه ← عملکرد رایحه
-            // (نمودار) ← ویژگی‌ها و خواص ← مشخصات ← معرفی محصول.
             if (product.category === "perfume") {
               return (
                 <>
@@ -2292,7 +2221,6 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 </>
               );
             }
-            // برای بقیه‌ی دسته‌ها ترتیب قبلی دست‌نخورده باقی می‌ماند
             return (
               <>
                 {descriptionBlock}
@@ -2336,12 +2264,11 @@ function fmtOrderDateTime(iso) {
   return `${date} — ساعت ${time}`;
 }
 
-// صفحه‌ی «حساب کاربری من»: پروفایل مشتری، آمار خرید، و تاریخچه‌ی کامل سفارش‌ها — مشابه
-// داشبورد شخصی در سایت‌های معتبر فروش آنلاین آرایشی-بهداشتی و عطر.
+// صفحه‌ی «حساب کاربری من».
 function AccountPage({ user, orders, loading, error, onRetry, onLogout, onBack }) {
   const paidOrders = orders.filter((o) => o.status === "paid");
   const totalSpent = paidOrders.reduce((s, o) => s + (Number(o.amount) || 0), 0);
-  const lastOrder = orders.length > 0 ? orders[0] : null; // سرور همین حالا نزولی (جدیدترین اول) برمی‌گرداند
+  const lastOrder = orders.length > 0 ? orders[0] : null;
   const memberSince = user.createdAt ? fmtOrderDateTime(user.createdAt) : "";
 
   return (
@@ -2439,9 +2366,6 @@ function AccountPage({ user, orders, loading, error, onRetry, onLogout, onBack }
 export default function MaisonStore() {
   const [view, setView] = useState("store"); // store | admin
   const [menuOpen, setMenuOpen] = useState(false);
-  // ارتفاع واقعیِ اندازه‌گیری‌شده‌ی نوار اطلاعیه‌ی متحرک بالای صفحه — به‌جای یک عدد حدسی ثابت،
-  // هدر شناور (لوگو و آیکون‌ها) دقیقاً همین مقدار را به‌عنوان فاصله از بالای صفحه استفاده می‌کند
-  // تا همیشه بدون هیچ فاصله‌ی خالی، درست زیر نوار اطلاعیه بچسبد.
   const marqueeRef = useRef(null);
   const [marqueeHeight, setMarqueeHeight] = useState(28);
   useLayoutEffect(() => {
@@ -2452,9 +2376,6 @@ export default function MaisonStore() {
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
-  // راهنمای انیمیشنی روی دکمه‌ی منوی همبرگری («دست در حال لمس دکمه») تا زمانی که مشتری اولین بار
-  // منو را باز کند نمایش داده می‌شود؛ بعد از اولین بار باز کردن، برای همیشه (حتی در بازدیدهای بعدی
-  // همین مرورگر) پنهان می‌شود تا مزاحم استفاده‌ی عادی از سایت نشود.
   const [menuHintSeen, setMenuHintSeen] = useState(() => {
     try { return localStorage.getItem("maison_menu_hint_seen") === "1"; } catch (e) { return false; }
   });
@@ -2462,8 +2383,6 @@ export default function MaisonStore() {
     setMenuHintSeen(true);
     try { localStorage.setItem("maison_menu_hint_seen", "1"); } catch (e) {}
   }
-  // شمارنده‌ی جلوه‌ی «تپش لمس» روی دکمه‌ی منو — با هر کلیک یکی افزایش می‌یابد تا با تغییر key،
-  // انیمیشن کلمه‌ی menu + حلقه‌های موج از نو (حتی وسط اجرای قبلی) اجرا شود.
   const [menuTapFxKey, setMenuTapFxKey] = useState(0);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [menuNav, setMenuNav] = useState(null); // null | { category } | { category, subcategory }
@@ -2477,24 +2396,18 @@ export default function MaisonStore() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeSubcategory, setActiveSubcategory] = useState("all");
   const [activeType, setActiveType] = useState("all");
-  const [activeFacets, setActiveFacets] = useState({}); // { [facetKey]: optionKey } — برای گروه‌های موازی مثل ادکلن
+  const [activeFacets, setActiveFacets] = useState({});
   const [activeBrand, setActiveBrand] = useState("all");
-  const [cart, setCart] = useState({}); // id -> qty
+  const [cart, setCart] = useState({});
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState(false);
-  const [heroBanners, setHeroBanners] = useState([]); // لیست عکس‌های بنر متحرک صفحه‌ی اصلی
+  const [heroBanners, setHeroBanners] = useState([]);
   const [bannerIndex, setBannerIndex] = useState(0);
-  const [globalDiscountPercent, setGlobalDiscountPercent] = useState(0); // تخفیف همگانی روی همه‌ی محصولات (مثلاً برای بلک فرایدی)
-  // بنر اختصاصی هر صفحه‌ی دسته‌بندی/زیرشاخه (مثل بنر بالای صفحه‌ی هر دسته در سایت‌های معتبر فروش آنلاین):
-  // { [key]: { type:'image'|'video', url } } — کلید یا فقط نام دسته است (برای کل آن دسته) یا "دسته:زیرشاخه"
-  // برای بنر اختصاصی همان زیرشاخه؛ اگر زیرشاخه بنر نداشته باشد، بنر کل دسته (در صورت وجود) نمایش داده می‌شود.
+  const [globalDiscountPercent, setGlobalDiscountPercent] = useState(0);
   const [categoryBanners, setCategoryBanners] = useState({});
-  // رسانه‌ی (عکس/ویدیوی) هر باکس دسته‌بندی در صفحه‌ی اصلی — { [categoryKey]: { type:'image'|'video', url, imageFit, imagePosX, imagePosY, imageZoom } }
   const [categoryTileMedia, setCategoryTileMedia] = useState({});
 
-  // احراز هویت و پرداخت — توکن در localStorage نگه داشته می‌شود تا با رفرش صفحه
-  // یا برگشت به تب مرورگر، ورود کاربر حفظ شود و فقط با زدن دکمه‌ی خروج پاک شود.
   const [token, setToken] = useState(() => {
     try { return localStorage.getItem("maison_auth_token") || null; } catch (e) { return null; }
   });
@@ -2512,15 +2425,12 @@ export default function MaisonStore() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
-  // سفارش‌های کاربر برای «حساب کاربری من» — فقط وقتی کاربر لاگین است و وارد صفحه‌ی حساب می‌شود
-  // (یا صفحه رفرش می‌شود درحالی‌که قبلاً در آن صفحه بوده) از سرور گرفته می‌شود.
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
 
   const isAdmin = isAdminUser(user);
 
-  // هر بار که توکن یا کاربر تغییر کند، در localStorage هم به‌روزرسانی می‌شود.
   useEffect(() => {
     try {
       if (token) localStorage.setItem("maison_auth_token", token);
@@ -2543,8 +2453,6 @@ export default function MaisonStore() {
       setProducts(Array.isArray(data) ? data : []);
       setStorageError(false);
     } catch (e) {
-      // بعد از چند بار تلاش هم اتصال به سرور برقرار نشد؛ برای اینکه مشتری با محصولات fake گمراه نشود،
-      // لیست خالی نمایش داده می‌شود و پیام خطا نشان داده می‌شود.
       setProducts([]);
       setStorageError(true);
     } finally {
@@ -2568,9 +2476,7 @@ export default function MaisonStore() {
       if (data && data.categoryTileMedia && typeof data.categoryTileMedia === "object") {
         setCategoryTileMedia(data.categoryTileMedia);
       }
-    } catch (e) {
-      // بعد از چند بار تلاش هم سرور در دسترس نبود، همان طرح پیش‌فرض نمایش داده می‌شود.
-    }
+    } catch (e) {}
   };
 
   useEffect(() => {
@@ -2578,12 +2484,6 @@ export default function MaisonStore() {
     loadSettings();
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // تاریخچه‌ی ناوبری داخل سایت (برای دکمه‌ی برگشت گوشی/مرورگر)
-  // هر بار که کاربر به یک صفحه‌ی جدید می‌رود (دسته، زیرشاخه، محصول، منو، پنل مدیریت)، یک ورودی به
-  // تاریخچه‌ی مرورگر اضافه می‌شود. با زدن دکمه‌ی برگشت، به‌جای خروج از سایت، یک قدم به عقب
-  // (صفحه‌ی قبلی) برمی‌گردیم؛ فقط وقتی به صفحه‌ی اصلی برسیم، برگشت بعدی از سایت خارج می‌شود.
-  // ---------------------------------------------------------------------------
   const HOME_STATE = {
     view: "store",
     categoryPageOpen: false,
@@ -2616,24 +2516,16 @@ export default function MaisonStore() {
     setBrandMenuOpen(false);
   }
 
-  // برای رفتن به یک صفحه‌ی تازه (مثل انتخاب دسته‌بندی) که همه‌چیز از نو تنظیم می‌شود
   function pushNav(overrides) {
     const snap = { ...HOME_STATE, ...overrides };
     window.history.pushState(snap, "");
   }
 
-  // نسخه‌ی جایگزین‌کننده‌ی pushNav: به‌جای افزودن یک ورودی جدید به تاریخچه، ورودی فعلی (که معمولاً
-  // همان ورودی «منو باز است» است) را با مقصد جدید جایگزین می‌کند. استفاده از این تابع هنگام ناوبری
-  // از داخل منوی همبرگری به یک صفحه‌ی جدید (انتخاب دسته/زیرشاخه/نوع/برند و ...) ضروری است؛ در غیر
-  // این صورت ورودیِ «منو باز» به‌عنوان یک قدم اضافه در تاریخچه باقی می‌ماند و با هر بار دکمه‌ی
-  // بازگشت گوشی، منو دوباره و به‌طور ناخواسته باز می‌شود.
   function replaceNav(overrides) {
     const snap = { ...HOME_STATE, ...overrides };
     window.history.replaceState(snap, "");
   }
 
-  // برای رفتن به یک صفحه‌ی جدید که باید زمینه‌ی فعلی (دسته/زیرشاخه‌ی باز) را حفظ کند
-  // (مثل باز کردن محصول یا منو روی همون صفحه‌ای که هستیم)
   function pushNavPreserve(overrides) {
     const snap = {
       view, categoryPageOpen, activeCategory, activeSubcategory, activeType, activeBrand,
@@ -2643,8 +2535,6 @@ export default function MaisonStore() {
     window.history.pushState(snap, "");
   }
 
-  // نسخه‌ی جایگزین‌کننده‌ی pushNavPreserve — برای وقتی فقط می‌خواهیم یک پوششِ روی صفحه (مثل منو)
-  // را ببندیم بدون تغییر واقعی صفحه؛ ورودی فعلی تاریخچه به‌جای اضافه شدنِ ورودی نو، فقط به‌روزرسانی می‌شود.
   function replaceNavPreserve(overrides) {
     const snap = {
       view, categoryPageOpen, activeCategory, activeSubcategory, activeType, activeBrand,
@@ -2665,7 +2555,6 @@ export default function MaisonStore() {
 
   useEffect(() => {
     if (heroBanners.length < 2) return;
-    // بنر ویدیویی با پایان پخش خودش (onEnded) به بنر بعدی می‌رود؛ این تایمر فقط برای بنرهای عکس است.
     if (normalizeBanner(heroBanners[bannerIndex]).type === "video") return;
     const timer = setInterval(() => {
       setBannerIndex((i) => (i + 1) % heroBanners.length);
@@ -2673,7 +2562,6 @@ export default function MaisonStore() {
     return () => clearInterval(timer);
   }, [heroBanners, bannerIndex]);
 
-  // اگر کاربر خارج شد یا کاربر دیگری وارد شد، در صورتی که در پنل مدیریت یا حساب کاربری بود، به فروشگاه برگردد.
   useEffect(() => {
     if (view === "admin" && !isAdmin) {
       setView("store");
@@ -2705,7 +2593,6 @@ export default function MaisonStore() {
     }
   };
 
-  // هر بار که کاربر وارد صفحه‌ی «حساب کاربری من» می‌شود (یا مستقیم با رفرش صفحه به آن می‌رسد)، سفارش‌ها گرفته می‌شوند.
   useEffect(() => {
     if (view === "account" && user && token) {
       loadOrders();
@@ -2747,9 +2634,6 @@ export default function MaisonStore() {
     await loadProducts();
   }
 
-  // پارامتر removeBackground فقط برای عکس اصلی محصول و طیف‌های رنگ true فرستاده می‌شود (پایین‌تر
-  // در فرم محصول و VariantRowEditor) — نه برای بنرها یا رسانه‌ی باکس‌های دسته‌بندی، چون پس‌زمینه‌ی
-  // آن‌ها خودش بخشی از طراحی است و نباید حذف شود.
   async function uploadImage(imageBase64, removeBackground) {
     const res = await fetch(`${API_BASE_URL}/api/upload`, {
       method: "POST",
@@ -2761,8 +2645,6 @@ export default function MaisonStore() {
     return data.url;
   }
 
-  // ویژگی «تشخیص هوشمند از روی عکس»: عکس را به سرور می‌فرستد، سرور با هوش مصنوعی بینایی تحلیلش می‌کند
-  // و یک شیء با فیلدهای قابل‌تشخیص محصول (نام، برند، نت‌ها و ...) برمی‌گرداند.
   async function extractProductInfo(imageBase64) {
     const res = await fetch(`${API_BASE_URL}/api/ai/extract-product`, {
       method: "POST",
@@ -2774,7 +2656,6 @@ export default function MaisonStore() {
     return data;
   }
 
-  // قابلیت جدید Gemini: تحلیل مستقیم لینک صفحه محصول — فقط نتیجه را به فرم مدیریت برمی‌گرداند.
   async function importProductFromUrl(url) {
     const res = await fetch(`${API_BASE_URL}/api/ai/import-product-url`, {
       method: "POST",
@@ -2786,7 +2667,6 @@ export default function MaisonStore() {
     return data;
   }
 
-  // قابلیت جدید Gemini Vision + جستجوی وب: تحلیل عکس ادکلن و یافتن مشخصات واقعی آن.
   async function analyzePerfumeImageWithGemini(imageBase64) {
     const res = await fetch(`${API_BASE_URL}/api/ai/analyze-perfume-image`, {
       method: "POST",
@@ -2798,7 +2678,6 @@ export default function MaisonStore() {
     return data;
   }
 
-  // جستجوی ادکلن بر اساس نام (fraganty.ai) — مرحله‌ی اول: لیست کوتاهی از محصولات محتمل
   async function searchPerfumeByName(query) {
     const res = await fetch(`${API_BASE_URL}/api/ai/search-perfume?q=${encodeURIComponent(query)}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -2808,7 +2687,6 @@ export default function MaisonStore() {
     return data.data || [];
   }
 
-  // مرحله‌ی دوم: بعد از انتخاب مدیر از لیست، جزئیات کامل همان محصول
   async function getPerfumeDetails(slug) {
     const res = await fetch(`${API_BASE_URL}/api/ai/perfume-details?slug=${encodeURIComponent(slug)}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -2818,9 +2696,6 @@ export default function MaisonStore() {
     return data;
   }
 
-  // بعد از پر شدن نت‌ها/برند از fraganty.ai، توضیح انگلیسی (در صورت وجود) و داده‌های آکورد/فصل/زمان
-  // را می‌گیرد و با هوش مصنوعی یک توضیح کوتاه و چند ویژگی کلیدی، کاملاً به فارسی، تولید می‌کند —
-  // این درخواست جدا از جستجوی fraganty.ai است و از سهمیه‌ی آن مصرف نمی‌کند.
   async function translatePerfumeText(payload) {
     const res = await fetch(`${API_BASE_URL}/api/ai/translate-perfume-text`, {
       method: "POST",
@@ -2832,7 +2707,6 @@ export default function MaisonStore() {
     return data;
   }
 
-  // اسکن بارکد: اول دیتابیس خودمان، بعد best-effort از UPCitemdb رایگان
   async function lookupBarcode(code) {
     const res = await fetch(`${API_BASE_URL}/api/ai/barcode-lookup?code=${encodeURIComponent(code)}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -2842,9 +2716,6 @@ export default function MaisonStore() {
     return data;
   }
 
-  // جستجوی عکسِ محصول (یا یک رنگِ خاص) در اینترنت — چند نامزدِ عکس (از قبل روی Cloudinary
-  // خودمان آپلودشده) برمی‌گرداند تا مدیر خودش با یک کلیک بهترین را برای «تصویر اصلی محصول» یا
-  // هرکدام از «طیف‌های رنگ» انتخاب کند.
   async function searchProductImage(query) {
     const res = await fetch(`${API_BASE_URL}/api/ai/search-product-image`, {
       method: "POST",
@@ -2856,9 +2727,6 @@ export default function MaisonStore() {
     return data.results || [];
   }
 
-  // استخراجِ «فقط طیف رنگ» از لینکِ یک صفحه‌ی محصول — برخلافِ «ورود محصول با لینک» که همه‌ی
-  // فیلدها را پر می‌کند، این یکی کاملاً روی پیدا کردنِ رنگ‌های محصول متمرکز است و بقیه‌ی
-  // فیلدهای فرم (نام، عکسِ اصلی، توضیح و غیره) را دست‌نخورده می‌گذارد.
   async function extractVariantsFromUrl(url) {
     const res = await fetch(`${API_BASE_URL}/api/ai/extract-variants-from-url`, {
       method: "POST",
@@ -2917,7 +2785,7 @@ export default function MaisonStore() {
 
   function addToCart(product, variantId) {
     if (product.variants && product.variants.length > 0 && !variantId) {
-      return; // باید رنگ/شماره انتخاب شود
+      return;
     }
     const key = variantId ? `${product.id}::${variantId}` : product.id;
     setCart((c) => ({ ...c, [key]: (c[key] || 0) + 1 }));
@@ -2941,8 +2809,6 @@ export default function MaisonStore() {
     });
   }
 
-  // درخواست ورود به پنل مدیریت: اگر کاربر لاگین نیست، فرم ورود باز می‌شود؛
-  // اگر لاگین است ولی مدیر نیست، وارد پنل نمی‌شود.
   function requestAdminView() {
     if (!user) {
       setAuthMode("login");
@@ -2954,8 +2820,6 @@ export default function MaisonStore() {
     }
   }
 
-  // درخواست ورود به «حساب کاربری من»: اگر کاربر هنوز عضو نشده، فرم ثبت‌نام/ورود (رایگان) باز می‌شود؛
-  // اگر لاگین است، مستقیم به صفحه‌ی حساب کاربری‌اش می‌رود.
   function requestAccountView() {
     if (!user) {
       setAuthMode("register");
@@ -3152,10 +3016,6 @@ export default function MaisonStore() {
     setActiveFacets({});
   }
 
-  // multi=true (پیش‌فرض): چندانتخابی — مثل دسته بویایی/طبع/رایحه که می‌توانند هم‌زمان چند مقدار داشته باشند.
-  // multi=false: تک‌انتخابی — مثل «نوع» ادکلن (اکستریت/پرفیوم/ادوپرفیوم و ...) که یک محصول فقط یکی از آن‌هاست.
-  // در هر دو حالت، کلیک دوباره روی گزینه‌ی از قبل انتخاب‌شده، همان گزینه را از انتخاب خارج می‌کند
-  // (برای اصلاح انتخاب اشتباه کاربر).
   function toggleFacet(key, value, multi = true) {
     setActiveFacets((prev) => {
       const current = prev[key] || [];
@@ -3178,7 +3038,6 @@ export default function MaisonStore() {
     setMenuNav(null);
   }
 
-  // زدن روی یک دسته‌ی اصلی توی منوی کشویی: اگر زیرشاخه دارد وارد آن می‌شویم، وگرنه مستقیم فیلتر و بسته می‌شود.
   function onMenuCategoryClick(c) {
     if (c === "all" || !CATEGORIES[c]?.subcategories) {
       selectCategory(c);
@@ -3189,9 +3048,6 @@ export default function MaisonStore() {
     setMenuNav({ category: c });
   }
 
-  // زدن روی یک زیرشاخه توی منو: اگر خودش انواع دارد (مثل صورت/چشم/لب/ابزار یا گروه‌های فیلتر ادکلن)
-  // وارد آن می‌شویم، وگرنه فیلتر و بسته می‌شود. همه‌ی زیرشاخه‌های دارای types (شامل ادکلن) یکسان
-  // رفتار می‌کنند: وارد صفحه‌ی سوم منو می‌شویم تا کاربر گروه‌های فیلتر را همان‌جا انتخاب کند.
   function onMenuSubcategoryClick(category, subKey) {
     if (subKey === "all") {
       selectCategory(category);
@@ -3201,9 +3057,6 @@ export default function MaisonStore() {
     }
     const types = subcategoryTypes(category, subKey);
     if (types) {
-      // با ورود به صفحه‌ی فیلترها (چه ادکلن چه هر زیرشاخه‌ی دیگر با انواع)، بلافاصله دسته/زیرشاخه
-      // را روی حالت واقعی سایت تنظیم می‌کنیم (و فیلترهای قبلی پاک می‌شوند) تا از همین‌جا فیلتر کردن
-      // زنده باشد؛ منو باز می‌ماند تا کاربر بتواند چند فیلتر را پشت‌سرهم انتخاب کند.
       selectCategory(category);
       selectSubcategory(subKey);
       setMenuNav({ category, subcategory: subKey });
@@ -3215,15 +3068,7 @@ export default function MaisonStore() {
     replaceNav({ activeCategory: category, activeSubcategory: subKey, categoryPageOpen: true });
   }
 
-  // زدن روی یک نوع دقیق محصول (سطح سوم): 
-  // برای ادکلن، ۴ گروه فیلتر (دسته بویایی/نوع/طبع/رایحه) اجزای مرتبط و ترکیب‌پذیر یک محصول‌اند —
-  // مثلاً یک ادکلن می‌تواند هم‌زمان از دسته‌ی بویایی «شیرین» و از رایحه «گلی» باشد. به همین دلیل
-  // با هر کلیک فقط فیلتر toggle می‌شود و منو بسته نمی‌شود، تا کاربر بتواند از چند گروه هم‌زمان
-  // انتخاب کند؛ نتیجه هم بلافاصله (چون activeFacets state زنده است) قابل مشاهده است.
-  // برای بقیه‌ی شاخه‌ها (تک‌انتخابی) با هر بار انتخاب، صفحه‌ی قبلی جایگزین و منو بسته می‌شود.
   function onMenuTypeClick(category, subKey, typeKey, groupKey, groupMulti) {
-    // ادکلن: فقط toggle می‌کنیم و منو باز می‌ماند — دسته/زیرشاخه از قبل (هنگام ورود به این
-    // زیرمنو در onMenuSubcategoryClick) تنظیم شده، پس نیازی به بازنشانی یا بستن منو نیست.
     if (category === "perfume" && groupKey && typeKey !== "all") {
       toggleFacet(groupKey, typeKey, groupMulti !== false);
       return;
@@ -3246,23 +3091,15 @@ export default function MaisonStore() {
     ? CATEGORIES[activeCategory].subcategories
     : null;
 
-  // آیا در صفحه‌ی اصلی روی بنر هستیم؟ (برای شناور بودن دکمه‌ها روی بنر، بدون فاصله‌ی هدر)
   const isHomeHero = view === "store" && !categoryPageOpen && !openProductId;
-  // بنر صفحه‌ی دسته‌بندی فعلی (در صورت وجود) — یک‌بار همین‌جا محاسبه می‌شود تا هم برای تصمیم
-  // «آیا هدر باید مثل صفحه‌ی اصلی شفاف/شناور باشد یا نه» استفاده شود، هم پایین‌تر داخل JSX (بدون
-  // محاسبه‌ی دوباره‌ی همان چیز).
   const currentCategoryBanner =
     categoryPageOpen && !searchTerm ? resolveCategoryBanner(categoryBanners, activeCategory, activeSubcategory, activeType) : null;
-  // هر صفحه‌ای که بالای خودش یک بنر تمام‌عرض (عکس/ویدیوی صفحه‌ی اصلی یا بنر دسته‌بندی) دارد، هدر
-  // باید دقیقاً مثل صفحه‌ی اصلی روی همان بنر شناور و شفاف بماند — نه با یک نوار سفید زیرش که باعث
-  // می‌شد پشت هدر یک پس‌زمینه‌ی سفیدِ نامرتبط دیده شود.
   const hasTopBanner = (isHomeHero && heroBanners.length > 0) || !!currentCategoryBanner;
 
   return (
     <div dir="rtl" lang="fa" className="maison-root min-h-screen">
       <style>{FONTS}</style>
 
-      {/* Announcement marquee */}
       <div ref={marqueeRef} className="sticky top-0 z-40 overflow-hidden" style={{ background: "linear-gradient(90deg, #FF3E8E, #7B5CF6, #00C2CB, #FF3E8E)" }}>
         <div className="marquee-track py-1.5" style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700 }}>
           {Array.from({ length: 2 }).map((_, i) => (
@@ -3276,14 +3113,11 @@ export default function MaisonStore() {
         </div>
       </div>
 
-      {/* نوار شناور دکمه‌ها و لوگو — لوگو سمت چپ صفحه، خوشه‌ی ۴ دکمه (سبد خرید، حساب کاربری،
-          جستجو، منو) سمت راست صفحه. */}
       <div className="fixed z-30 w-full" style={{ top: marqueeHeight, pointerEvents: "none" }}>
         <div
           className="flex items-center justify-between px-4 sm:px-8 lg:px-12 max-w-7xl mx-auto"
           style={{ height: "12mm" }}
         >
-          {/* لوگوی ویدیویی — سمت چپ صفحه */}
           <div style={{ pointerEvents: "none", flexShrink: 0, order: 2 }}>
             <TrueAlphaVideo
               src="/jordan-logo-alpha.mp4"
@@ -3292,7 +3126,6 @@ export default function MaisonStore() {
             />
           </div>
 
-          {/* خوشه‌ی آیکون‌ها — سبد خرید، حساب کاربری، جستجو، منو — همه کنار هم سمت راست صفحه */}
           <div className="flex items-center gap-3" style={{ pointerEvents: "auto", flexShrink: 0, order: 1 }}>
             <button
               onClick={() => setCartOpen(true)}
@@ -3313,8 +3146,6 @@ export default function MaisonStore() {
               )}
             </button>
 
-            {/* دکمه‌ی «حساب کاربری من» — اگر عضو نباشد با کلیک، فرم ثبت‌نام رایگان باز می‌شود؛
-                اگر عضو باشد مستقیم به داشبورد شخصی‌اش می‌رود. */}
             <button
               onClick={requestAccountView}
               aria-label="حساب کاربری من"
@@ -3384,7 +3215,6 @@ export default function MaisonStore() {
                   >
                     👆
                   </span>
-                  {/* برچسب «menu» — با همان انیمیشن انگشت، هم‌زمان و هم‌جهت با آن جابه‌جا می‌شود */}
                   <span
                     className="menu-hint-finger"
                     dir="ltr"
@@ -3400,9 +3230,6 @@ export default function MaisonStore() {
                   </span>
                 </>
               )}
-              {/* جلوه‌ی «تپش لمس» — هر بار که روی دکمه‌ی منو کلیک می‌شود (نه فقط اولین بار)، کلمه‌ی
-                  menu بزرگ و پررنگ ظاهر می‌شود و در دل چند حلقه‌ی موج رنگی محو می‌شود. با تغییر
-                  key در هر کلیک، انیمیشن از نو اجرا می‌شود حتی اگر کلیک قبلی هنوز تمام نشده باشد. */}
               {menuTapFxKey > 0 && (
                 <span key={menuTapFxKey} style={{ position: "absolute", top: "50%", left: "50%", pointerEvents: "none", zIndex: 6 }}>
                   <span className="menu-tap-ripple" style={{ position: "absolute", top: 0, left: 0, width: 26, height: 26, borderRadius: "50%", border: "2.5px solid #FF3E8E" }} />
@@ -3430,7 +3257,6 @@ export default function MaisonStore() {
 
         {menuOpen && (
           <>
-            {/* پرده‌ی نیمه‌شفاف روی قسمت دیگر صفحه — لمس آن هم منو را می‌بندد */}
             <div
               className="sm:hidden"
               onClick={() => window.history.back()}
@@ -3444,9 +3270,6 @@ export default function MaisonStore() {
                 background: "rgba(36,30,61,0.45)",
               }}
             />
-            {/* خودِ کشوی منو — چسبیده به دیواره‌ی راست صفحه (متناسب با راست‌چین بودن سایت)،
-                فاصله‌ی خالی سمت چپ باقی می‌ماند. زدایش z-index بالاتر از هدر/نوار اعلان تضمین می‌کند
-                که ردیف بالای منو (عنوان «منو» + دکمه‌ی بستن ✕) همیشه دیده شود و پشت هدر پنهان نشود. */}
             <div
               className="sm:hidden flex flex-col gap-1 text-sm text-muted menu-drawer"
               style={{
@@ -3627,7 +3450,6 @@ export default function MaisonStore() {
           </>
         )}
 
-      {/* پنل جستجوی محصول */}
       {searchOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4" style={{ background: "rgba(36,30,61,0.45)", paddingTop: "15vh" }} onClick={() => setSearchOpen(false)}>
           <div className="bg-panel-2 rounded-lg p-5 w-full border border-hair" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
@@ -3651,7 +3473,6 @@ export default function MaisonStore() {
         </div>
       )}
 
-      {/* پنل انتخاب بر اساس برند — از منوی کشویی باز می‌شود */}
       {brandMenuOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(36,30,61,0.45)" }} onClick={() => setBrandMenuOpen(false)}>
           <div className="bg-panel-2 rounded-lg p-6 w-full border border-hair" style={{ maxWidth: 380, maxHeight: "70vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
@@ -3869,8 +3690,6 @@ export default function MaisonStore() {
 
           {categoryPageOpen && (() => {
             const categoryBanner = currentCategoryBanner;
-            // مسیر (breadcrumb) دسته/زیرشاخه/نوع — کوچک و کم‌رنگ، دقیقاً مثل مسیر ریز زیر بنر در
-            // سایت‌های معتبر فروش آنلاین؛ همیشه در ناحیه‌ی ساده‌ی زیر بنر (نه روی خودِ بنر) می‌آید تا توجه را از محصولات نگیرد.
             const breadcrumbContent = (
               <>
                 <span>{CATEGORY_LABEL[activeCategory]}</span>
@@ -3888,7 +3707,6 @@ export default function MaisonStore() {
                 )}
               </>
             );
-            // عنوان بزرگِ روی بنر همیشه برچسبِ خودِ مقصد نهایی است (نوع اگر انتخاب شده، وگرنه زیرشاخه، وگرنه دسته)
             const destinationLabel =
               (activeCategory !== "perfume" && activeType !== "all" && typeLabel(activeCategory, activeSubcategory, activeType)) ||
               subcategoryLabel(activeCategory, activeSubcategory) ||
@@ -4005,12 +3823,6 @@ export default function MaisonStore() {
                 ))}
               </div>
             ) : !categoryPageOpen ? (
-              // صفحه‌ی اصلی: به‌جای یک شبکه‌ی تخت، ۵ نوار افقیِ خودکار — یکی برای هر دسته‌بندی —
-              // هرکدام حداکثر ۲۰ محصولِ پرفروش همان دسته را نشان می‌دهد. جهت حرکت خودکار هر نوار
-              // با نوار قبلی/بعدی برعکس است (رفتار «reverse» بر اساس شماره‌ی ردیف). در صورت
-              // تساوی تعداد خرید (مثلاً محصولات تازه‌اضافه‌شده که هنوز صفر فروش دارند)، محصول
-              // جدیدتر (id بزرگ‌تر) زودتر می‌آید — تا محصولی که همین الان اضافه کردی، همیشه در
-              // نوار دیده شود، نه اینکه در انتهای صف محصولاتِ هم‌سطح گم شود.
               <div>
                 {HOME_CATEGORY_ORDER.map((cat, idx) => (
                   <ProductRail
@@ -4055,8 +3867,6 @@ export default function MaisonStore() {
         </>
       )}
 
-      {/* دکمه‌ی ورود به پنل مدیریت — فقط برای مدیر سایت قابل مشاهده است.
-          اگر کاربر لاگین نیست، اول فرم ورود باز می‌شود. */}
       <button
         onClick={requestAdminView}
         title="ورود مدیر"
@@ -4302,11 +4112,6 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenIm
 }
 
 // --- «روش کاملاً رایگان» برای تشخیص از روی عکس: OCR داخل خودِ مرورگر، بدون هوش مصنوعی ---
-// از کتابخانه‌ی متن‌باز و رایگانِ Tesseract.js استفاده می‌کند که کاملاً در مرورگرِ خودِ کاربر اجرا
-// می‌شود — نه روی سرور ما، نه روی هیچ سرویس خارجیِ نیازمند کلید API یا کارت بانکی. فقط فایل‌های
-// زبانِ لازم (فارسی + انگلیسی) یک‌بار از یک CDN عمومی و رایگان (jsDelivr) دانلود می‌شوند. چون این
-// روش فقط متنِ روی تصویر را می‌خواند — نه معنایش را می‌فهمد، نه دسته‌بندی را تشخیص می‌دهد و نه
-// ترجمه می‌کند — دقتش قطعاً از روش هوش مصنوعیِ بالا کمتر است، اما همیشه و برای همیشه رایگان می‌ماند.
 let tesseractModulePromise = null;
 function loadTesseractModule() {
   if (!tesseractModulePromise) {
@@ -4327,9 +4132,6 @@ async function runFreeOcrExtraction(file) {
     const { data } = await worker.recognize(file);
     const rawText = (data.text || "").trim();
 
-    // برای حدسِ اسمِ محصول، خط‌های متنی را با ارتفاعِ کادرشان (bbox) جمع می‌کنیم — بلندترین خط
-    // (یعنی درشت‌ترین فونت روی تصویر) معمولاً همان اسمِ محصول است، دقیقاً مثل چشمِ آدم که اول به
-    // بزرگ‌ترین نوشته‌ی صفحه می‌افتد.
     const lines = [];
     (data.blocks || []).forEach((block) => {
       (block.paragraphs || []).forEach((para) => {
@@ -4361,7 +4163,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [heroSaving, setHeroSaving] = useState(false);
   const [heroError, setHeroError] = useState("");
   const [heroSaved, setHeroSaved] = useState(false);
-  // بنر اختصاصی هر صفحه‌ی دسته‌بندی — نسخه‌ی محلی قابل‌ویرایش از categoryBanners، تا وقتی «ذخیره» زده شود ارسال نمی‌شود.
   const [catBannerDrafts, setCatBannerDrafts] = useState(categoryBanners || {});
   const [catBannerCategory, setCatBannerCategory] = useState(CATEGORY_ORDER[0]);
   const [catBannerSubcategory, setCatBannerSubcategory] = useState("");
@@ -4370,7 +4171,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [catBannerSaving, setCatBannerSaving] = useState(false);
   const [catBannerError, setCatBannerError] = useState("");
   const [catBannerSaved, setCatBannerSaved] = useState(false);
-  // رسانه‌ی هر باکس دسته‌بندی صفحه‌ی اصلی — نسخه‌ی محلی قابل‌ویرایش از categoryTileMedia
   const [catTileDrafts, setCatTileDrafts] = useState(categoryTileMedia || {});
   const [catTileCategory, setCatTileCategory] = useState(CATEGORY_ORDER[0]);
   const [catTileUploading, setCatTileUploading] = useState(false);
@@ -4386,17 +4186,11 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [uploading, setUploading] = useState(false);
-  // نتیجه‌ی آخرین «پیشنهاد خودکار» از روی نت‌ها — برای نمایش خلاصه‌ی اینکه چند نت شناسایی شد
   const [noteSuggestResult, setNoteSuggestResult] = useState(null);
 
-  // ویژگی «تشخیص هوشمند از عکسِ صفحه‌ی محصول» — کاملاً رایگان (از همان کلید هوش مصنوعی که برای
-  // بقیه‌ی ابزارهای پنل استفاده می‌شود، بدون نیاز به هیچ سرویس پولی یا کارت بانکی). مدیر عکسِ
-  // صفحه‌ی یک محصول (از هر فروشگاه اینترنتی، از هر دسته‌ای — عطر، آرایشی، بهداشتی، اسپری، لوازم
-  // برقی — و به هر زبانی) را آپلود می‌کند، و فرم پایین خودکار پر می‌شود؛ همیشه قابل ویرایش دستی.
   const [extractLoading, setExtractLoading] = useState(false);
   const [extractError, setExtractError] = useState("");
-  const [extractResult, setExtractResult] = useState(null); // { name, brand, priceApplied, referencePriceNote, categoryApplied, subcategoryHint, variantsApplied }
-  // ابزارهای جدید Gemini — نتیجه فقط فرم را پر می‌کند و مستقیماً در دیتابیس ذخیره نمی‌شود.
+  const [extractResult, setExtractResult] = useState(null);
   const [geminiUrl, setGeminiUrl] = useState("");
   const [geminiUrlLoading, setGeminiUrlLoading] = useState(false);
   const [geminiUrlError, setGeminiUrlError] = useState("");
@@ -4406,7 +4200,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [geminiImageResult, setGeminiImageResult] = useState(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrError, setOcrError] = useState("");
-  const [ocrResult, setOcrResult] = useState(null); // { nameApplied, priceApplied, descriptionApplied, rawText }
+  const [ocrResult, setOcrResult] = useState(null);
 
   async function handleExtractFromScreenshot(e) {
     const file = e.target.files && e.target.files[0];
@@ -4454,8 +4248,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           countryOfOrigin: f.countryOfOrigin || info.countryOfOrigin || f.countryOfOrigin,
           yearMade: f.yearMade || info.yearMade || f.yearMade,
         };
-        // قیمت فقط وقتی خودکار پر می‌شود که هوش مصنوعی مطمئن بوده قیمت به تومان/ریال است — قیمتِ
-        // ارزهای خارجی هرگز خودکار تبدیل نمی‌شود (برای همین priceToman در آن حالت خالی برمی‌گردد).
         if (!f.price && info.priceToman) {
           const digitsOnly = String(info.priceToman).replace(/[^\d]/g, "");
           if (digitsOnly) next.price = digitsOnly;
@@ -4624,11 +4416,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     }
   }
 
-  // «روش کاملاً رایگان»: OCR داخل خودِ مرورگر — بدون هوش مصنوعی، بدون کلید API، بدون کارت بانکی و
-  // بدون هیچ هزینه‌ای، حالا یا در آینده. فقط متنِ روی تصویر را می‌خواند (نه معنایش را می‌فهمد و نه
-  // ترجمه می‌کند)، پس دقتش از روش هوش مصنوعیِ بالا کمتر است — ولی همیشه کار می‌کند. اسم محصول را
-  // با حدسِ «بلندترین خط متنیِ غیرعددی» و قیمت را با جست‌وجوی الگوی «عدد + تومان/ریال» تشخیص
-  // می‌دهد، و کل متنِ خامِ خوانده‌شده را هم در توضیحات می‌گذارد تا مدیر بتواند سریع کپی‌پیست کند.
   async function handleFreeOcrExtraction(e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -4664,10 +4451,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     }
   }
 
-  // اسکن بارکد — کار می‌کند در همه‌ی دسته‌ها، نه فقط ادکلن.
   const [scannerOpen, setScannerOpen] = useState(false);
   const [barcodeLookupLoading, setBarcodeLookupLoading] = useState(false);
-  const [barcodeLookupMessage, setBarcodeLookupMessage] = useState(null); // { type: 'own'|'external'|'none'|'error', text }
+  const [barcodeLookupMessage, setBarcodeLookupMessage] = useState(null);
 
   async function handleBarcodeDetected(code) {
     setScannerOpen(false);
@@ -4683,8 +4469,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         });
       } else if (result.external && result.external.found) {
         const ext = result.external;
-        // پیشنهاد خودکار حس رایحه/طبع/گروه بویایی فقط وقتی معنا دارد که نت‌ها موجود باشند —
-        // نت‌ها فقط از لایه‌ی هوش مصنوعی (در صورت فعال بودن) می‌آیند، نه از پایگاه‌ی رایگان.
         const hasNotes = ext.topNotes || ext.middleNotes || ext.baseNotes || ext.mainAccords;
         const suggestion = hasNotes ? inferPerfumeFacetsFromNotes(ext.topNotes, ext.middleNotes, ext.baseNotes, ext.mainAccords) : null;
         const concKey = ext.concentration ? mapConcentrationLabelToKey(ext.concentration) : null;
@@ -4742,9 +4526,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     }
   }
 
-  // جستجوی عکس در اینترنت — یک پنجره‌ی مشترک برای هم «تصویر اصلی محصول» هم هرکدام از «طیف‌های
-  // رنگ». imageSearchTarget می‌تواند "main" (برای تصویر اصلی) یا id یکی از variantsList باشد؛
-  // با انتخابِ یک نتیجه، فقط همان فیلدِ مقصد پر می‌شود.
   const [imageSearchTarget, setImageSearchTarget] = useState(null);
   const [imageSearchQuery, setImageSearchQuery] = useState("");
   const [imageSearchLoading, setImageSearchLoading] = useState(false);
@@ -4790,9 +4571,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     closeImageSearch();
   }
 
-  // استخراجِ «فقط طیف رنگ» از لینکِ یک صفحه‌ی محصول — کاملاً مستقل از «ورود محصول با لینک»؛ این
-  // ابزار فقط ردیف‌های طیفِ رنگ را (زیر همین بخش از فرم) پر می‌کند و کاری به عکسِ اصلی، نام،
-  // توضیح یا هیچ فیلدِ دیگری ندارد.
   const [variantUrlInput, setVariantUrlInput] = useState("");
   const [variantUrlLoading, setVariantUrlLoading] = useState(false);
   const [variantUrlError, setVariantUrlError] = useState("");
@@ -4866,7 +4644,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
 
   async function handleImageFile(e) {
     const file = e.target.files && e.target.files[0];
-    e.target.value = ""; // برای اینکه بشود دوباره همان فایل را انتخاب کرد
+    e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       setFormError("فایل انتخاب‌شده تصویر نیست");
@@ -4935,9 +4713,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     setHeroSaved(false);
   }
 
-  // تنظیمات دستی نمایش یک بنر مشخص از اسلایدر صفحه‌ی اصلی (حالت جاگیری/بزرگ‌نمایی/موقعیت) —
-  // پیش‌فرض هر بنر تازه «پر کردن قاب» است (دقیقاً مثل رفتار قبلی)، پس تا وقتی این تنظیمات دستی
-  // لمس نشوند، هر عکس یا ویدیوی جدید خودکار و بدون کشیدگی داخل قاب بنر جا می‌گیرد.
   function updateHeroBannerField(index, field, value) {
     setBannerDrafts((prev) => {
       const next = [...prev];
@@ -4962,15 +4737,11 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     }
   }
 
-  // نوع (مقصد نهایی) فقط وقتی معنا دارد که زیرشاخه انتخاب‌شده انواع داشته باشد و دسته ادکلن نباشد
-  // (ادکلن فیلترهای ترکیب‌پذیر چندگانه دارد، نه یک «نوع» ثابت؛ پس مقصد نهایی‌اش خودِ زیرشاخه است)
   const catBannerTypesRaw = catBannerCategory !== "perfume" && catBannerSubcategory
     ? subcategoryTypes(catBannerCategory, catBannerSubcategory)
     : null;
   const catBannerTypeOptions = catBannerTypesRaw ? flattenTypes(catBannerTypesRaw) : null;
 
-  // کلید تنظیم فعلی در پنل — از خاص به عام: "دسته:زیرشاخه:نوع" (مقصد نهایی، مثل کانسیلر)،
-  // یا "دسته:زیرشاخه" (کل زیرشاخه، مثل «همه‌ی صورت»)، یا فقط نام دسته (کل دسته)
   const catBannerKey = catBannerType
     ? `${catBannerCategory}:${catBannerSubcategory}:${catBannerType}`
     : catBannerSubcategory
@@ -5020,8 +4791,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     setCatBannerSaved(false);
   }
 
-  // تنظیمات دستی نمایش بنر فعلی (حالت جاگیری/بزرگ‌نمایی/موقعیت) را روی همان کلید انتخاب‌شده
-  // (catBannerKey) ذخیره می‌کند — دقیقاً همان مکانیزمی که برای عکس اصلی محصول استفاده می‌شود.
   function updateCatBannerField(field, value) {
     setCatBannerDrafts((prev) => {
       const existingRaw = prev[catBannerKey];
@@ -5046,7 +4815,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     }
   }
 
-  // مقدار فعلی (نرمال‌شده) رسانه‌ی دسته‌ی انتخاب‌شده در این بخش پنل
   const catTileCurrent = catTileDrafts[catTileCategory] ? normalizeBanner(catTileDrafts[catTileCategory]) : null;
 
   async function handleCatTileFile(e) {
@@ -5070,7 +4838,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         reader.readAsDataURL(file);
       });
       const url = await onUploadImage(base64);
-      // پیش‌فرض هر رسانه‌ی تازه: پر کردن کامل قاب (crop هوشمند و خودکار) بدون نیاز به تنظیم دستی
       setCatTileDrafts((prev) => ({
         ...prev,
         [catTileCategory]: { type: isVideo ? "video" : "image", url, imageFit: "cover", imagePosX: 50, imagePosY: 50, imageZoom: 1 },
@@ -5223,7 +4990,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         </p>
       )}
 
-      {/* تخفیف همگانی روی همه‌ی محصولات — برای مناسبت‌هایی مثل بلک فرایدی */}
       <div className="bg-panel border border-hair rounded-lg p-4 mb-8">
         <h3 className="font-display mb-1" style={{ fontSize: 15 }}>تخفیف همگانی (مثلاً بلک فرایدی)</h3>
         <p className="text-muted mb-3" style={{ fontSize: 11 }}>
@@ -5374,7 +5140,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         )}
       </div>
 
-      {/* بنر اختصاصی هر صفحه‌ی دسته‌بندی — مثل بنر بالای صفحه‌ی هر دسته در سایت‌های معتبر فروش آنلاین */}
+      {/* بنر اختصاصی هر صفحه‌ی دسته‌بندی */}
       <div className="bg-panel border border-hair rounded-lg p-4 mb-8">
         <h3 className="font-display mb-1" style={{ fontSize: 15 }}>بنر صفحات دسته‌بندی</h3>
         <p className="text-muted mb-3" style={{ fontSize: 11 }}>
@@ -5497,7 +5263,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               )}
             </div>
 
-            {/* تنظیمات دستی نمایش بنر — همان مکانیزم تنظیمات دستی عکس اصلی محصول: حالت جاگیری، موقعیت و بزرگ‌نمایی */}
             <div className="bg-panel-2 border border-hair rounded-lg p-3 mt-2 flex flex-col gap-3" style={{ maxWidth: 380 }}>
               <div className="flex items-center justify-between">
                 <span className="text-muted" style={{ fontSize: 11 }}>تنظیمات دستی بنر</span>
@@ -5696,7 +5461,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               )}
             </div>
 
-            {/* تنظیمات دستی — فقط برای موارد نادری که crop خودکار کافی نباشد */}
             <div className="bg-panel-2 border border-hair rounded-lg p-3 mt-2 flex flex-col gap-3" style={{ maxWidth: 380 }}>
               <div className="flex items-center justify-between">
                 <span className="text-muted" style={{ fontSize: 11 }}>تنظیمات دستی رسانه</span>
@@ -5772,7 +5536,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         {catTileError && <p style={{ fontSize: 12, color: "#D6336C", marginTop: 6 }}>{catTileError}</p>}
       </div>
 
-      {/* ================= ابزارهای جدید Gemini — بدون تغییر در فرم/ذخیره‌سازی فعلی ================= */}
+      {/* ================= ابزارهای جدید Gemini ================= */}
       <div className="bg-panel border border-hair rounded-lg p-4 mb-4">
         <h3 className="font-display mb-1 flex items-center gap-1.5" style={{ fontSize: 15 }}>
           <LinkIcon size={15} color="#7B5CF6" /> ورود محصول با لینک + Gemini
@@ -6006,7 +5770,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               </div>
             ) : (
               <div className="sm:col-span-2 flex flex-col gap-3">
-                {/* غیر از ادکلن: فقط یک نوع برای هر محصول قابل انتخاب است */}
                 {subcategoryTypes(form.category, form.subcategory).map((g) => (
                   <div key={g.key} className="flex flex-col gap-1">
                     <label className="text-muted" style={{ fontSize: 11 }}>{g.group}</label>
@@ -6362,7 +6125,6 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 برش و پس‌زمینه‌ی سفید به‌صورت خودکار روی عکس اعمال می‌شود (فقط برای عکس‌های آپلودشده از گالری یا شناسایی‌شده از بارکد — نه لینک‌های خارجیِ دستی).
               </p>
 
-              {/* تنظیمات دستی نمایش تصویر — حالت جاگیری، موقعیت و بزرگ‌نمایی */}
               <div className="bg-panel-2 border border-hair rounded-lg p-3 mt-2 flex flex-col gap-3" style={{ maxWidth: 380 }}>
                 <div className="flex items-center justify-between">
                   <span className="text-muted" style={{ fontSize: 11 }}>تنظیمات دستی عکس</span>
