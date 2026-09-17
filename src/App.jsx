@@ -447,6 +447,22 @@ const PERFUME_PERFORMANCE_META = [
   { key: "sillage", label: "پخش بو", color: "#7B5CF6" },
 ];
 
+// «امتیاز کاربران» را به‌صورت خودکار از میانگینِ همان سه امتیازِ بالا (رایحه/ماندگاری/پخش بو)
+// محاسبه می‌کند — هر کدام از این سه که مدیر واردشان کرده باشد در میانگین شرکت می‌کند (نه لزوماً
+// هر سه‌تا)؛ اگر هیچ‌کدام هنوز وارد نشده باشند، رشته‌ی خالی برمی‌گرداند تا فیلد امتیازِ کاربران
+// دست‌نخورده (قابلِ ویرایشِ دستی) بماند. نتیجه با یک رقمِ اعشار گرد می‌شود، هم‌سنگِ همان دقتی که
+// خودِ ورودی‌های امتیاز (step="0.1") قبول می‌کنند.
+function averagePerfumePerformanceScore(form) {
+  const values = PERFUME_PERFORMANCE_META
+    .map((meta) => form[`${meta.key}Score`])
+    .filter((v) => v !== "" && v != null)
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n));
+  if (values.length === 0) return "";
+  const avg = values.reduce((sum, n) => sum + n, 0) / values.length;
+  return String(Math.round(avg * 10) / 10);
+}
+
 // پالتِ رنگیِ گردشیِ برچسب‌های «ترکیب بویایی» (Main Accords) در صفحه‌ی محصول — دقیقاً به همان
 // حسِ رنگی‌ای که سایت‌های عطر (مثل Fragrantica یا ویجتِ Smell & Feel) برای هر آکورد یک دایره‌ی
 // رنگی جدا نشان می‌دهند؛ چون تعداد آکوردهای هر عطر متغیر است، رنگ‌ها به‌صورت چرخشی به‌ترتیب
@@ -1841,14 +1857,26 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
       <div
         ref={outerRef}
         className="rail-scroll"
+        dir="ltr"
         onMouseEnter={handlePauseStart}
         onMouseLeave={handlePauseEndSoon}
         onTouchStart={handlePauseStart}
         onTouchEnd={handlePauseEndSoon}
         onPointerDown={handlePauseStart}
         onPointerUp={handlePauseEndSoon}
-        style={{ overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 6 }}
+        style={{ overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 6, direction: "ltr" }}
       >
+        {/* نکته‌ی مهمِ فنی: کل سایت dir="rtl" است، اما ریاضیِ حرکتِ خودکارِ این نوار (translateX از
+            0 به -X% و برعکس برای جهتِ معکوس) بر مبنای مختصاتِ چپ‌به‌راستِ استاندارد نوشته شده.
+            وقتی این کانتینر ارثِ rtl را از صفحه می‌گرفت، مرورگر موقعیتِ اسکرولِ اولیه/داخلی‌اش را
+            طبقِ قواعدِ RTL (که با اسکرولِ دستی‌ای که ما با transform شبیه‌سازی می‌کنیم هم‌خوان
+            نیست) تنظیم می‌کرد — دقیقاً همین ناهماهنگی باعث می‌شد مرورگر بخشی از فضای واقعاً
+            پرشده را نشان ندهد و به‌جایش یک فضای خالی و سفید در سمتِ راستِ محصول نمایش دهد. با
+            ثابت‌کردنِ جهتِ این کانتینر (و ردیفِ داخلی‌اش) روی ltr، محاسبه‌ی اسکرول و ترنسفورم
+            دقیقاً همان چیزی می‌شود که در کد نوشته‌ایم، و محصولات کاملاً پشتِ‌سرِهم و بدونِ هیچ
+            فاصله‌ی خالی نمایش داده می‌شوند. متنِ فارسیِ داخلِ هر کارت هم چون خودِ ProductCard و
+            زیرمجموعه‌هایش دوباره dir="rtl" می‌گیرند (پایین‌تر)، هیچ‌وقت آسیب نمی‌بیند.
+        */}
         <div
           ref={trackRef}
           className="rail-track"
@@ -1856,6 +1884,7 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
             display: "inline-flex",
             flexWrap: "nowrap",
             gap: 14,
+            direction: "ltr",
             animation: loopWidth > 0 ? `${animNameRef.current} ${cycleSeconds}s linear infinite` : "none",
             animationDirection: reverse ? "reverse" : "normal",
             animationPlayState: paused ? "paused" : "running",
@@ -1865,6 +1894,7 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
             <div
               key={`${p.id}-${i}`}
               className="rail-item"
+              dir="rtl"
               style={{ flex: "0 0 auto", width: "calc(50vw - 16px)", maxWidth: 210 }}
             >
               <ProductCard
@@ -5960,7 +5990,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           <div className="sm:col-span-2 flex flex-col gap-3 bg-panel-2 border border-hair rounded-lg p-3">
             <label className="text-muted" style={{ fontSize: 12 }}>عملکرد ادکلن</label>
             <p className="text-muted" style={{ fontSize: 10.5, marginTop: -8 }}>
-              برای هر مشخصه، یک امتیاز از ۱۰ (مثل نمودارهای Fragrantica) و تعداد رأی‌ها را وارد کن. اگر امتیازی برای یک مشخصه وارد نکنی، آن نمودار در صفحه‌ی محصول نمایش داده نمی‌شود.
+              برای هر مشخصه، یک امتیاز از ۱۰ (مثل نمودارهای Fragrantica) و تعداد رأی‌ها را وارد کن. اگر امتیازی برای یک مشخصه وارد نکنی، آن نمودار در صفحه‌ی محصول نمایش داده نمی‌شود. «امتیاز کاربران» پایین‌تر خودکار از میانگینِ همین سه امتیاز محاسبه و پر می‌شود؛ در صورت نیاز می‌توانی خودت هم دستی تغییرش بدهی.
             </p>
 
             {PERFUME_PERFORMANCE_META.map((meta) => (
@@ -5977,7 +6007,13 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                     const v = e.target.value;
                     const n = Number(v);
                     if (v === "" || (Number.isFinite(n) && n >= 0 && n <= 10)) {
-                      setForm({ ...form, [`${meta.key}Score`]: v });
+                      setForm((f) => {
+                        const nextForm = { ...f, [`${meta.key}Score`]: v };
+                        // هر بار که یکی از سه امتیازِ رایحه/ماندگاری/پخش‌بو تغییر می‌کند، «امتیازِ
+                        // کاربران» خودکار برابرِ میانگینِ همین سه مقدار به‌روزرسانی می‌شود.
+                        nextForm.fragranticaRating = averagePerfumePerformanceScore(nextForm);
+                        return nextForm;
+                      });
                     }
                   }}
                   className="bg-panel border border-hair rounded px-3 py-2 text-sm"
