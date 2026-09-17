@@ -2735,7 +2735,9 @@ export default function MaisonStore() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "استخراج طیف رنگ ناموفق بود");
-    return data.variants || [];
+    // imageNote توضیح می‌دهد چند عکس واقعاً دانلود/آپلود شد (یا چرا هیچ‌کدام نشد) — جدا از
+    // خودِ آرایه‌ی variants برگردانده می‌شود تا پنل مدیریت بتواند پیامِ روشنی نشان دهد.
+    return { variants: data.variants || [], imageNote: data.imageNote || "" };
   }
 
   async function updateHeroBanners(banners) {
@@ -4575,6 +4577,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [variantUrlLoading, setVariantUrlLoading] = useState(false);
   const [variantUrlError, setVariantUrlError] = useState("");
   const [variantUrlAddedCount, setVariantUrlAddedCount] = useState(0);
+  const [variantUrlImageNote, setVariantUrlImageNote] = useState("");
 
   async function handleExtractVariantsFromUrl(e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -4585,9 +4588,10 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     }
     setVariantUrlError("");
     setVariantUrlAddedCount(0);
+    setVariantUrlImageNote("");
     setVariantUrlLoading(true);
     try {
-      const found = await onExtractVariantsFromUrl(url);
+      const { variants: found, imageNote } = await onExtractVariantsFromUrl(url);
       const mapped = (found || [])
         .filter((v) => v && v.label)
         .map((v, i) => ({
@@ -4602,6 +4606,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       }
       setForm((f) => ({ ...f, variantsList: [...(f.variantsList || []), ...mapped] }));
       setVariantUrlAddedCount(mapped.length);
+      if (imageNote) setVariantUrlImageNote(imageNote);
     } catch (err) {
       setVariantUrlError(err.message || "استخراج طیف رنگ ناموفق بود");
     } finally {
@@ -6254,6 +6259,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               <p style={{ fontSize: 11.5, color: "#0EA5A4" }}>
                 {variantUrlAddedCount.toLocaleString("fa-IR")} رنگ پیدا شد و به لیستِ پایین اضافه شد — لطفاً قبل از ذخیره بازبینی کن.
               </p>
+            )}
+            {variantUrlImageNote && (
+              <p style={{ fontSize: 11.5, color: "#D97706" }}>{variantUrlImageNote}</p>
             )}
           </div>
 
