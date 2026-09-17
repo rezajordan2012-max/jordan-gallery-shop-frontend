@@ -1849,8 +1849,8 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
       {loopWidth > 0 && (
         <style>{`
           @keyframes ${animNameRef.current} {
-            from { transform: translateX(0); }
-            to { transform: translateX(-${(100 / repeatCount).toFixed(6)}%); }
+            from { transform: translateX(${reverse ? `-${(100 / repeatCount).toFixed(6)}%` : "0%"}); }
+            to { transform: translateX(${reverse ? "0%" : `-${(100 / repeatCount).toFixed(6)}%`}); }
           }
         `}</style>
       )}
@@ -1885,8 +1885,15 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
             flexWrap: "nowrap",
             gap: 14,
             direction: "ltr",
+            // نکته: جهتِ حرکت (چپ یا راست) دیگر به‌وسیله‌ی animationDirection:"reverse" کنترل
+            // نمی‌شود — چون پشتیبانیِ این ویژگی در برخی وب‌ویوهای موبایل/مرورگرهای درون‌برنامه‌ای
+            // (مثل همان چیزی که پیش‌نمایشِ داخلِ اپ‌های واسطه، مثلاً هنگامِ باز کردنِ لینکِ Vercel
+            // از داخلِ یک اپِ دیگر، استفاده می‌کنند) گاهی ناقص یا متفاوت است و باعث می‌شد همه‌ی
+            // ردیف‌ها با وجودِ کدِ درست، یک‌شکل به نظر برسند. حالا جهتِ حرکت مستقیماً داخلِ خودِ
+            // کی‌فریم (بالاتر) تعریف شده — یعنی صفرتاصدِ هر مسیر برایِ چپ یا راست رفتن جداگانه
+            // نوشته شده، نه یک مسیر که با یک ویژگیِ جانبی معکوس شود؛ این‌طور دیگر به پشتیبانیِ
+            // مرورگر از reverse وابسته نیستیم و رفتار در همه‌جا یکسان و قابل‌اطمینان می‌ماند.
             animation: loopWidth > 0 ? `${animNameRef.current} ${cycleSeconds}s linear infinite` : "none",
-            animationDirection: reverse ? "reverse" : "normal",
             animationPlayState: paused ? "paused" : "running",
           }}
         >
