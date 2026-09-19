@@ -4223,6 +4223,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [saveSuccessFlash, setSaveSuccessFlash] = useState(false);
   const [formError, setFormError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [noteSuggestResult, setNoteSuggestResult] = useState(null);
@@ -4997,6 +4998,10 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         await onAdd(payload);
       }
       cancelEdit();
+      // بازخوردِ بصریِ موفقیت: دکمه چند لحظه سبز می‌شود تا مدیر مطمئن شود محصول واقعاً به همان
+      // طبقه‌ای که انتخاب کرده بود اضافه شد — بدونِ نیاز به اسکرول کردن و پیدا کردنش در لیستِ پایین.
+      setSaveSuccessFlash(true);
+      window.setTimeout(() => setSaveSuccessFlash(false), 1800);
     } catch (err) {
       setFormError(err.message || "ذخیره‌سازی ناموفق بود");
     } finally {
@@ -6085,21 +6090,24 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
                 />
                 <span className="text-muted" style={{ fontSize: 11 }}>از ۱۰</span>
               </div>
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder="حجم (اختیاری)"
-                  value={form.volume}
-                  onChange={(e) => setForm({ ...form, volume: e.target.value })}
-                  className="bg-panel border border-hair rounded px-3 py-2 text-sm flex-1"
-                  style={{ color: "#241E3D" }}
-                  dir="ltr"
-                />
-                <span className="text-muted" style={{ fontSize: 11 }}>میل</span>
-              </div>
             </div>
+          </div>
+        )}
+
+        {form.category !== "electronics" && (
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              placeholder="حجم (اختیاری)"
+              value={form.volume}
+              onChange={(e) => setForm({ ...form, volume: e.target.value })}
+              className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
+              style={{ color: "#241E3D" }}
+              dir="ltr"
+            />
+            <span className="text-muted" style={{ fontSize: 11 }}>میل</span>
           </div>
         )}
 
@@ -6336,9 +6344,18 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           </p>
         </div>
         <div className="sm:col-span-2 flex gap-2">
-          <button type="submit" disabled={saving} className="btn-gold rounded px-4 py-2 text-sm flex items-center gap-2">
-            {editingId ? <Check size={14} /> : <Plus size={14} />}
-            {editingId ? "ذخیره تغییرات" : "افزودن محصول"}
+          <button
+            type="submit"
+            disabled={saving}
+            className={saveSuccessFlash ? "rounded px-4 py-2 text-sm flex items-center gap-2" : "btn-gold rounded px-4 py-2 text-sm flex items-center gap-2"}
+            style={
+              saveSuccessFlash
+                ? { background: "#16A34A", color: "#FFFFFF", transition: "background 0.25s ease", boxShadow: "0 6px 20px -6px rgba(22,163,74,0.5)" }
+                : { transition: "background 0.25s ease" }
+            }
+          >
+            {saveSuccessFlash ? <Check size={14} /> : editingId ? <Check size={14} /> : <Plus size={14} />}
+            {saveSuccessFlash ? "با موفقیت اضافه شد ✓" : editingId ? "ذخیره تغییرات" : "افزودن محصول"}
           </button>
           {editingId && (
             <button type="button" onClick={cancelEdit} className="btn-ghost rounded px-4 py-2 text-sm">
