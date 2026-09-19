@@ -2053,12 +2053,18 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
           )}
 
           {(() => {
-            const specsBlock =
-              product.category === "perfume" &&
-              (() => {
-                const specs = [
-                  { label: "برند", value: product.brand },
-                  { label: "حجم", value: product.volume ? `${product.volume} میل` : "" },
+            // نکته: قبلاً این بخش («مشخصات» شاملِ برند و حجم) فقط برایِ دستهٔ ادکلن ساخته می‌شد؛
+            // برایِ همین بود که فیلدِ «حجم» با اینکه در پنلِ مدیریت برایِ آرایشی/اسپری/بهداشتی هم
+            // قابلِ‌واردکردن بود، در صفحهٔ محصولِ مشتری برایِ آن‌ها هرگز نمایش داده نمی‌شد. حالا
+            // برند و حجم برایِ همه‌ی دسته‌ها (به‌جز لوازمِ برقی که اصلاً فیلدِ حجم ندارد) ساخته
+            // می‌شود؛ بقیه‌ی مشخصاتِ تخصصیِ عطر (غلظت، نت، عطار و...) همچنان فقط مخصوصِ ادکلن است.
+            const specsBlock = (() => {
+              const specs = [
+                { label: "برند", value: product.brand },
+                { label: "حجم", value: product.volume ? `${product.volume} میل` : "" },
+              ];
+              if (product.category === "perfume") {
+                specs.push(
                   { label: "غلظت مواد معطر", value: facetGroupValues(product.category, product.subcategory, "concentration", product.facets) },
                   { label: "گروه بویایی", value: facetGroupValues(product.category, product.subcategory, "fragranceNote", product.facets) },
                   { label: "طبع", value: facetGroupValues(product.category, product.subcategory, "temperament", product.facets) },
@@ -2074,34 +2080,36 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                         <span style={{ color: "#000000" }}> از ۱۰</span>
                       </>
                     ) : "",
-                  },
-                ].filter((s) => s.value);
-                if (specs.length === 0) return null;
-                return (
-                  <div className="mb-6">
-                    <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 9, color: "#FF3E8E" }}>مشخصات</h2>
-                    <div
-                      className="rounded-xl border border-hair overflow-hidden"
-                      style={{
-                        background: catMedia ? "rgba(255,255,255,0.55)" : "rgba(123,92,246,0.05)",
-                        backdropFilter: catMedia ? "blur(6px)" : undefined,
-                        WebkitBackdropFilter: catMedia ? "blur(6px)" : undefined,
-                      }}
-                    >
-                      {specs.map((s, i) => (
-                        <div
-                          key={s.label}
-                          className="flex items-center justify-between px-4 py-2.5"
-                          style={i < specs.length - 1 ? { borderBottom: "1px solid rgba(123,92,246,0.14)" } : undefined}
-                        >
-                          <span style={{ fontSize: 13, fontWeight: 500, color: "#5B5478" }}>{s.label}</span>
-                          <span style={{ fontSize: 13.5, fontWeight: 800, color: "#1D1733" }}>{s.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  }
                 );
-              })();
+              }
+              const filteredSpecs = specs.filter((s) => s.value);
+              if (filteredSpecs.length === 0) return null;
+              return (
+                <div className="mb-6">
+                  <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 9, color: "#FF3E8E" }}>مشخصات</h2>
+                  <div
+                    className="rounded-xl border border-hair overflow-hidden"
+                    style={{
+                      background: catMedia ? "rgba(255,255,255,0.55)" : "rgba(123,92,246,0.05)",
+                      backdropFilter: catMedia ? "blur(6px)" : undefined,
+                      WebkitBackdropFilter: catMedia ? "blur(6px)" : undefined,
+                    }}
+                  >
+                    {filteredSpecs.map((s, i) => (
+                      <div
+                        key={s.label}
+                        className="flex items-center justify-between px-4 py-2.5"
+                        style={i < filteredSpecs.length - 1 ? { borderBottom: "1px solid rgba(123,92,246,0.14)" } : undefined}
+                      >
+                        <span style={{ fontSize: 13, fontWeight: 500, color: "#5B5478" }}>{s.label}</span>
+                        <span style={{ fontSize: 13.5, fontWeight: 800, color: "#1D1733" }}>{s.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })();
 
             const performanceBlock =
               product.category === "perfume" &&
@@ -2262,6 +2270,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
               <>
                 {descriptionBlock}
                 {propertiesBlock}
+                {specsBlock}
                 {notesOrIngredientsBlock}
               </>
             );
