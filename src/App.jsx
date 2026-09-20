@@ -2786,6 +2786,20 @@ export default function MaisonStore() {
     return { variants: data.variants || [], imageNote: data.imageNote || "" };
   }
 
+  // ابزارِ مستقلِ «وارد کردنِ طیف رنگ از روی عکس» — برایِ سایت‌هایی مثلِ SHEGLAM که لینکشان
+  // قابلِ استخراجِ خودکار نیست: مدیر یک اسکرین‌شات از لیستِ رنگ‌ها آپلود می‌کند و سرور رنگِ هر
+  // سوآچ را مستقیماً از پیکسل‌هایِ همان عکس (بدونِ حدسِ هوش مصنوعی) می‌خواند.
+  async function extractVariantsFromImage(imageBase64) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/extract-variants-from-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ imageBase64 }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "استخراج طیف رنگ از عکس ناموفق بود");
+    return { variants: data.variants || [], imageNote: data.imageNote || "" };
+  }
+
   async function updateHeroBanners(banners) {
     const res = await fetch(`${API_BASE_URL}/api/settings`, {
       method: "PUT",
@@ -3573,6 +3587,7 @@ export default function MaisonStore() {
           onLookupBarcode={lookupBarcode}
           onSearchProductImage={searchProductImage}
           onExtractVariantsFromUrl={extractVariantsFromUrl}
+          onExtractVariantsFromImage={extractVariantsFromImage}
           onImportProductFromUrl={importProductFromUrl}
           onAnalyzePerfumeImage={analyzePerfumeImageWithGemini}
         />
@@ -4205,7 +4220,7 @@ async function runFreeOcrExtraction(file) {
   }
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onExtractVariantsFromUrl, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onExtractVariantsFromUrl, onExtractVariantsFromImage, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -4658,6 +4673,55 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       setVariantUrlError(err.message || "استخراج طیف رنگ ناموفق بود");
     } finally {
       setVariantUrlLoading(false);
+    }
+  }
+
+  // ابزارِ مستقلِ «وارد کردنِ طیف رنگ از روی عکس» — برایِ سایت‌هایی مثلِ SHEGLAM که لینکشان
+  // قابلِ استخراجِ خودکار نیست. مدیر یک اسکرین‌شات از لیستِ رنگ‌ها آپلود می‌کند.
+  const [variantImageLoading, setVariantImageLoading] = useState(false);
+  const [variantImageError, setVariantImageError] = useState("");
+  const [variantImageAddedCount, setVariantImageAddedCount] = useState(0);
+  const [variantImageNote, setVariantImageNote] = useState("");
+
+  async function handleExtractVariantsFromImage(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setVariantImageError("فایل انتخاب‌شده تصویر نیست");
+      return;
+    }
+    setVariantImageError("");
+    setVariantImageAddedCount(0);
+    setVariantImageNote("");
+    setVariantImageLoading(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const { variants: found, imageNote } = await onExtractVariantsFromImage(base64);
+      const mapped = (found || [])
+        .filter((v) => v && v.label)
+        .map((v, i) => ({
+          id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          label: v.label,
+          hex: v.hex || "",
+          image: v.image || "",
+        }));
+      if (mapped.length === 0) {
+        setVariantImageError("هیچ طیف رنگی روی این عکس پیدا نشد — مطمئن شو اسکرین‌شات کاملِ ردیف‌های رنگ (دایره + اسمِ کنارش) را شامل می‌شود.");
+        return;
+      }
+      setForm((f) => ({ ...f, variantsList: [...(f.variantsList || []), ...mapped] }));
+      setVariantImageAddedCount(mapped.length);
+      if (imageNote) setVariantImageNote(imageNote);
+    } catch (err) {
+      setVariantImageError(err.message || "استخراج طیف رنگ از عکس ناموفق بود");
+    } finally {
+      setVariantImageLoading(false);
     }
   }
 
@@ -6322,6 +6386,31 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             )}
             {variantUrlImageNote && (
               <p style={{ fontSize: 11.5, color: "#D97706" }}>{variantUrlImageNote}</p>
+            )}
+          </div>
+
+          <div className="bg-panel-2 border border-hair rounded-lg p-3 flex flex-col gap-2">
+            <label className="text-gold flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700 }}>
+              <Camera size={13} /> وارد کردنِ طیف رنگ از روی عکس (برایِ سایت‌هایی مثلِ SHEGLAM که لینکشان کار نمی‌کند)
+            </label>
+            <p className="text-muted" style={{ fontSize: 10.5, lineHeight: 1.8 }}>
+              یک اسکرین‌شات از لیستِ رنگ‌هایِ سایتِ مبدأ بگیر (همان پنجره‌ای که با زدنِ «Select Color» یا مشابهش باز می‌شود و هر رنگ را با یک دایره + اسمِ کنارش نشان می‌دهد) و همینجا آپلودش کن. رنگِ هر سوآچ مستقیماً از پیکسل‌هایِ همان عکس خوانده می‌شود (نه حدسِ هوش مصنوعی) — یعنی بدونِ هیچ افت یا تغییرِ رنگی، دقیقاً همان چیزی که در عکس می‌بینی.
+            </p>
+            <label
+              className="btn-gold rounded px-4 py-2 text-sm flex items-center justify-center gap-1.5 w-fit"
+              style={{ cursor: variantImageLoading ? "default" : "pointer", opacity: variantImageLoading ? 0.6 : 1 }}
+            >
+              <Upload size={13} /> {variantImageLoading ? "در حال تحلیلِ عکس..." : "آپلودِ اسکرین‌شاتِ لیستِ رنگ‌ها"}
+              <input type="file" accept="image/*" onChange={handleExtractVariantsFromImage} disabled={variantImageLoading} style={{ display: "none" }} />
+            </label>
+            {variantImageError && <p style={{ fontSize: 11.5, color: "#D6336C" }}>{variantImageError}</p>}
+            {variantImageAddedCount > 0 && (
+              <p style={{ fontSize: 11.5, color: "#0EA5A4" }}>
+                {variantImageAddedCount.toLocaleString("fa-IR")} رنگ از روی عکس پیدا شد و به لیستِ پایین اضافه شد — لطفاً قبل از ذخیره بازبینی کن.
+              </p>
+            )}
+            {variantImageNote && (
+              <p style={{ fontSize: 11.5, color: "#D97706" }}>{variantImageNote}</p>
             )}
           </div>
 
