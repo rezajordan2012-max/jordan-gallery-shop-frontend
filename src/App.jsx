@@ -236,6 +236,14 @@ const FONTS = `
   }
   .sparkle { animation: sparkleFloat 3.2s ease-in-out infinite; }
 
+  /* دستِ اشاره‌گرِ چشمک‌زن که کنارِ اسمِ رنگِ انتخاب‌شده در صفحه‌ی محصول نمایش داده می‌شود —
+     هم محو/پررنگ می‌شود (چشمک) و هم کمی به چپ سُر می‌خورد تا حسِ «اشاره‌کردن» را منتقل کند. */
+  @keyframes swatchHintBlink {
+    0%, 100% { opacity: 1; transform: translateX(0); }
+    50% { opacity: 0.35; transform: translateX(-3px); }
+  }
+  .swatch-hint-blink { animation: swatchHintBlink 1.3s ease-in-out infinite; }
+
   @keyframes mistPuff {
     0% { transform: translateY(0) scale(0.6); opacity: 0.7; }
     100% { transform: translateY(-14px) scale(1.3); opacity: 0; }
@@ -364,6 +372,7 @@ const FONTS = `
     .ray-burst, .hero-halo { animation: none; }
     .rail-item { transition: none !important; }
     .rail-track { animation: none !important; }
+    .swatch-hint-blink { animation: none; }
   }
 `;
 
@@ -1922,6 +1931,7 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
 function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, categoryMedia }) {
   const hasVariants = !!product && product.variants && product.variants.length > 0;
   const [variantId, setVariantId] = useState("");
+  const [hoveredVariantId, setHoveredVariantId] = useState(null);
   const selectedVariant = hasVariants ? product.variants.find((v) => v.id === variantId) : null;
   const displayImage = (selectedVariant && selectedVariant.image) || (product && product.image) || "";
   const discountPct = product ? effectiveDiscountPercent(product, globalDiscountPercent) : 0;
@@ -2021,31 +2031,95 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
 
           {hasVariants && (
             <div className="mb-6">
-              <p className="text-muted mb-2" style={{ fontSize: 12.5 }}>
-                رنگ / شماره ({product.variants.length} طیف){selectedVariant ? ` — ${selectedVariant.label}` : ""}
+              <p className="mb-2 flex items-center gap-1.5" style={{ fontSize: 13 }}>
+                <span
+                  className="font-display"
+                  style={{
+                    background: "linear-gradient(90deg, #FF3E8E, #7B5CF6, #00C2CB, #FF3E8E)",
+                    backgroundSize: "300% 100%",
+                    WebkitBackgroundClip: "text",
+                    backgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    color: "transparent",
+                    fontWeight: 800,
+                    animation: "brandShine 6s ease-in-out infinite",
+                  }}
+                >
+                  طیف رنگ
+                </span>
+                {selectedVariant && (
+                  <>
+                    <span aria-hidden="true" className="swatch-hint-blink" style={{ fontSize: 16, display: "inline-block" }}>
+                      👈
+                    </span>
+                    <span style={{ color: "#1D1733", fontWeight: 800 }}>{selectedVariant.label}</span>
+                  </>
+                )}
               </p>
               <div className="flex flex-wrap gap-2.5">
                 {product.variants.map((v) => {
                   const isSelected = variantId === v.id;
+                  const isHovered = hoveredVariantId === v.id;
                   return (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => setVariantId(v.id)}
-                      title={v.label}
-                      aria-label={v.label}
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: "50%",
-                        padding: 0,
-                        cursor: "pointer",
-                        background: v.image ? `center/cover no-repeat url(${v.image})` : (v.hex || "#EEE"),
-                        border: isSelected ? "2.5px solid #FF3E8E" : "1px solid rgba(123,92,246,0.35)",
-                        boxShadow: isSelected ? "0 0 0 3px rgba(255,62,142,0.22)" : "none",
-                        transition: "box-shadow 0.15s ease, border-color 0.15s ease",
-                      }}
-                    />
+                    <div key={v.id} style={{ position: "relative" }}>
+                      {isHovered && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            bottom: "calc(100% + 9px)",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            background: "#1D1733",
+                            color: "#FFFFFF",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "5px 10px",
+                            borderRadius: 6,
+                            whiteSpace: "nowrap",
+                            zIndex: 5,
+                            boxShadow: "0 4px 12px -2px rgba(0,0,0,0.35)",
+                            pointerEvents: "none",
+                          }}
+                        >
+                          {v.label}
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              position: "absolute",
+                              top: "100%",
+                              left: "50%",
+                              transform: "translateX(-50%)",
+                              width: 0,
+                              height: 0,
+                              borderStyle: "solid",
+                              borderWidth: "5px 5px 0 5px",
+                              borderColor: "#1D1733 transparent transparent transparent",
+                            }}
+                          />
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setVariantId(v.id)}
+                        onMouseEnter={() => setHoveredVariantId(v.id)}
+                        onMouseLeave={() => setHoveredVariantId((cur) => (cur === v.id ? null : cur))}
+                        onTouchStart={() => setHoveredVariantId(v.id)}
+                        onTouchEnd={() => window.setTimeout(() => setHoveredVariantId((cur) => (cur === v.id ? null : cur)), 900)}
+                        title={v.label}
+                        aria-label={v.label}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: "50%",
+                          padding: 0,
+                          cursor: "pointer",
+                          background: v.image ? `center/cover no-repeat url(${v.image})` : (v.hex || "#EEE"),
+                          border: isSelected ? "2.5px solid #FF3E8E" : "1px solid rgba(123,92,246,0.35)",
+                          boxShadow: isSelected ? "0 0 0 3px rgba(255,62,142,0.22)" : "none",
+                          transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+                        }}
+                      />
+                    </div>
                   );
                 })}
               </div>
