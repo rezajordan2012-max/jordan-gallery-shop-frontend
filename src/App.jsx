@@ -1933,10 +1933,41 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
   const [variantId, setVariantId] = useState("");
   const [hoveredVariantId, setHoveredVariantId] = useState(null);
   const selectedVariant = hasVariants ? product.variants.find((v) => v.id === variantId) : null;
-  const displayImage = (selectedVariant && selectedVariant.image) || (product && product.image) || "";
+  // هر طیفِ رنگ می‌تواند تا ۳ عکس داشته باشد (image، image2، image3) — مثلاً یک عکسِ محصول و
+  // یک/دو عکسِ نمایشِ بافت/سواچِ همان رنگ. فقط عکسِ اول به‌عنوانِ پیش‌فرض نمایش داده می‌شود؛
+  // بقیه با ورق‌زدن (swipe/کلیک) در دسترسِ مشتری هستند.
+  const variantImages = selectedVariant
+    ? [selectedVariant.image, selectedVariant.image2, selectedVariant.image3].filter(Boolean)
+    : [];
+  const [variantImageIndex, setVariantImageIndex] = useState(0);
+  useEffect(() => {
+    setVariantImageIndex(0);
+  }, [variantId]);
+  const displayImage = variantImages[variantImageIndex] || variantImages[0] || (product && product.image) || "";
   const discountPct = product ? effectiveDiscountPercent(product, globalDiscountPercent) : 0;
   const finalPrice = product ? discountedPrice(product, globalDiscountPercent) : 0;
   const catMedia = product && categoryMedia && categoryMedia.url ? normalizeBanner(categoryMedia) : null;
+
+  // ورق‌زدنِ لمسی بینِ عکس‌هایِ همان طیفِ رنگ — فقط وقتی بیشتر از یک عکس برایِ رنگِ انتخاب‌شده وجود دارد.
+  const touchStartXRef = useRef(null);
+  function handleGalleryTouchStart(e) {
+    if (variantImages.length < 2) return;
+    touchStartXRef.current = e.touches && e.touches[0] ? e.touches[0].clientX : null;
+  }
+  function handleGalleryTouchEnd(e) {
+    if (variantImages.length < 2 || touchStartXRef.current == null) return;
+    const endX = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : null;
+    if (endX == null) return;
+    const delta = endX - touchStartXRef.current;
+    touchStartXRef.current = null;
+    if (Math.abs(delta) < 35) return; // سوایپِ خیلی کوچک — نادیده گرفته می‌شود
+    setVariantImageIndex((i) => {
+      // سایتِ ما راست‌به‌چپ (rtl) است؛ سوایپ به چپ یعنی رفتن به «بعدی».
+      const goNext = delta < 0;
+      const next = goNext ? i + 1 : i - 1;
+      return Math.max(0, Math.min(variantImages.length - 1, next));
+    });
+  }
 
   if (!product) {
     return (
@@ -1989,16 +2020,77 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
       <div className="lg:flex lg:items-start lg:gap-10">
         <div
           className="rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-96 lg:h-[520px] lg:w-[420px] lg:flex-shrink-0"
-          style={{ background: "#FFFFFF" }}
+          style={{ background: "#FFFFFF", position: "relative" }}
+          onTouchStart={handleGalleryTouchStart}
+          onTouchEnd={handleGalleryTouchEnd}
         >
           {displayImage ? (
             <img
               src={framedProductImageUrl(displayImage)}
               alt={product.name}
-              style={selectedVariant && selectedVariant.image ? { width: "100%", height: "100%", objectFit: "contain" } : productImageStyle(product)}
+              style={selectedVariant && displayImage ? { width: "100%", height: "100%", objectFit: "contain" } : productImageStyle(product)}
             />
           ) : (
             <CategoryIcon category={product.category} size={80} />
+          )}
+          {variantImages.length > 1 && (
+            <>
+              <div
+                style={{
+                  position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)",
+                  display: "flex", alignItems: "center", gap: 6, zIndex: 2,
+                }}
+              >
+                {variantImages.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setVariantImageIndex(i)}
+                    aria-label={`عکسِ شماره ${i + 1}`}
+                    style={{
+                      width: i === variantImageIndex ? 16 : 6,
+                      height: 6,
+                      borderRadius: 999,
+                      border: "none",
+                      padding: 0,
+                      background: i === variantImageIndex ? "#FF3E8E" : "rgba(36,30,61,0.25)",
+                      transition: "width 0.25s ease, background 0.25s ease",
+                    }}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setVariantImageIndex((i) => Math.max(0, i - 1))}
+                disabled={variantImageIndex === 0}
+                aria-label="عکسِ قبلی"
+                style={{
+                  position: "absolute", top: "50%", insetInlineStart: 10, transform: "translateY(-50%)",
+                  width: 30, height: 30, borderRadius: "50%", border: "none", zIndex: 2,
+                  background: "rgba(255,255,255,0.85)", boxShadow: "0 2px 8px -2px rgba(36,30,61,0.35)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  opacity: variantImageIndex === 0 ? 0.35 : 1, cursor: variantImageIndex === 0 ? "default" : "pointer",
+                }}
+              >
+                <span style={{ transform: "rotate(180deg)", display: "inline-block" }}>›</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVariantImageIndex((i) => Math.min(variantImages.length - 1, i + 1))}
+                disabled={variantImageIndex === variantImages.length - 1}
+                aria-label="عکسِ بعدی"
+                style={{
+                  position: "absolute", top: "50%", insetInlineEnd: 10, transform: "translateY(-50%)",
+                  width: 30, height: 30, borderRadius: "50%", border: "none", zIndex: 2,
+                  background: "rgba(255,255,255,0.85)", boxShadow: "0 2px 8px -2px rgba(36,30,61,0.35)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  opacity: variantImageIndex === variantImages.length - 1 ? 0.35 : 1,
+                  cursor: variantImageIndex === variantImages.length - 1 ? "default" : "pointer",
+                }}
+              >
+                ›
+              </button>
+            </>
           )}
         </div>
 
@@ -2016,7 +2108,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 {fmtPrice(product.price)}
               </span>
             )}
-            <span className="font-display" style={{ fontSize: 21, fontWeight: 800, color: "#FF3E8E" }}>{fmtPrice(finalPrice)}</span>
+            <span className="font-display" style={{ fontSize: 21, fontWeight: 800, color: "#0D1B3E" }}>{fmtPrice(finalPrice)}</span>
             {discountPct > 0 && (
               <span
                 style={{
@@ -2035,13 +2127,15 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 <span
                   className="font-display"
                   style={{
-                    background: "linear-gradient(90deg, #FF3E8E, #7B5CF6, #00C2CB, #FF3E8E)",
+                    background: "linear-gradient(90deg, #FF0080, #8B14FF, #00E5FF, #FF0080)",
                     backgroundSize: "300% 100%",
                     WebkitBackgroundClip: "text",
                     backgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     color: "transparent",
                     fontWeight: 800,
+                    fontSize: 15,
+                    filter: "saturate(1.6) contrast(1.15) drop-shadow(0 1px 2px rgba(139,20,255,0.25))",
                     animation: "brandShine 6s ease-in-out infinite",
                   }}
                 >
@@ -4166,10 +4260,19 @@ function emptyForm() {
 }
 
 function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenImageSearch, productContext }) {
-  const [uploading, setUploading] = useState(false);
+  const [uploadingField, setUploadingField] = useState(""); // "" | "image" | "image2" | "image3"
   const [error, setError] = useState("");
 
-  async function handleFile(e) {
+  // سه فیلدِ عکسِ مستقل برایِ هر رنگ — عکسِ اول (image) همیشه در صفحه‌ی محصول به‌عنوانِ پیش‌فرض
+  // نمایش داده می‌شود؛ عکسِ دوم و سوم (image2/image3) فقط با ورق‌زدن در دسترسِ مشتری‌اند — برایِ
+  // مثال، یک عکسِ نمایِ کلیِ محصول + یک/دو عکسِ نمایِ نزدیکِ بافت/سواچِ همان رنگ.
+  const IMAGE_FIELDS = [
+    { key: "image", label: "عکسِ ۱ (اصلی — همیشه در صفحه‌ی محصول نمایش داده می‌شود)" },
+    { key: "image2", label: "عکسِ ۲ (اختیاری — با ورق‌زدن در دسترسِ مشتری)" },
+    { key: "image3", label: "عکسِ ۳ (اختیاری — با ورق‌زدن در دسترسِ مشتری)" },
+  ];
+
+  async function handleFile(fieldKey, e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
     if (!file) return;
@@ -4178,7 +4281,7 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenIm
       return;
     }
     setError("");
-    setUploading(true);
+    setUploadingField(fieldKey);
     try {
       const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -4187,11 +4290,11 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenIm
         reader.readAsDataURL(file);
       });
       const url = await onUploadImage(base64, true);
-      onChange({ ...variant, image: url });
+      onChange({ ...variant, [fieldKey]: url });
     } catch (err) {
       setError(err.message || "آپلود تصویر ناموفق بود");
     } finally {
-      setUploading(false);
+      setUploadingField("");
     }
   }
 
@@ -4216,33 +4319,41 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenIm
           حذف
         </button>
       </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        {variant.image ? (
-          <img src={variant.image} alt={variant.label} style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)" }} />
-        ) : (
-          <span style={{ width: 34, height: 34, borderRadius: 6, background: variant.hex || "#EEE", border: "1px solid rgba(123,92,246,0.3)" }} />
-        )}
-        <label
-          className="btn-ghost rounded px-3 py-1.5 text-xs flex items-center gap-1.5"
-          style={{ cursor: uploading ? "default" : "pointer", opacity: uploading ? 0.6 : 1 }}
-        >
-          <Upload size={13} />
-          {uploading ? "در حال آپلود..." : variant.image ? "تغییر عکس این رنگ" : "افزودن عکس این رنگ"}
-          <input type="file" accept="image/*" onChange={handleFile} disabled={uploading} style={{ display: "none" }} />
-        </label>
-        <button
-          type="button"
-          onClick={() => onOpenImageSearch(variant.id, `${productContext || ""} ${variant.label || ""}`.trim())}
-          className="btn-ghost rounded px-3 py-1.5 text-xs flex items-center gap-1.5"
-        >
-          <Search size={13} /> جستجوی عکس
-        </button>
-        {variant.image && (
-          <button type="button" onClick={() => onChange({ ...variant, image: "" })} className="text-muted" style={{ fontSize: 11 }}>
-            حذف عکس
-          </button>
-        )}
-      </div>
+
+      {IMAGE_FIELDS.map((f) => (
+        <div key={f.key} className="flex items-center gap-2 flex-wrap pt-1" style={{ borderTop: f.key !== "image" ? "1px dashed rgba(123,92,246,0.2)" : undefined }}>
+          {variant[f.key] ? (
+            <img src={variant[f.key]} alt={variant.label} style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)" }} />
+          ) : (
+            <span style={{ width: 34, height: 34, borderRadius: 6, background: f.key === "image" ? (variant.hex || "#EEE") : "rgba(123,92,246,0.06)", border: "1px dashed rgba(123,92,246,0.3)" }} />
+          )}
+          <div className="flex flex-col gap-1 flex-1" style={{ minWidth: 160 }}>
+            <span className="text-muted" style={{ fontSize: 10.5 }}>{f.label}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label
+                className="btn-ghost rounded px-3 py-1.5 text-xs flex items-center gap-1.5"
+                style={{ cursor: uploadingField ? "default" : "pointer", opacity: uploadingField && uploadingField !== f.key ? 0.4 : 1 }}
+              >
+                <Upload size={13} />
+                {uploadingField === f.key ? "در حال آپلود..." : variant[f.key] ? "تغییر" : "افزودنِ عکس"}
+                <input type="file" accept="image/*" onChange={(e) => handleFile(f.key, e)} disabled={!!uploadingField} style={{ display: "none" }} />
+              </label>
+              <button
+                type="button"
+                onClick={() => onOpenImageSearch(`${variant.id}::${f.key}`, `${productContext || ""} ${variant.label || ""}`.trim())}
+                className="btn-ghost rounded px-3 py-1.5 text-xs flex items-center gap-1.5"
+              >
+                <Search size={13} /> جستجو
+              </button>
+              {variant[f.key] && (
+                <button type="button" onClick={() => onChange({ ...variant, [f.key]: "" })} className="text-muted" style={{ fontSize: 11 }}>
+                  حذف عکس
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
       {error && <p style={{ fontSize: 11, color: "#D6336C" }}>{error}</p>}
     </div>
   );
@@ -4703,6 +4814,11 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   function pickImageSearchResult(url) {
     if (imageSearchTarget === "main") {
       setForm((f) => ({ ...f, image: url }));
+    } else if (imageSearchTarget && imageSearchTarget.includes("::")) {
+      // برایِ فیلدهایِ عکسِ ۲/۳ یک کلیدِ ترکیبی «شناسهٔ‌رنگ::نامِ‌فیلد» استفاده می‌کنیم تا مشخص
+      // باشد نتیجه‌ی جستجو دقیقاً باید در کدام یک از سه فیلدِ عکسِ همان رنگ قرار بگیرد.
+      const [variantIdTarget, fieldKey] = imageSearchTarget.split("::");
+      setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) => (v.id === variantIdTarget ? { ...v, [fieldKey]: url } : v)) }));
     } else if (imageSearchTarget) {
       setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) => (v.id === imageSearchTarget ? { ...v, image: url } : v)) }));
     }
