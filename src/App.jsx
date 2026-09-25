@@ -1775,7 +1775,7 @@ function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, cate
           {discountPct > 0 && (
             <span className="text-muted" style={{ fontSize: 11, textDecoration: "line-through" }}>{fmtPrice(product.price)}</span>
           )}
-          <span className="font-display" style={{ fontSize: 15.5, fontWeight: 800, color: "#1D1733" }}>{fmtPrice(finalPrice)}</span>
+          <span className="font-display" style={{ fontSize: 15.5, fontWeight: 800, color: "#16215C" }}>{fmtPrice(finalPrice)}</span>
         </div>
 
         <button
@@ -2108,7 +2108,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 {fmtPrice(product.price)}
               </span>
             )}
-            <span className="font-display" style={{ fontSize: 21, fontWeight: 800, color: "#0D1B3E" }}>{fmtPrice(finalPrice)}</span>
+            <span className="font-display" style={{ fontSize: 21, fontWeight: 800, color: "#16215C" }}>{fmtPrice(finalPrice)}</span>
             {discountPct > 0 && (
               <span
                 style={{
@@ -4894,13 +4894,15 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       });
       const { variants: found, imageNote } = await onExtractVariantsFromImage(base64);
       const mapped = (found || [])
-        .filter((v) => v && v.label)
-        .map((v, i) => ({
-          id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
-          label: v.label,
-          hex: v.hex || "",
-          image: v.image || "",
-        }));
+  .filter((v) => v && v.label)
+  .map((v, i) => ({
+    id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+    label: v.label,
+    hex: v.hex || "",
+    image: "",           // عکسِ ۱ (اصلی) خالی می‌ماند — مدیر خودش دستی پر می‌کند
+    image2: v.image || "", // نتیجه‌ی تشخیص از روی اسکرین‌شات اینجا قرار می‌گیرد
+    image3: "",           // عکسِ ۳ هم خالی می‌ماند
+  }));
       if (mapped.length === 0) {
         setVariantImageError("هیچ طیف رنگی روی این عکس پیدا نشد — مطمئن شو اسکرین‌شات کاملِ ردیف‌های رنگ (دایره + اسمِ کنارش) را شامل می‌شود.");
         return;
