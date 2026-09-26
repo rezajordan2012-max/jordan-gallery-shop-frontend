@@ -2151,8 +2151,8 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
             <div className="mb-6">
               <style>{`
                 @keyframes swatchHeadingWaveInline {
-                  0% { background-position: 160% 0; }
-                  100% { background-position: -60% 0; }
+                  0% { background-position: 220% 0; }
+                  100% { background-position: -120% 0; }
                 }
               `}</style>
               <h2
@@ -2161,13 +2161,13 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                   fontSize: 15.5,
                   marginBottom: 6,
                   fontWeight: 800,
-                  backgroundImage: "linear-gradient(95deg, #FF3E8E 0%, #FF3E8E 38%, #FFD23F 47%, #4CD97B 50%, #4CC3F0 53%, #FF3E8E 62%, #FF3E8E 100%)",
-                  backgroundSize: "260% 100%",
+                  backgroundImage: "linear-gradient(95deg, #FF3E8E 0%, #FF3E8E 44%, #FFD23F 49%, #4CD97B 50%, #4CC3F0 51%, #FF3E8E 56%, #FF3E8E 100%)",
+                  backgroundSize: "340% 100%",
                   WebkitBackgroundClip: "text",
                   backgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   color: "#FF3E8E",
-                  animation: "swatchHeadingWaveInline 2s ease-in-out infinite",
+                  animation: "swatchHeadingWaveInline 3.2s ease-in-out infinite",
                 }}
               >
                 طیف رنگ
