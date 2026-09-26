@@ -59,18 +59,27 @@ const FONTS = `
     -webkit-text-stroke: 0.7px rgba(123,92,246,0.55);
     text-stroke: 0.7px rgba(123,92,246,0.55);
     animation: brandShine 6s ease-in-out infinite, brandTilt 5s ease-in-out infinite, brandGlow 6s ease-in-out infinite;
-    @keyframes swatchHeadingShine {
-    0%, 100% { background-position: 200% 0; }
-    50% { background-position: -50% 0; }
+    @keyframes swatchHeadingWave {
+    0% { background-position: 160% 0; }
+    100% { background-position: -60% 0; }
   }
   .swatch-heading-shine {
-    background: linear-gradient(100deg, #FF3E8E 30%, #FFD23F 45%, #00C2CB 50%, #7B5CF6 55%, #FF3E8E 70%);
-    background-size: 300% 100%;
+    background-image: linear-gradient(
+      95deg,
+      #FF3E8E 0%,
+      #FF3E8E 42%,
+      #FFE3F0 48%,
+      #FFD23F 50%,
+      #FFE3F0 52%,
+      #FF3E8E 58%,
+      #FF3E8E 100%
+    );
+    background-size: 260% 100%;
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
-    animation: swatchHeadingShine 2s ease-in-out infinite;
+    animation: swatchHeadingWave 2s ease-in-out infinite;
   }
   @media (prefers-reduced-motion: reduce) {
     .swatch-heading-shine { animation: none; -webkit-text-fill-color: #FF3E8E; color: #FF3E8E; }
@@ -2140,7 +2149,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
 
           {hasVariants && (
             <div className="mb-6">
-              <h2 className="font-display swatch-heading-shine" style={{ fontSize: 15.5, marginBottom: 6, fontWeight: 800 }}>
+              <h2 className="font-display swatch-heading-shine" style={{ fontSize: 15.5, marginBottom: 6 }}>
                 طیف رنگ
               </h2>
               {selectedVariant && (
