@@ -2134,10 +2134,15 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                     backgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     color: "transparent",
-                    fontWeight: 800,
-                    fontSize: 15,
-                    filter: "saturate(1.6) contrast(1.15) drop-shadow(0 1px 2px rgba(139,20,255,0.25))",
+                    fontWeight: 900,
+                    fontSize: 19,
+                    letterSpacing: "0.01em",
+                    WebkitTextStroke: "0.6px rgba(139,20,255,0.55)",
+                    filter: "saturate(2) contrast(1.3) drop-shadow(0 2px 5px rgba(139,20,255,0.45)) drop-shadow(0 0 10px rgba(255,0,128,0.3))",
                     animation: "brandShine 6s ease-in-out infinite",
+                    padding: "3px 12px",
+                    borderRadius: 999,
+                    background2: undefined, // placeholder برای جلوگیری از خطای فرمت
                   }}
                 >
                   طیف رنگ
