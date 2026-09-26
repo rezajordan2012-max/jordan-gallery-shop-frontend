@@ -2102,6 +2102,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
           {product.nameEn && (
             <p className="text-muted" style={{ fontSize: 22, marginBottom: 12 }} dir="ltr">{product.nameEn}</p>
           )}
+          <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 6, color: "#FF3E8E" }}>قیمت</h2>
           <p style={{ marginBottom: 16 }}>
             {discountPct > 0 && (
               <span className="text-muted" style={{ fontSize: 13, textDecoration: "line-through", marginInlineEnd: 8 }}>
