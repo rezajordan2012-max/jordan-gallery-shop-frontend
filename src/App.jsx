@@ -2149,7 +2149,27 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
 
           {hasVariants && (
             <div className="mb-6">
-              <h2 className="font-display swatch-heading-shine" style={{ fontSize: 15.5, marginBottom: 6 }}>
+              <style>{`
+                @keyframes swatchHeadingWaveInline {
+                  0% { background-position: 160% 0; }
+                  100% { background-position: -60% 0; }
+                }
+              `}</style>
+              <h2
+                className="font-display"
+                style={{
+                  fontSize: 15.5,
+                  marginBottom: 6,
+                  fontWeight: 800,
+                  backgroundImage: "linear-gradient(95deg, #FF3E8E 0%, #FF3E8E 38%, #FFD23F 47%, #4CD97B 50%, #4CC3F0 53%, #FF3E8E 62%, #FF3E8E 100%)",
+                  backgroundSize: "260% 100%",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  color: "#FF3E8E",
+                  animation: "swatchHeadingWaveInline 2s ease-in-out infinite",
+                }}
+              >
                 طیف رنگ
               </h2>
               {selectedVariant && (
