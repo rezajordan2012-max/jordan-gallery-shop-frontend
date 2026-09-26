@@ -4553,7 +4553,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
       label: v.label,
       hex: v.hex || "",
-      image: v.image || "",
+      image: "",           // عکسِ ۱ (اصلی) خالی می‌ماند — مدیر خودش دستی پر می‌کند
+      image2: v.image || "", // نتیجه‌ی تشخیص از Gemini اینجا قرار می‌گیرد
+      image3: "",           // عکسِ ۳ هم خالی می‌ماند
     })) : [];
     const currentForm = form;
     setForm((f) => {
@@ -4850,7 +4852,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
           label: v.label,
           hex: v.hex || "",
-          image: v.image || "",
+          image: "",           // عکسِ ۱ (اصلی) خالی می‌ماند — مدیر خودش دستی پر می‌کند
+          image2: v.image || "", // نتیجه‌ی استخراجِ لینک اینجا قرار می‌گیرد
+          image3: "",           // عکسِ ۳ هم خالی می‌ماند
         }));
       if (mapped.length === 0) {
         setVariantUrlError("هیچ طیف رنگی روی این صفحه پیدا نشد — می‌تونی رنگ‌ها رو دستی از پایین اضافه کنی.");
