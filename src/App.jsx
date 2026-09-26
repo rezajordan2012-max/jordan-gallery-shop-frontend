@@ -59,7 +59,23 @@ const FONTS = `
     -webkit-text-stroke: 0.7px rgba(123,92,246,0.55);
     text-stroke: 0.7px rgba(123,92,246,0.55);
     animation: brandShine 6s ease-in-out infinite, brandTilt 5s ease-in-out infinite, brandGlow 6s ease-in-out infinite;
-    line-height: 1.4;
+    @keyframes swatchHeadingShine {
+    0%, 100% { background-position: 200% 0; }
+    50% { background-position: -50% 0; }
+  }
+  .swatch-heading-shine {
+    background: linear-gradient(100deg, #FF3E8E 30%, #FFD23F 45%, #00C2CB 50%, #7B5CF6 55%, #FF3E8E 70%);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: swatchHeadingShine 2s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .swatch-heading-shine { animation: none; -webkit-text-fill-color: #FF3E8E; color: #FF3E8E; }
+  }
+line-height: 1.4;
     letter-spacing: 0.3px;
     display: inline-block;
     transform-style: preserve-3d;
@@ -2124,38 +2140,17 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
 
           {hasVariants && (
             <div className="mb-6">
-              <p className="mb-2 flex items-center gap-1.5" style={{ fontSize: 13 }}>
-                <span
-                  className="font-display"
-                  style={{
-                    background: "linear-gradient(90deg, #FF0080, #8B14FF, #00E5FF, #FF0080)",
-                    backgroundSize: "300% 100%",
-                    WebkitBackgroundClip: "text",
-                    backgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    color: "transparent",
-                    fontWeight: 900,
-                    fontSize: 19,
-                    letterSpacing: "0.01em",
-                    WebkitTextStroke: "0.6px rgba(139,20,255,0.55)",
-                    filter: "saturate(2) contrast(1.3) drop-shadow(0 2px 5px rgba(139,20,255,0.45)) drop-shadow(0 0 10px rgba(255,0,128,0.3))",
-                    animation: "brandShine 6s ease-in-out infinite",
-                    padding: "3px 12px",
-                    borderRadius: 999,
-                    background2: undefined, // placeholder برای جلوگیری از خطای فرمت
-                  }}
-                >
-                  طیف رنگ
-                </span>
-                {selectedVariant && (
-                  <>
-                    <span aria-hidden="true" className="swatch-hint-blink" style={{ fontSize: 16, display: "inline-block" }}>
-                      👈
-                    </span>
-                    <span style={{ color: "#1D1733", fontWeight: 800 }}>{selectedVariant.label}</span>
-                  </>
-                )}
-              </p>
+              <h2 className="font-display swatch-heading-shine" style={{ fontSize: 15.5, marginBottom: 6, fontWeight: 800 }}>
+                طیف رنگ
+              </h2>
+              {selectedVariant && (
+                <p className="mb-2 flex items-center gap-1.5" style={{ fontSize: 13 }}>
+                  <span aria-hidden="true" className="swatch-hint-blink" style={{ fontSize: 16, display: "inline-block" }}>
+                    👈
+                  </span>
+                  <span style={{ color: "#1D1733", fontWeight: 800 }}>{selectedVariant.label}</span>
+                </p>
+              )}
               <div className="flex flex-wrap gap-2.5">
                 {product.variants.map((v) => {
                   const isSelected = variantId === v.id;
