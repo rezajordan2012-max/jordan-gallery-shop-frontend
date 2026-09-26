@@ -67,11 +67,11 @@ const FONTS = `
     background-image: linear-gradient(
       95deg,
       #FF3E8E 0%,
-      #FF3E8E 42%,
-      #FFE3F0 48%,
-      #FFD23F 50%,
-      #FFE3F0 52%,
-      #FF3E8E 58%,
+      #FF3E8E 38%,
+      #FFD23F 47%,
+      #4CD97B 50%,
+      #4CC3F0 53%,
+      #FF3E8E 62%,
       #FF3E8E 100%
     );
     background-size: 260% 100%;
