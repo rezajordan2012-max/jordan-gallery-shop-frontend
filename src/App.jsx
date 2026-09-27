@@ -2925,6 +2925,16 @@ export default function MaisonStore() {
     if (!res.ok) throw new Error(data.error || "جستجوی عکس ناموفق بود");
     return data.results || [];
   }
+  async function searchProductVideo(query) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/search-product-video`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ query }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "جستجوی ویدیو ناموفق بود");
+    return data.results || [];
+  }
 
   async function extractVariantsFromUrl(url) {
     const res = await fetch(`${API_BASE_URL}/api/ai/extract-variants-from-url`, {
@@ -3739,6 +3749,7 @@ export default function MaisonStore() {
           onTranslatePerfumeText={translatePerfumeText}
           onLookupBarcode={lookupBarcode}
           onSearchProductImage={searchProductImage}
+          onSearchProductVideo={searchProductVideo}
           onExtractVariantsFromUrl={extractVariantsFromUrl}
           onExtractVariantsFromImage={extractVariantsFromImage}
           onImportProductFromUrl={importProductFromUrl}
@@ -4244,7 +4255,7 @@ function emptyForm() {
   return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", mainAccords: "", scentScore: "", scentRatings: "", longevityScore: "", longevityRatings: "", sillageScore: "", sillageRatings: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", volume: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
-function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenImageSearch, productContext }) {
+function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenImageSearch, onOpenVideoSearch, productContext }) {
   const [uploadingField, setUploadingField] = useState(""); // "" | "image" | "image2" | "image3"
   const [error, setError] = useState("");
 
@@ -4381,6 +4392,13 @@ async function handleVideoFile(e) {
               {uploadingField === "video" ? "در حال آپلود..." : variant.video ? "تغییر" : "افزودنِ ویدیو"}
               <input type="file" accept="video/*" onChange={handleVideoFile} disabled={!!uploadingField} style={{ display: "none" }} />
             </label>
+            <button
+              type="button"
+              onClick={() => onOpenVideoSearch(variant.id, `${productContext || ""} ${variant.label || ""}`.trim())}
+              className="btn-ghost rounded px-3 py-1.5 text-xs flex items-center gap-1.5"
+            >
+              <Search size={13} /> جستجو
+            </button>
             {variant.video && (
               <button type="button" onClick={() => onChange({ ...variant, video: "" })} className="text-muted" style={{ fontSize: 11 }}>
                 حذف ویدیو
@@ -4442,7 +4460,7 @@ async function runFreeOcrExtraction(file) {
   }
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onExtractVariantsFromUrl, onExtractVariantsFromImage, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onSearchProductVideo, onExtractVariantsFromUrl, onExtractVariantsFromImage, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -4849,7 +4867,46 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       setImageSearchLoading(false);
     }
   }
+const [videoSearchTarget, setVideoSearchTarget] = useState(null);
+  const [videoSearchQuery, setVideoSearchQuery] = useState("");
+  const [videoSearchLoading, setVideoSearchLoading] = useState(false);
+  const [videoSearchResults, setVideoSearchResults] = useState([]);
+  const [videoSearchError, setVideoSearchError] = useState("");
 
+  function openVideoSearch(target, defaultQuery) {
+    setVideoSearchTarget(target);
+    setVideoSearchQuery(defaultQuery || "");
+    setVideoSearchResults([]);
+    setVideoSearchError("");
+  }
+
+  function closeVideoSearch() {
+    setVideoSearchTarget(null);
+    setVideoSearchResults([]);
+    setVideoSearchError("");
+  }
+
+  async function runVideoSearch() {
+    const q = videoSearchQuery.trim();
+    if (!q) return;
+    setVideoSearchLoading(true);
+    setVideoSearchError("");
+    setVideoSearchResults([]);
+    try {
+      const results = await onSearchProductVideo(q);
+      setVideoSearchResults(results);
+      if (results.length === 0) setVideoSearchError("ویدیویی پیدا نشد — عبارتِ جستجو را دقیق‌تر یا متفاوت امتحان کن.");
+    } catch (err) {
+      setVideoSearchError(err.message || "جستجوی ویدیو ناموفق بود");
+    } finally {
+      setVideoSearchLoading(false);
+    }
+  }
+
+  function pickVideoSearchResult(url) {
+    setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) => (v.id === videoSearchTarget ? { ...v, video: url } : v)) }));
+    closeVideoSearch();
+  }
   function pickImageSearchResult(url) {
     if (imageSearchTarget === "main") {
       setForm((f) => ({ ...f, image: url }));
@@ -6655,6 +6712,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
               onRemove={() => setForm((f) => ({ ...f, variantsList: f.variantsList.filter((x) => x.id !== v.id) }))}
               onUploadImage={onUploadImage}
               onOpenImageSearch={openImageSearch}
+              onOpenVideoSearch={openVideoSearch}
               productContext={`${form.brand} ${form.name}`.trim()}
             />
           ))}
@@ -6795,6 +6853,66 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           </div>
         </div>
       )}
+      {videoSearchTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(36,30,61,0.5)" }} onClick={closeVideoSearch}>
+          <div className="bg-panel rounded-lg p-5 w-full border border-hair" style={{ maxWidth: 460, maxHeight: "82vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-display flex items-center gap-1.5" style={{ fontSize: 16 }}>
+                <Search size={16} color="#7B5CF6" /> جستجوی ویدیو در اینترنت
+              </h3>
+              <button onClick={closeVideoSearch}><X size={18} color="#241E3D" /></button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); runVideoSearch(); }} className="flex items-center gap-2 mb-3">
+              <input
+                autoFocus
+                value={videoSearchQuery}
+                onChange={(e) => setVideoSearchQuery(e.target.value)}
+                placeholder="مثلاً: سایه دوتایی SHEGLAM شماره 05"
+                className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
+                style={{ color: "#241E3D" }}
+              />
+              <button type="submit" disabled={videoSearchLoading || !videoSearchQuery.trim()} className="btn-gold rounded px-4 py-2 text-sm flex items-center gap-1.5 flex-shrink-0">
+                {videoSearchLoading ? "..." : "جستجو"}
+              </button>
+            </form>
+            {videoSearchError && <p style={{ fontSize: 12, color: "#D6336C", marginBottom: 10 }}>{videoSearchError}</p>}
+            {videoSearchLoading && (
+              <div className="grid grid-cols-2 gap-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="skeleton rounded-lg" style={{ height: 120 }} />
+                ))}
+              </div>
+            )}
+            {!videoSearchLoading && videoSearchResults.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                {videoSearchResults.map((r, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => pickVideoSearchResult(r.url)}
+                    className="rounded-lg overflow-hidden border border-hair"
+                    style={{ height: 120, background: "#FFFFFF", padding: 0 }}
+                    title={r.source || ""}
+                  >
+                    <video src={r.url} muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </button>
+                ))}
+              </div>
+            )}
+            {!videoSearchLoading && !videoSearchError && videoSearchResults.length === 0 && (
+              <p className="text-muted" style={{ fontSize: 11.5 }}>
+                عبارتِ جستجو را (اسم محصول، برند، و در صورتِ نیاز شماره/نامِ رنگ) دقیق بنویس و «جستجو» را بزن.
+              </p>
+            )}
+            <p className="text-muted mt-3" style={{ fontSize: 10.5 }}>
+              روی هر ویدیو بزن تا مستقیماً برای همین فیلد ذخیره شود — همه‌ی این ویدیوها از قبل روی سرورِ خودمان آپلود شده‌اند.
+            </p>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
     </section>
   );
 }
