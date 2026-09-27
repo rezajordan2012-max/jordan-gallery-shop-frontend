@@ -59,32 +59,7 @@ const FONTS = `
     -webkit-text-stroke: 0.7px rgba(123,92,246,0.55);
     text-stroke: 0.7px rgba(123,92,246,0.55);
     animation: brandShine 6s ease-in-out infinite, brandTilt 5s ease-in-out infinite, brandGlow 6s ease-in-out infinite;
-    @keyframes swatchHeadingWave {
-    0% { background-position: 160% 0; }
-    100% { background-position: -60% 0; }
-  }
-  .swatch-heading-shine {
-    background-image: linear-gradient(
-      95deg,
-      #FF3E8E 0%,
-      #FF3E8E 38%,
-      #FFD23F 47%,
-      #4CD97B 50%,
-      #4CC3F0 53%,
-      #FF3E8E 62%,
-      #FF3E8E 100%
-    );
-    background-size: 260% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-    animation: swatchHeadingWave 2s ease-in-out infinite;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .swatch-heading-shine { animation: none; -webkit-text-fill-color: #FF3E8E; color: #FF3E8E; }
-  }
-line-height: 1.4;
+    line-height: 1.4;
     letter-spacing: 0.3px;
     display: inline-block;
     transform-style: preserve-3d;
