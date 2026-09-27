@@ -2124,43 +2124,9 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
 
           {hasVariants && (
             <div className="mb-6">
-              <style>{`
-                @keyframes swatchHeadingWaveInline {
-                  0% { background-position: 260% 0; }
-                  100% { background-position: -160% 0; }
-                }
-              `}</style>
-              <span style={{ position: "relative", display: "inline-block" }}>
-                <h2
-                  className="font-display"
-                  style={{ fontSize: 15.5, marginBottom: 6, color: "#FF3E8E" }}
-                >
-                  طیف رنگ
-                </h2>
-                <h2
-                  aria-hidden="true"
-                  className="font-display"
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    margin: 0,
-                    fontSize: 15.5,
-                    backgroundImage:
-                      "linear-gradient(100deg, transparent 30%, rgba(255,210,63,0.95) 45%, rgba(76,217,123,0.95) 50%, rgba(76,195,240,0.95) 55%, transparent 70%)",
-                    backgroundSize: "300% 100%",
-                    WebkitBackgroundClip: "text",
-                    backgroundClip: "text",
-                    color: "transparent",
-                    WebkitTextFillColor: "transparent",
-                    mixBlendMode: "screen",
-                    pointerEvents: "none",
-                    userSelect: "none",
-                    animation: "swatchHeadingWaveInline 4s ease-in-out infinite",
-                  }}
-                >
-                  طیف رنگ
-                </h2>
-              </span>
+              <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 6, color: "#FF3E8E" }}>
+                طیف رنگ
+              </h2>
               {selectedVariant && (
                 <p className="mb-2 flex items-center gap-1.5" style={{ fontSize: 13 }}>
                   <span aria-hidden="true" className="swatch-hint-blink" style={{ fontSize: 16, display: "inline-block" }}>
