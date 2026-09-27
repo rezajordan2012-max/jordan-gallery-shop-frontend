@@ -6913,6 +6913,3 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
     </section>
   );
 }
-    </section>
-  );
-}
