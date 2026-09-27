@@ -4282,7 +4282,31 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenIm
       setUploadingField("");
     }
   }
-
+async function handleVideoFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("video/")) {
+      setError("فایل انتخاب‌شده ویدیو نیست");
+      return;
+    }
+    setError("");
+    setUploadingField("video");
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const url = await onUploadImage(base64, false);
+      onChange({ ...variant, video: url });
+    } catch (err) {
+      setError(err.message || "آپلود ویدیو ناموفق بود");
+    } finally {
+      setUploadingField("");
+    }
+  }
   return (
     <div className="bg-panel-2 border border-hair rounded-lg p-3 flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -4339,10 +4363,38 @@ function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenIm
           </div>
         </div>
       ))}
+
+      <div className="flex items-center gap-2 flex-wrap pt-1" style={{ borderTop: "1px dashed rgba(123,92,246,0.2)" }}>
+        {variant.video ? (
+          <video src={variant.video} muted style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)" }} />
+        ) : (
+          <span style={{ width: 34, height: 34, borderRadius: 6, background: "rgba(123,92,246,0.06)", border: "1px dashed rgba(123,92,246,0.3)" }} />
+        )}
+        <div className="flex flex-col gap-1 flex-1" style={{ minWidth: 160 }}>
+          <span className="text-muted" style={{ fontSize: 10.5 }}>ویدیوِ کوتاه (اختیاری — با ورق‌زدن در دسترسِ مشتری، مثلاً نمایِ متحرکِ همین رنگ)</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <label
+              className="btn-ghost rounded px-3 py-1.5 text-xs flex items-center gap-1.5"
+              style={{ cursor: uploadingField ? "default" : "pointer", opacity: uploadingField && uploadingField !== "video" ? 0.4 : 1 }}
+            >
+              <Upload size={13} />
+              {uploadingField === "video" ? "در حال آپلود..." : variant.video ? "تغییر" : "افزودنِ ویدیو"}
+              <input type="file" accept="video/*" onChange={handleVideoFile} disabled={!!uploadingField} style={{ display: "none" }} />
+            </label>
+            {variant.video && (
+              <button type="button" onClick={() => onChange({ ...variant, video: "" })} className="text-muted" style={{ fontSize: 11 }}>
+                حذف ویدیو
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {error && <p style={{ fontSize: 11, color: "#D6336C" }}>{error}</p>}
     </div>
   );
 }
+      
 
 // --- «روش کاملاً رایگان» برای تشخیص از روی عکس: OCR داخل خودِ مرورگر، بدون هوش مصنوعی ---
 let tesseractModulePromise = null;
@@ -6611,7 +6663,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
             onClick={() =>
               setForm((f) => ({
                 ...f,
-                variantsList: [...(f.variantsList || []), { id: `v${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, label: "", hex: "", image: "" }],
+                variantsList: [...(f.variantsList || []), { id: `v${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, label: "", hex: "", image: "", video: "" }],
               }))
             }
             className="btn-ghost rounded px-3 py-2 text-xs self-start flex items-center gap-1.5"
