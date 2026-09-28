@@ -4343,9 +4343,9 @@ async function handleVideoFile(e) {
       {IMAGE_FIELDS.map((f) => (
         <div key={f.key} className="flex items-center gap-2 flex-wrap pt-1" style={{ borderTop: f.key !== "image" ? "1px dashed rgba(123,92,246,0.2)" : undefined }}>
           {variant[f.key] ? (
-            <img src={variant[f.key]} alt={variant.label} style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)" }} />
+            <img src={variant[f.key]} alt={variant.label} style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)" }} />
           ) : (
-            <span style={{ width: 34, height: 34, borderRadius: 6, background: f.key === "image" ? (variant.hex || "#EEE") : "rgba(123,92,246,0.06)", border: "1px dashed rgba(123,92,246,0.3)" }} />
+            <span style={{ width: 34, height: 34, borderRadius: "50%", background: f.key === "image" ? (variant.hex || "#EEE") : "rgba(123,92,246,0.06)", border: "1px dashed rgba(123,92,246,0.3)" }} />
           )}
           <div className="flex flex-col gap-1 flex-1" style={{ minWidth: 160 }}>
             <span className="text-muted" style={{ fontSize: 10.5 }}>{f.label}</span>
@@ -4997,9 +4997,11 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
     id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
     label: v.label,
     hex: v.hex || "",
-    image: "",           // عکسِ ۱ (اصلی) خالی می‌ماند — مدیر خودش دستی پر می‌کند
-    image2: v.image || "", // نتیجه‌ی تشخیص از روی اسکرین‌شات اینجا قرار می‌گیرد
-    image3: "",           // عکسِ ۳ هم خالی می‌ماند
+    image: v.image || "", // نتیجه‌ی تشخیص، همینجا (فیلدِ ۱ اصلی) قرار می‌گیرد — همین عکس هم
+                           // پس‌زمینه‌ی دایره‌ی انتخابِ رنگ می‌شود، هم بعدِ انتخابِ رنگ به‌عنوانِ
+                           // تصویرِ اصلیِ نمایش‌داده‌شده در صفحه‌ی محصول
+    image2: "",
+    image3: "",
   }));
       if (mapped.length === 0) {
         setVariantImageError("هیچ طیف رنگی روی این عکس پیدا نشد — مطمئن شو اسکرین‌شات کاملِ ردیف‌های رنگ (دایره + اسمِ کنارش) را شامل می‌شود.");
