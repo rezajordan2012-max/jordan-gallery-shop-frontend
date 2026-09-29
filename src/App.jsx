@@ -1936,8 +1936,12 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
   // هر طیفِ رنگ می‌تواند تا ۳ عکس داشته باشد (image، image2، image3) — مثلاً یک عکسِ محصول و
   // یک/دو عکسِ نمایشِ بافت/سواچِ همان رنگ. فقط عکسِ اول به‌عنوانِ پیش‌فرض نمایش داده می‌شود؛
   // بقیه با ورق‌زدن (swipe/کلیک) در دسترسِ مشتری هستند.
+  // ترتیبِ اولویتِ «عکسِ بزرگِ نمایشِ محصول» (بالای صفحه): اول عکسِ ۲ و ۳ (که مدیر برای نمایِ
+  // واقعیِ محصول آپلود کرده)، و فقط اگر هیچ‌کدام نبود، به‌عنوانِ آخرین چاره از خودِ عکسِ سوآچِ
+  // رنگ (فیلدِ ۱) استفاده می‌شود. این «آخرین چاره» تضمین می‌کند که صفحه هیچ‌وقت بدونِ عکس نماند،
+  // حتی اگر مدیر برای این رنگِ خاص فراموش کرده باشد عکسِ ۲/۳ را پر کند.
   const variantImages = selectedVariant
-    ? [selectedVariant.image, selectedVariant.image2, selectedVariant.image3].filter(Boolean)
+    ? [selectedVariant.image2, selectedVariant.image3, selectedVariant.image].filter(Boolean)
     : [];
   const [variantImageIndex, setVariantImageIndex] = useState(0);
   useEffect(() => {
