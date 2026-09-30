@@ -2567,6 +2567,8 @@ function AccountPage({ user, orders, loading, error, onRetry, onLogout, onBack }
 }
 
 export default function MaisonStore() {
+	onExtractImagesFromUrl={extractImagesFromUrl}
+onExtractVideosFromUrl={extractVideosFromUrl}
   const [view, setView] = useState("store"); // store | admin
   const [menuOpen, setMenuOpen] = useState(false);
   const marqueeRef = useRef(null);
@@ -4936,19 +4938,20 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
     setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) => (v.id === videoSearchTarget ? { ...v, video: url } : v)) }));
     closeVideoSearch();
   }
-  function pickImageSearchResult(url) {
-    if (imageSearchTarget === "main") {
-      setForm((f) => ({ ...f, image: url }));
-    } else if (imageSearchTarget && imageSearchTarget.includes("::")) {
-      // برایِ فیلدهایِ عکسِ ۲/۳ یک کلیدِ ترکیبی «شناسهٔ‌رنگ::نامِ‌فیلد» استفاده می‌کنیم تا مشخص
-      // باشد نتیجه‌ی جستجو دقیقاً باید در کدام یک از سه فیلدِ عکسِ همان رنگ قرار بگیرد.
-      const [variantIdTarget, fieldKey] = imageSearchTarget.split("::");
-      setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) => (v.id === variantIdTarget ? { ...v, [fieldKey]: url } : v)) }));
-    } else if (imageSearchTarget) {
-      setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) => (v.id === imageSearchTarget ? { ...v, image: url } : v)) }));
-    }
-    closeImageSearch();
+   function pickImageSearchResult(url, label) {
+  const okLabel = label && !/^https?:/i.test(label) ? label : "";
+  if (imageSearchTarget === "main") {
+    setForm((f) => ({ ...f, image: url }));
+  } else if (imageSearchTarget && imageSearchTarget.includes("::")) {
+    const [vid, fieldKey] = imageSearchTarget.split("::");
+    setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) =>
+      v.id === vid ? { ...v, [fieldKey]: url, label: v.label || okLabel } : v) }));
+  } else if (imageSearchTarget) {
+    setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) =>
+      v.id === imageSearchTarget ? { ...v, image: url, label: v.label || okLabel } : v) }));
   }
+  closeImageSearch();
+}
 
   const [variantUrlInput, setVariantUrlInput] = useState("");
   const [variantUrlLoading, setVariantUrlLoading] = useState(false);
@@ -6860,14 +6863,17 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
             {!imageSearchLoading && imageSearchResults.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
                 {imageSearchResults.map((r, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => pickImageSearchResult(r.url)}
-                    className="rounded-lg overflow-hidden border border-hair"
-                    style={{ height: 92, background: "#FFFFFF", padding: 0 }}
-                    title={r.source || ""}
-                  >
+                  <button key={i} type="button" onClick={() => pickImageSearchResult(r.url, r.label)}
+  className="rounded-lg overflow-hidden border border-hair"
+  style={{ background: "#FFFFFF", padding: 0 }}>
+  <img src={r.url} alt="" style={{ width: "100%", height: 80, objectFit: "cover" }} />
+  {r.label && <span style={{ display: "block", fontSize: 10, padding: "3px 4px" }}>{r.label}</span>}
+</button>
+{imageSearchLoading && /^https?:\/\//i.test(imageSearchQuery) && (
+  <p className="text-muted" style={{ fontSize: 11 }}>
+    در حال باز کردن صفحه و دانلود عکس‌ها… ممکن است ۳۰ تا ۶۰ ثانیه طول بکشد.
+  </p>
+)}
                     <img src={r.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   </button>
                 ))}
