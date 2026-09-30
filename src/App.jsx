@@ -2939,7 +2939,26 @@ export default function MaisonStore() {
     if (!res.ok) throw new Error(data.error || "جستجوی ویدیو ناموفق بود");
     return data.results || [];
   }
-
+async function extractImagesFromUrl(url) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/extract-images-from-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "استخراج عکس از لینک ناموفق بود");
+    return data.results || [];
+  }
+  async function extractVideosFromUrl(url) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/extract-videos-from-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "استخراج ویدیو از لینک ناموفق بود");
+    return data.results || [];
+  }
   async function extractVariantsFromUrl(url) {
     const res = await fetch(`${API_BASE_URL}/api/ai/extract-variants-from-url`, {
       method: "POST",
@@ -4464,7 +4483,7 @@ async function runFreeOcrExtraction(file) {
   }
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onSearchProductVideo, onExtractVariantsFromUrl, onExtractVariantsFromImage, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onSearchProductVideo, onExtractImagesFromUrl, onExtractVideosFromUrl, onExtractVariantsFromUrl, onExtractVariantsFromImage, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -4862,9 +4881,12 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     setImageSearchError("");
     setImageSearchResults([]);
     try {
-      const results = await onSearchProductImage(q);
+      const isUrl = /^https?:\/\//i.test(q);
+      const results = isUrl ? await onExtractImagesFromUrl(q) : await onSearchProductImage(q);
       setImageSearchResults(results);
-      if (results.length === 0) setImageSearchError("عکسی پیدا نشد — عبارتِ جستجو را دقیق‌تر یا متفاوت امتحان کن.");
+      if (results.length === 0) {
+        setImageSearchError(isUrl ? "هیچ عکسی روی این صفحه پیدا نشد." : "عکسی پیدا نشد — عبارتِ جستجو را دقیق‌تر یا متفاوت امتحان کن.");
+      }
     } catch (err) {
       setImageSearchError(err.message || "جستجوی عکس ناموفق بود");
     } finally {
@@ -4897,9 +4919,12 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
     setVideoSearchError("");
     setVideoSearchResults([]);
     try {
-      const results = await onSearchProductVideo(q);
+      const isUrl = /^https?:\/\//i.test(q);
+      const results = isUrl ? await onExtractVideosFromUrl(q) : await onSearchProductVideo(q);
       setVideoSearchResults(results);
-      if (results.length === 0) setVideoSearchError("ویدیویی پیدا نشد — عبارتِ جستجو را دقیق‌تر یا متفاوت امتحان کن.");
+      if (results.length === 0) {
+        setVideoSearchError(isUrl ? "هیچ ویدیویی روی این صفحه پیدا نشد." : "ویدیویی پیدا نشد — عبارتِ جستجو را دقیق‌تر یا متفاوت امتحان کن.");
+      }
     } catch (err) {
       setVideoSearchError(err.message || "جستجوی ویدیو ناموفق بود");
     } finally {
@@ -6816,7 +6841,7 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
                 autoFocus
                 value={imageSearchQuery}
                 onChange={(e) => setImageSearchQuery(e.target.value)}
-                placeholder="مثلاً: کرم پودر میبلین فیت می شماره ۲۱۰"
+                placeholder="یک عبارت بنویس، یا لینکِ کاملِ صفحه‌ی محصول (مثلاً از SHEGLAM) را بچسبان"
                 className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
                 style={{ color: "#241E3D" }}
               />
