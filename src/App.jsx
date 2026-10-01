@@ -1176,7 +1176,7 @@ function framedProductImageUrl(url, size = 1000) {
   const marker = "/upload/";
   const idx = url.indexOf(marker);
   if (!url.includes("res.cloudinary.com") || idx === -1) return url;
-  const transform = `c_lpad,b_white,w_${size},h_${size},q_auto:best,f_auto`;
+  const transform = `c_pad,b_white,w_${size},h_${size},q_auto:good,f_auto`;
   return url.slice(0, idx + marker.length) + transform + "/" + url.slice(idx + marker.length);
 }
 
@@ -1928,6 +1928,42 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
   );
 }
 
+function shadeHex(hex, amt) {
+  let h = String(hex || "").replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return "#D9B48F";
+  const n = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const target = amt >= 0 ? 255 : 0;
+  const k = Math.abs(amt);
+  return "#" + n.map((v) => Math.round(v + (target - v) * k).toString(16).padStart(2, "0")).join("");
+}
+
+// لکه‌ی کرم‌پودر (اسمیر) به‌صورت وکتور — در هر اندازه تیز می‌ماند و با رنگِ همان سوآچ پر می‌شود.
+function SmearSwatch({ hex }) {
+  const base = hex || "#D9B48F";
+  const light = shadeHex(base, 0.3);
+  const dark = shadeHex(base, -0.22);
+  const gid = "smear" + String(base).replace("#", "");
+  const smear = "M92 190 C70 150 92 100 150 96 C190 100 215 118 255 150 C305 190 345 235 372 285 C340 292 322 318 296 332 C268 340 250 322 230 305 C170 262 112 224 92 190 Z";
+  return (
+    <svg viewBox="0 0 440 440" style={{ width: "100%", height: "100%" }} role="img" aria-label="نمونه رنگ">
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={light} />
+          <stop offset="0.45" stopColor={base} />
+          <stop offset="1" stopColor={dark} />
+        </linearGradient>
+        <filter id={gid + "s"} x="-20%" y="-20%" width="140%" height="150%">
+          <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor={dark} floodOpacity="0.28" />
+        </filter>
+      </defs>
+      <path d={smear} fill={`url(#${gid})`} filter={`url(#${gid}s)`} />
+      <path d="M118 176 C150 128 205 126 262 168" fill="none" stroke="#FFFFFF" strokeOpacity="0.5" strokeWidth="6" strokeLinecap="round" />
+      <path d="M130 214 C190 246 255 292 300 318" fill="none" stroke={dark} strokeOpacity="0.28" strokeWidth="5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, categoryMedia }) {
   const hasVariants = !!product && product.variants && product.variants.length > 0;
   const [variantId, setVariantId] = useState("");
@@ -1940,14 +1976,12 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
   // واقعیِ محصول آپلود کرده)، و فقط اگر هیچ‌کدام نبود، به‌عنوانِ آخرین چاره از خودِ عکسِ سوآچِ
   // رنگ (فیلدِ ۱) استفاده می‌شود. این «آخرین چاره» تضمین می‌کند که صفحه هیچ‌وقت بدونِ عکس نماند،
   // حتی اگر مدیر برای این رنگِ خاص فراموش کرده باشد عکسِ ۲/۳ را پر کند.
-  const variantImages = selectedVariant
-    ? [selectedVariant.image2, selectedVariant.image3, selectedVariant.image].filter(Boolean)
-    : [];
+  
   const [variantImageIndex, setVariantImageIndex] = useState(0);
   useEffect(() => {
     setVariantImageIndex(0);
   }, [variantId]);
-  const displayImage = variantImages[variantImageIndex] || variantImages[0] || (product && product.image) || "";
+  const displayImage = useSmear ? "" : (variantImages[variantImageIndex] || variantImages[0] || (product && product.image) || "");
   const discountPct = product ? effectiveDiscountPercent(product, globalDiscountPercent) : 0;
   const finalPrice = product ? discountedPrice(product, globalDiscountPercent) : 0;
   const catMedia = product && categoryMedia && categoryMedia.url ? normalizeBanner(categoryMedia) : null;
@@ -2034,6 +2068,8 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
               alt={product.name}
               style={selectedVariant && displayImage ? { width: "100%", height: "100%", objectFit: "contain" } : productImageStyle(product)}
             />
+          ) : useSmear ? (
+            <SmearSwatch hex={selectedVariant.hex} />
           ) : (
             <CategoryIcon category={product.category} size={80} />
           )}
