@@ -2567,8 +2567,6 @@ function AccountPage({ user, orders, loading, error, onRetry, onLogout, onBack }
 }
 
 export default function MaisonStore() {
-	onExtractImagesFromUrl={extractImagesFromUrl}
-onExtractVideosFromUrl={extractVideosFromUrl}
   const [view, setView] = useState("store"); // store | admin
   const [menuOpen, setMenuOpen] = useState(false);
   const marqueeRef = useRef(null);
@@ -3775,6 +3773,8 @@ async function extractImagesFromUrl(url) {
           onLookupBarcode={lookupBarcode}
           onSearchProductImage={searchProductImage}
           onSearchProductVideo={searchProductVideo}
+          onExtractImagesFromUrl={extractImagesFromUrl}
+          onExtractVideosFromUrl={extractVideosFromUrl}
           onExtractVariantsFromUrl={extractVariantsFromUrl}
           onExtractVariantsFromImage={extractVariantsFromImage}
           onImportProductFromUrl={importProductFromUrl}
