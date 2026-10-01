@@ -4944,11 +4944,19 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
     setForm((f) => ({ ...f, image: url }));
   } else if (imageSearchTarget && imageSearchTarget.includes("::")) {
     const [vid, fieldKey] = imageSearchTarget.split("::");
-    setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) =>
-      v.id === vid ? { ...v, [fieldKey]: url, label: v.label || okLabel } : v) }));
+    setForm((f) => ({
+      ...f,
+      variantsList: (f.variantsList || []).map((v) =>
+        v.id === vid ? { ...v, [fieldKey]: url, label: v.label || okLabel } : v
+      ),
+    }));
   } else if (imageSearchTarget) {
-    setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) =>
-      v.id === imageSearchTarget ? { ...v, image: url, label: v.label || okLabel } : v) }));
+    setForm((f) => ({
+      ...f,
+      variantsList: (f.variantsList || []).map((v) =>
+        v.id === imageSearchTarget ? { ...v, image: url, label: v.label || okLabel } : v
+      ),
+    }));
   }
   closeImageSearch();
 }
@@ -6840,50 +6848,58 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
               <button onClick={closeImageSearch}><X size={18} color="#241E3D" /></button>
             </div>
             <form onSubmit={(e) => { e.preventDefault(); runImageSearch(); }} className="flex items-center gap-2 mb-3">
-              <input
-                autoFocus
-                value={imageSearchQuery}
-                onChange={(e) => setImageSearchQuery(e.target.value)}
-                placeholder="یک عبارت بنویس، یا لینکِ کاملِ صفحه‌ی محصول (مثلاً از SHEGLAM) را بچسبان"
-                className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
-                style={{ color: "#241E3D" }}
-              />
-              <button type="submit" disabled={imageSearchLoading || !imageSearchQuery.trim()} className="btn-gold rounded px-4 py-2 text-sm flex items-center gap-1.5 flex-shrink-0">
-                {imageSearchLoading ? "..." : "جستجو"}
-              </button>
-            </form>
-            {imageSearchError && <p style={{ fontSize: 12, color: "#D6336C", marginBottom: 10 }}>{imageSearchError}</p>}
-            {imageSearchLoading && (
-              <div className="grid grid-cols-3 gap-2">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="skeleton rounded-lg" style={{ height: 92 }} />
-                ))}
-              </div>
-            )}
-            {!imageSearchLoading && imageSearchResults.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {imageSearchResults.map((r, i) => (
-                  <button key={i} type="button" onClick={() => pickImageSearchResult(r.url, r.label)}
-  className="rounded-lg overflow-hidden border border-hair"
-  style={{ background: "#FFFFFF", padding: 0 }}>
-  <img src={r.url} alt="" style={{ width: "100%", height: 80, objectFit: "cover" }} />
-  {r.label && <span style={{ display: "block", fontSize: 10, padding: "3px 4px" }}>{r.label}</span>}
-</button>
+  <input
+    autoFocus
+    value={imageSearchQuery}
+    onChange={(e) => setImageSearchQuery(e.target.value)}
+    placeholder="لینک صفحه‌ی محصول (مثلاً کرم‌پودر SHEGLAM) یا نام محصول"
+    className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
+    style={{ color: "#241E3D" }}
+  />
+  <button type="submit" disabled={imageSearchLoading || !imageSearchQuery.trim()} className="btn-gold rounded px-4 py-2 text-sm flex items-center gap-1.5 flex-shrink-0">
+    {imageSearchLoading ? "..." : "جستجو"}
+  </button>
+</form>
+
+{imageSearchError && <p style={{ fontSize: 12, color: "#D6336C", marginBottom: 10 }}>{imageSearchError}</p>}
+
 {imageSearchLoading && /^https?:\/\//i.test(imageSearchQuery) && (
-  <p className="text-muted" style={{ fontSize: 11 }}>
+  <p className="text-muted" style={{ fontSize: 11, marginBottom: 8 }}>
     در حال باز کردن صفحه و دانلود عکس‌ها… ممکن است ۳۰ تا ۶۰ ثانیه طول بکشد.
   </p>
 )}
-                    <img src={r.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  </button>
-                ))}
-              </div>
-            )}
-            {!imageSearchLoading && !imageSearchError && imageSearchResults.length === 0 && (
-              <p className="text-muted" style={{ fontSize: 11.5 }}>
-                عبارتِ جستجو را (اسم محصول، برند، و در صورتِ نیاز شماره/نامِ رنگ) دقیق بنویس و «جستجو» را بزن.
-              </p>
-            )}
+
+{imageSearchLoading && (
+  <div className="grid grid-cols-3 gap-2">
+    {Array.from({ length: 6 }).map((_, i) => (
+      <div key={i} className="skeleton rounded-lg" style={{ height: 92 }} />
+    ))}
+  </div>
+)}
+
+{!imageSearchLoading && imageSearchResults.length > 0 && (
+  <div className="grid grid-cols-3 gap-2">
+    {imageSearchResults.map((r, i) => (
+      <button
+        key={i}
+        type="button"
+        onClick={() => pickImageSearchResult(r.url, r.label)}
+        className="rounded-lg overflow-hidden border border-hair"
+        style={{ background: "#FFFFFF", padding: 0 }}
+        title={r.source || ""}
+      >
+        <img src={r.url} alt="" style={{ width: "100%", height: 80, objectFit: "cover" }} />
+        {r.label && <span style={{ display: "block", fontSize: 10, padding: "3px 4px" }}>{r.label}</span>}
+      </button>
+    ))}
+  </div>
+)}
+
+{!imageSearchLoading && !imageSearchError && imageSearchResults.length === 0 && (
+  <p className="text-muted" style={{ fontSize: 11.5 }}>
+    لینک کامل صفحه‌ی محصول را بچسبان، یا اسم محصول را بنویس و «جستجو» را بزن.
+  </p>
+)}
             <p className="text-muted mt-3" style={{ fontSize: 10.5 }}>
               روی هر عکس بزن تا مستقیماً برای همین فیلد ذخیره شود — همه‌ی این عکس‌ها از قبل روی سرورِ خودمان آپلود شده‌اند.
             </p>
