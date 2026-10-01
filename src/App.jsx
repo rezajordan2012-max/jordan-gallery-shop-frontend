@@ -1176,7 +1176,7 @@ function framedProductImageUrl(url, size = 1000) {
   const marker = "/upload/";
   const idx = url.indexOf(marker);
   if (!url.includes("res.cloudinary.com") || idx === -1) return url;
-  const transform = `c_pad,b_white,w_${size},h_${size},q_auto:good,f_auto`;
+  const transform = `c_lpad,b_white,w_${size},h_${size},q_auto:best,f_auto`;
   return url.slice(0, idx + marker.length) + transform + "/" + url.slice(idx + marker.length);
 }
 
