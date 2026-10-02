@@ -2290,8 +2290,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                       >
                         <ShadeChip hex={v.hex} image={v.image} selected={isSelected} id={v.id} />
                       </button>
-
-          {(() => {
+ {(() => {
             // نکته: قبلاً این بخش («مشخصات» شاملِ برند و حجم) فقط برایِ دستهٔ ادکلن ساخته می‌شد؛
             // برایِ همین بود که فیلدِ «حجم» با اینکه در پنلِ مدیریت برایِ آرایشی/اسپری/بهداشتی هم
             // قابلِ‌واردکردن بود، در صفحهٔ محصولِ مشتری برایِ آن‌ها هرگز نمایش داده نمی‌شد. حالا
