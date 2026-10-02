@@ -1969,6 +1969,10 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
   const [variantId, setVariantId] = useState("");
   const [hoveredVariantId, setHoveredVariantId] = useState(null);
   const selectedVariant = hasVariants ? product.variants.find((v) => v.id === variantId) : null;
+  const useSmear = !!(selectedVariant && selectedVariant.hex && !selectedVariant.image2 && !selectedVariant.image3);
+  const variantImages = selectedVariant && !useSmear
+    ? [selectedVariant.image2, selectedVariant.image3, selectedVariant.image].filter(Boolean)
+    : [];
   // هر طیفِ رنگ می‌تواند تا ۳ عکس داشته باشد (image، image2، image3) — مثلاً یک عکسِ محصول و
   // یک/دو عکسِ نمایشِ بافت/سواچِ همان رنگ. فقط عکسِ اول به‌عنوانِ پیش‌فرض نمایش داده می‌شود؛
   // بقیه با ورق‌زدن (swipe/کلیک) در دسترسِ مشتری هستند.
