@@ -4978,7 +4978,40 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
     setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) => (v.id === videoSearchTarget ? { ...v, video: url } : v)) }));
     closeVideoSearch();
   }
-   function pickImageSearchResult(url, label) {
+   function addAllShadesFromResults() {
+    const labeled = (imageSearchResults || []).filter(
+      (r) => r && r.url && r.label && !/^https?:/i.test(r.label)
+    );
+    if (labeled.length === 0) {
+      setImageSearchError("هیچ رنگِ نام‌داری در نتیجه‌ها پیدا نشد — عکس‌ها را یکی‌یکی انتخاب کن.");
+      return;
+    }
+    const existing = new Set((form.variantsList || []).map((v) => String(v.label || "").trim().toLowerCase()));
+    const added = [];
+    labeled.forEach((r, i) => {
+      const label = String(r.label).trim();
+      const key = label.toLowerCase();
+      if (!label || existing.has(key)) return;
+      existing.add(key);
+      added.push({
+        id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+        label,
+        hex: "",
+        image: r.url,
+        image2: "",
+        image3: "",
+        video: "",
+      });
+    });
+    if (added.length === 0) {
+      setImageSearchError("همه‌ی این رنگ‌ها قبلاً در لیست هستند.");
+      return;
+    }
+    setForm((f) => ({ ...f, variantsList: [...(f.variantsList || []), ...added] }));
+    closeImageSearch();
+  }
+
+  function pickImageSearchResult(url, label) {
   const okLabel = label && !/^https?:/i.test(label) ? label : "";
   if (imageSearchTarget === "main") {
     setForm((f) => ({ ...f, image: url }));
@@ -6933,6 +6966,16 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
       </button>
     ))}
   </div>
+)}
+
+{!imageSearchLoading && imageSearchResults.some((r) => r && r.label && !/^https?:/i.test(r.label)) && (
+  <button
+    type="button"
+    onClick={addAllShadesFromResults}
+    className="btn-gold rounded w-full py-2 text-sm mt-3 flex items-center justify-center gap-1.5"
+  >
+    <Plus size={14} /> افزودن همه‌ی رنگ‌های صفحه به لیست
+  </button>
 )}
 
 {!imageSearchLoading && !imageSearchError && imageSearchResults.length === 0 && (
