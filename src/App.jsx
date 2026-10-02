@@ -1928,6 +1928,55 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
   );
 }
 
+// دایره‌ی انتخاب رنگ به شکل لکه‌ی کرم‌پودر — وکتوری و تیز؛ با رنگ hex پر می‌شود و اگر hex نبود، با عکسِ رنگ.
+function ShadeChip({ hex, image, selected, id }) {
+  const gid = "chip" + String(id || "x").replace(/[^a-zA-Z0-9]/g, "");
+  const base = hex || (image ? "#D9B48F" : "#E6E0EE");
+  const light = shadeHex(base, 0.32);
+  const dark = shadeHex(base, -0.2);
+  const useImage = !hex && !!image;
+  const blob = "M7 15 C4 8 12 3 21 4 C33 6 45 14 56 23 C61 27 63 30 60 32.5 C54 31.5 50 34.5 44 36 C37 37 33 33 27 29 C16 25 9 21 7 15 Z";
+  return (
+    <svg
+      viewBox="0 0 66 40"
+      width="58"
+      height="36"
+      style={{
+        display: "block",
+        overflow: "visible",
+        transform: "rotate(-3deg)",
+        filter: selected
+          ? "drop-shadow(0 2px 5px rgba(255,62,142,0.45))"
+          : "drop-shadow(0 1px 2px rgba(36,30,61,0.25))",
+        transition: "filter 0.15s ease",
+      }}
+    >
+      <defs>
+        <linearGradient id={gid + "g"} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={light} />
+          <stop offset="0.5" stopColor={base} />
+          <stop offset="1" stopColor={dark} />
+        </linearGradient>
+        {useImage && (
+          <pattern id={gid + "p"} patternUnits="userSpaceOnUse" x="0" y="0" width="66" height="40">
+            <image href={image} x="0" y="0" width="66" height="40" preserveAspectRatio="xMidYMid slice" />
+          </pattern>
+        )}
+      </defs>
+      <path
+        d={blob}
+        fill={useImage ? `url(#${gid}p)` : `url(#${gid}g)`}
+        stroke={selected ? "#FF3E8E" : "rgba(36,30,61,0.18)"}
+        strokeWidth={selected ? 2.4 : 0.8}
+        strokeLinejoin="round"
+      />
+      <path d="M12 12 C18 6 28 6 38 12" fill="none" stroke="#FFFFFF" strokeOpacity="0.5" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M14 23 C26 28 38 33 48 33" fill="none" stroke={dark} strokeOpacity="0.22" strokeWidth="1.8" strokeLinecap="round" />
+      <text x="31" y="24" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="15" fontWeight="600" fill="#FFFFFF" fillOpacity="0.78" style={{ pointerEvents: "none" }}>J</text>
+    </svg>
+  );
+}
+
 function shadeHex(hex, amt) {
   let h = String(hex || "").replace("#", "");
   if (h.length === 3) h = h.split("").map((c) => c + c).join("");
@@ -2221,7 +2270,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                           />
                         </span>
                       )}
-                      <button
+                        <button
                         type="button"
                         onClick={() => setVariantId(v.id)}
                         onMouseEnter={() => setHoveredVariantId(v.id)}
@@ -2231,23 +2280,16 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                         title={v.label}
                         aria-label={v.label}
                         style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: "50%",
-                          padding: 0,
+                          padding: "3px 2px",
+                          background: "transparent",
+                          border: "none",
                           cursor: "pointer",
-                          background: v.image ? `center/cover no-repeat url(${v.image})` : (v.hex || "#EEE"),
-                          border: isSelected ? "2.5px solid #FF3E8E" : "1px solid rgba(123,92,246,0.35)",
-                          boxShadow: isSelected ? "0 0 0 3px rgba(255,62,142,0.22)" : "none",
-                          transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+                          transform: isSelected ? "scale(1.08)" : "scale(1)",
+                          transition: "transform 0.15s ease",
                         }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                      >
+                        <ShadeChip hex={v.hex} image={v.image} selected={isSelected} id={v.id} />
+                      </button>
 
           {(() => {
             // نکته: قبلاً این بخش («مشخصات» شاملِ برند و حجم) فقط برایِ دستهٔ ادکلن ساخته می‌شد؛
