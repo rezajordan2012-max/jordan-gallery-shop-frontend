@@ -1487,7 +1487,6 @@ function TrueAlphaVideo({ src, style, className, renderWidth = 300 }) {
   const videoRef = React.useRef(null);
   const canvasRef = React.useRef(null);
   const tempCanvasRef = React.useRef(null);
-  const sizedRef = React.useRef(false);
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -1501,51 +1500,61 @@ function TrueAlphaVideo({ src, style, className, renderWidth = 300 }) {
     tempCtx.imageSmoothingQuality = "high";
     let rafId;
     let cancelled = false;
-    sizedRef.current = false;
+    let sized = false;
     let outWidth = 0;
     let outHeight = 0;
+    let lastDraw = 0;
+    const FRAME_MS = 1000 / 24; // حداکثر ۲۴ فریم در ثانیه برای صرفه‌جویی باتری
 
-    function draw() {
+    function draw(ts) {
       if (cancelled) return;
-      if (video.readyState >= 2 && video.videoWidth > 0) {
-        if (!sizedRef.current) {
-          tempCanvas.width = renderWidth;
-          tempCanvas.height = Math.round((video.videoHeight / video.videoWidth) * renderWidth);
-          outWidth = tempCanvas.width;
-          outHeight = Math.round(tempCanvas.height / 2);
-          canvas.width = outWidth;
-          canvas.height = outHeight;
-          sizedRef.current = true;
-        }
-        tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
-        const full = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-        const src8 = full.data;
-        const out = ctx.createImageData(outWidth, outHeight);
-        const dst8 = out.data;
-        const rowLen = outWidth * 4;
-        for (let y = 0; y < outHeight; y++) {
-          const colorRowStart = y * rowLen;
-          const alphaRowStart = (y + outHeight) * rowLen;
-          for (let x = 0; x < outWidth; x++) {
-            const ci = colorRowStart + x * 4;
-            const ai = alphaRowStart + x * 4;
-            const di = ci;
-            dst8[di] = src8[ci];
-            dst8[di + 1] = src8[ci + 1];
-            dst8[di + 2] = src8[ci + 2];
-            dst8[di + 3] = (src8[ai] + src8[ai + 1] + src8[ai + 2]) / 3;
-          }
-        }
-        ctx.putImageData(out, 0, 0);
-      }
       rafId = requestAnimationFrame(draw);
+      if (document.hidden) return;
+      if (ts - lastDraw < FRAME_MS) return;
+      lastDraw = ts;
+      if (video.readyState < 2 || video.videoWidth <= 0) return;
+      if (!sized) {
+        tempCanvas.width = renderWidth;
+        tempCanvas.height = Math.round((video.videoHeight / video.videoWidth) * renderWidth);
+        outWidth = tempCanvas.width;
+        outHeight = Math.round(tempCanvas.height / 2);
+        canvas.width = outWidth;
+        canvas.height = outHeight;
+        sized = true;
+      }
+      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+      const full = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+      const src8 = full.data;
+      const out = ctx.createImageData(outWidth, outHeight);
+      const dst8 = out.data;
+      const rowLen = outWidth * 4;
+      for (let y = 0; y < outHeight; y++) {
+        const colorRowStart = y * rowLen;
+        const alphaRowStart = (y + outHeight) * rowLen;
+        for (let x = 0; x < outWidth; x++) {
+          const ci = colorRowStart + x * 4;
+          const ai = alphaRowStart + x * 4;
+          dst8[ci] = src8[ci];
+          dst8[ci + 1] = src8[ci + 1];
+          dst8[ci + 2] = src8[ci + 2];
+          dst8[ci + 3] = (src8[ai] + src8[ai + 1] + src8[ai + 2]) / 3;
+        }
+      }
+      ctx.putImageData(out, 0, 0);
     }
+
+    function onVisibility() {
+      if (document.hidden) video.pause();
+      else video.play().catch(() => {});
+    }
+    document.addEventListener("visibilitychange", onVisibility);
 
     video.play().catch(() => {});
     rafId = requestAnimationFrame(draw);
     return () => {
       cancelled = true;
       if (rafId) cancelAnimationFrame(rafId);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [src, renderWidth]);
 
@@ -1559,7 +1568,8 @@ function TrueAlphaVideo({ src, style, className, renderWidth = 300 }) {
         playsInline
         autoPlay
         preload="auto"
-        style={{ display: "none" }}
+        aria-hidden="true"
+        style={{ position: "fixed", left: 0, top: 0, width: 2, height: 2, opacity: 0.01, pointerEvents: "none", zIndex: -1 }}
       />
       <canvas ref={canvasRef} className={className} style={style} />
     </>
@@ -1627,36 +1637,55 @@ const SEED_PRODUCTS = [
 // معتبر، onDetected را صدا می‌زند و خودش را می‌بندد. کاملاً سمت مرورگر است، هیچ سروری درگیر نیست.
 function BarcodeScannerModal({ onDetected, onClose }) {
   const videoRef = useRef(null);
-  const readerRef = useRef(null);
+  const onDetectedRef = useRef(onDetected);
   const [error, setError] = useState("");
+
+  // آخرین نسخه‌ی onDetected را نگه می‌داریم تا دوربین با هر رندر ری‌استارت نشود
+  useEffect(() => {
+    onDetectedRef.current = onDetected;
+  }, [onDetected]);
 
   useEffect(() => {
     const reader = new BrowserMultiFormatReader();
-    readerRef.current = reader;
+    let controls = null;
     let cancelled = false;
+    let done = false;
+    const videoEl = videoRef.current;
 
     reader
       .decodeFromConstraints(
         { video: { facingMode: "environment" } },
-        videoRef.current,
-        (result, err) => {
-          if (cancelled) return;
+        videoEl,
+        (result) => {
+          if (cancelled || done) return;
           if (result) {
-            onDetected(result.getText());
+            done = true;
+            onDetectedRef.current(result.getText());
           }
         }
       )
-      .catch((e) => {
+      .then((c) => {
+        if (cancelled) {
+          try { c.stop(); } catch (e) {}
+        } else {
+          controls = c;
+        }
+      })
+      .catch(() => {
         if (!cancelled) setError("دسترسی به دوربین ممکن نشد — مطمئن شو اجازه‌ی دوربین را به مرورگر داده‌ای.");
       });
 
     return () => {
       cancelled = true;
+      try { controls && controls.stop(); } catch (e) {}
+      // اطمینان از خاموش‌شدن دوربین حتی اگر stop() کار نکرد
       try {
-        readerRef.current && readerRef.current.reset();
+        const stream = videoEl && videoEl.srcObject;
+        if (stream && stream.getTracks) stream.getTracks().forEach((t) => t.stop());
+        if (videoEl) videoEl.srcObject = null;
       } catch (e) {}
     };
-  }, [onDetected]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.92)" }}>
@@ -2689,7 +2718,32 @@ export default function MaisonStore() {
   const [activeType, setActiveType] = useState("all");
   const [activeFacets, setActiveFacets] = useState({});
   const [activeBrand, setActiveBrand] = useState("all");
-  const [cart, setCart] = useState({});
+  const [cart, setCart] = useState(() => {
+  try {
+    const raw = localStorage.getItem("maison_cart");
+    const parsed = raw ? JSON.parse(raw) : {};
+    const clean = {};
+    if (parsed && typeof parsed === "object") {
+      Object.entries(parsed).forEach(([k, q]) => {
+        if (Number.isFinite(Number(q)) && Number(q) > 0) clean[k] = Math.floor(Number(q));
+      });
+    }
+    return clean;
+  } catch (e) { return {}; }
+});
+useEffect(() => {
+  try { localStorage.setItem("maison_cart", JSON.stringify(cart)); } catch (e) {}
+}, [cart]);
+
+const [shipping, setShipping] = useState(() => {
+  try {
+    const raw = localStorage.getItem("maison_shipping");
+    return raw ? JSON.parse(raw) : { fullName: "", phone: "", address: "" };
+  } catch (e) { return { fullName: "", phone: "", address: "" }; }
+});
+useEffect(() => {
+  try { localStorage.setItem("maison_shipping", JSON.stringify(shipping)); } catch (e) {}
+}, [shipping]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState(false);
@@ -3020,7 +3074,16 @@ const [paymentResult, setPaymentResult] = useState(null); // null | { status, re
   }
 
   async function searchProductImage(query) {
-    const res = await fetch(`${API_BASE_URL}/api/ai/search-product-image`, {
+    const res = await fetch(`${API_BASE_URL}/api/ai/search-product-image`, {async function mirrorImage(url, referer, removeBackground) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/mirror-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url, referer, removeBackground: !!removeBackground }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "ذخیره‌ی عکس ناموفق بود");
+    return data.url;
+  }
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ query }),
@@ -3212,11 +3275,21 @@ async function extractImagesFromUrl(url) {
     setView("store");
   }
 
-  async function handleCheckout() {
+async function handleCheckout() {
     if (!token) {
       setAuthOpen(true);
       return;
     }
+    const fullName = String(shipping.fullName || "").trim();
+    const phone = String(shipping.phone || "")
+      .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
+      .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d))
+      .replace(/[\s-]/g, "");
+    const address = String(shipping.address || "").trim();
+    if (fullName.length < 3) { setCheckoutError("نام و نام خانوادگی گیرنده را وارد کن"); return; }
+    if (!/^09\d{9}$/.test(phone)) { setCheckoutError("شماره موبایل معتبر نیست (مثلاً 09123456789)"); return; }
+    if (address.length < 10) { setCheckoutError("آدرس کامل (شهر، خیابان، پلاک و کدپستی) را وارد کن"); return; }
+
     setCheckoutError("");
     setCheckoutLoading(true);
     try {
@@ -3232,6 +3305,7 @@ async function extractImagesFromUrl(url) {
           })),
           amount: cartTotal,
           description: "خرید از فروشگاه",
+          shipping: { fullName, phone, address },
         }),
       });
       const data = await res.json();
@@ -3878,6 +3952,7 @@ async function extractImagesFromUrl(url) {
           onExtractVariantsFromUrl={extractVariantsFromUrl}
           onExtractVariantsFromImage={extractVariantsFromImage}
           onImportProductFromUrl={importProductFromUrl}
+          onMirrorImage={mirrorImage}
           onAnalyzePerfumeImage={analyzePerfumeImageWithGemini}
         />
       ) : view === "account" && user ? (
@@ -4292,6 +4367,34 @@ async function extractImagesFromUrl(url) {
             )}
 
             <div className="pt-4 mt-4 border-t border-hair">
+            {cartItems.length > 0 && (
+                <div className="flex flex-col gap-2 mb-4">
+                  <p className="font-display" style={{ fontSize: 13 }}>مشخصات تحویل سفارش</p>
+                  <input
+                    placeholder="نام و نام خانوادگی گیرنده"
+                    value={shipping.fullName}
+                    onChange={(e) => setShipping({ ...shipping, fullName: e.target.value })}
+                    className="bg-panel border border-hair rounded px-3 py-2 text-sm"
+                    style={{ color: "#241E3D" }}
+                  />
+                  <input
+                    placeholder="شماره موبایل (مثلاً 09123456789)"
+                    inputMode="tel"
+                    dir="ltr"
+                    value={shipping.phone}
+                    onChange={(e) => setShipping({ ...shipping, phone: e.target.value })}
+                    className="bg-panel border border-hair rounded px-3 py-2 text-sm"
+                    style={{ color: "#241E3D" }}
+                  />
+                  <textarea
+                    placeholder="آدرس کامل (استان، شهر، خیابان، پلاک، کدپستی)"
+                    value={shipping.address}
+                    onChange={(e) => setShipping({ ...shipping, address: e.target.value })}
+                    className="bg-panel border border-hair rounded px-3 py-2 text-sm"
+                    style={{ color: "#241E3D", minHeight: 64 }}
+                  />
+                </div>
+              )}
               <div className="flex items-center justify-between mb-4" style={{ fontSize: 14 }}>
                 <span className="text-muted">جمع کل</span>
                 <span style={{ fontWeight: 700 }}>{fmtPrice(cartTotal)}</span>
@@ -4621,7 +4724,7 @@ async function runFreeOcrExtraction(file) {
   }
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onSearchProductVideo, onExtractImagesFromUrl, onExtractVideosFromUrl, onExtractVariantsFromUrl, onExtractVariantsFromImage, onImportProductFromUrl, onAnalyzePerfumeImage, onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onSearchProductVideo, onExtractImagesFromUrl, onExtractVideosFromUrl, onExtractVariantsFromUrl, onExtractVariantsFromImage,  onImportProductFromUrl, onMirrorImage, onAnalyzePerfumeImage,onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -5107,28 +5210,43 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
     closeImageSearch();
   }
 
-  function pickImageSearchResult(url, label) {
-  const okLabel = label && !/^https?:/i.test(label) ? label : "";
-  if (imageSearchTarget === "main") {
-    setForm((f) => ({ ...f, image: url }));
-  } else if (imageSearchTarget && imageSearchTarget.includes("::")) {
-    const [vid, fieldKey] = imageSearchTarget.split("::");
-    setForm((f) => ({
-      ...f,
-      variantsList: (f.variantsList || []).map((v) =>
-        v.id === vid ? { ...v, [fieldKey]: url, label: v.label || okLabel } : v
-      ),
-    }));
-  } else if (imageSearchTarget) {
-    setForm((f) => ({
-      ...f,
-      variantsList: (f.variantsList || []).map((v) =>
-        v.id === imageSearchTarget ? { ...v, image: url, label: v.label || okLabel } : v
-      ),
-    }));
+  async function pickImageSearchResult(url, label, source) {
+    const okLabel = label && !/^https?:/i.test(label) ? label : "";
+    const target = imageSearchTarget;
+    let finalUrl = url;
+    // عکس‌های جستجوی نام محصول هنوز آپلود نشده‌اند؛ فقط همین یکی الان آپلود می‌شود
+    if (!/res\.cloudinary\.com/i.test(url)) {
+      setImageSearchLoading(true);
+      setImageSearchError("");
+      try {
+        finalUrl = await onMirrorImage(url, source, target === "main");
+      } catch (err) {
+        setImageSearchError(err.message || "ذخیره‌ی عکس ناموفق بود");
+        setImageSearchLoading(false);
+        return;
+      }
+      setImageSearchLoading(false);
+    }
+    if (target === "main") {
+      setForm((f) => ({ ...f, image: finalUrl }));
+    } else if (target && target.includes("::")) {
+      const [vid, fieldKey] = target.split("::");
+      setForm((f) => ({
+        ...f,
+        variantsList: (f.variantsList || []).map((v) =>
+          v.id === vid ? { ...v, [fieldKey]: finalUrl, label: v.label || okLabel } : v
+        ),
+      }));
+    } else if (target) {
+      setForm((f) => ({
+        ...f,
+        variantsList: (f.variantsList || []).map((v) =>
+          v.id === target ? { ...v, image: finalUrl, label: v.label || okLabel } : v
+        ),
+      }));
+    }
+    closeImageSearch();
   }
-  closeImageSearch();
-}
 
   const [variantUrlInput, setVariantUrlInput] = useState("");
   const [variantUrlLoading, setVariantUrlLoading] = useState(false);
@@ -7052,12 +7170,12 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
       <button
         key={i}
         type="button"
-        onClick={() => pickImageSearchResult(r.url, r.label)}
+        onClick={() => pickImageSearchResult(r.url, r.label, r.source)}
         className="rounded-lg overflow-hidden border border-hair"
         style={{ background: "#FFFFFF", padding: 0 }}
         title={r.source || ""}
       >
-        <img src={r.url} alt="" style={{ width: "100%", height: 80, objectFit: "cover" }} />
+        <img src={r.url} alt="" referrerPolicy="no-referrer" style={{ width: "100%", height: 80, objectFit: "cover" }} />
         {r.label && <span style={{ display: "block", fontSize: 10, padding: "3px 4px" }}>{r.label}</span>}
       </button>
     ))}
