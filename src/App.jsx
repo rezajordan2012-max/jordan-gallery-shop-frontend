@@ -2715,7 +2715,7 @@ export default function MaisonStore() {
   const [authLoading, setAuthLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
-
+const [paymentResult, setPaymentResult] = useState(null); // null | { status, ref }
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
@@ -2843,7 +2843,19 @@ export default function MaisonStore() {
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
-
+  // خواندن نتیجه‌ی بازگشت از درگاه: /payment/result?status=...&ref=...
+  useEffect(() => {
+    try {
+      if (window.location.pathname.replace(/\/+$/, "") !== "/payment/result") return;
+      const params = new URLSearchParams(window.location.search);
+      const status = params.get("status") || "error";
+      const ref = params.get("ref") || "";
+      setPaymentResult({ status, ref });
+      if (status === "success") setCart({});
+      // آدرس را به صفحه‌ی اصلی برمی‌گردانیم تا با رفرش، پیام دوباره نمایش داده نشود
+      window.history.replaceState(HOME_STATE, "", "/");
+    } catch (e) {}
+  }, []);
   useEffect(() => {
     if (heroBanners.length < 2) return;
     if (normalizeBanner(heroBanners[bannerIndex]).type === "video") return;
@@ -4301,7 +4313,43 @@ async function extractImagesFromUrl(url) {
           </div>
         </div>
       )}
-
+{paymentResult && (() => {
+        const PAYMENT_MESSAGES = {
+          success: { title: "پرداخت با موفقیت انجام شد ✓", text: "سفارش شما ثبت شد. ممنون از خرید شما!", color: "#0EA5A4" },
+          canceled: { title: "پرداخت لغو شد", text: "پرداختی انجام نشد. هر وقت خواستی دوباره از سبد خرید اقدام کن.", color: "#D97706" },
+          failed: { title: "پرداخت ناموفق بود", text: "اگر مبلغی از حسابت کسر شده، طبق قوانین درگاه به حسابت برگردانده می‌شود.", color: "#D6336C" },
+          notfound: { title: "سفارش پیدا نشد", text: "این پرداخت به هیچ سفارشی وصل نشد. اگر مبلغی کسر شده با پشتیبانی تماس بگیر.", color: "#D6336C" },
+          error: { title: "خطا در بررسی پرداخت", text: "ارتباط با سرور برقرار نشد. وضعیت سفارش را از «حساب کاربری من» چک کن.", color: "#D6336C" },
+        };
+        const msg = PAYMENT_MESSAGES[paymentResult.status] || PAYMENT_MESSAGES.error;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(36,30,61,0.55)" }} onClick={() => setPaymentResult(null)}>
+            <div className="bg-panel-2 rounded-lg p-6 w-full border border-hair text-center" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
+              <h3 className="font-display mb-2" style={{ fontSize: 18, color: msg.color }}>{msg.title}</h3>
+              <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.9 }}>{msg.text}</p>
+              {paymentResult.status === "success" && paymentResult.ref && (
+                <p className="mt-3" style={{ fontSize: 13, fontWeight: 700 }} dir="ltr">
+                  کد پیگیری: {paymentResult.ref}
+                </p>
+              )}
+              <div className="flex gap-2 mt-5 justify-center">
+                {paymentResult.status === "success" && (
+                  <button
+                    type="button"
+                    onClick={() => { setPaymentResult(null); requestAccountView(); }}
+                    className="btn-gold rounded px-4 py-2 text-sm"
+                  >
+                    مشاهده سفارش‌ها
+                  </button>
+                )}
+                <button type="button" onClick={() => setPaymentResult(null)} className="btn-ghost rounded px-4 py-2 text-sm">
+                  متوجه شدم
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {authOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(36,30,61,0.45)" }} onClick={() => setAuthOpen(false)}>
           <div className="bg-panel-2 rounded-lg p-6 w-full border border-hair" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
