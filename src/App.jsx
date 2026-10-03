@@ -3074,7 +3074,6 @@ const [paymentResult, setPaymentResult] = useState(null); // null | { status, re
   }
 
   async function searchProductImage(query) {
-    async function searchProductImage(query) {
     const res = await fetch(`${API_BASE_URL}/api/ai/search-product-image`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -3094,6 +3093,28 @@ const [paymentResult, setPaymentResult] = useState(null); // null | { status, re
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "ذخیره‌ی عکس ناموفق بود");
     return data.url;
+  }
+
+  async function searchProductVideo(query) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/search-product-video`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ query }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "جستجوی ویدیو ناموفق بود");
+    return data.results || [];
+  }
+
+  async function extractImagesFromUrl(url) {
+    const res = await fetch(`${API_BASE_URL}/api/ai/extract-images-from-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "استخراج عکس از لینک ناموفق بود");
+    return data.results || [];
   }
   async function extractVideosFromUrl(url) {
     const res = await fetch(`${API_BASE_URL}/api/ai/extract-videos-from-url`, {
