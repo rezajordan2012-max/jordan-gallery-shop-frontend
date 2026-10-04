@@ -2148,7 +2148,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
               dir="auto"
               style={{
                 position: "absolute",
-                top: 29,
+                top: 25,
                 left: 12,
                 zIndex: 3,
                 maxWidth: "55%",
