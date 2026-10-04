@@ -4791,23 +4791,29 @@ function isFlatColorImage(url) {
 
 // برای هر رنگ، از میان عکس‌های صفحه همان‌هایی که نامشان یکی است، عکسِ غیرتخت‌رنگ (رژلب) را برمی‌گرداند
 async function pickProductPhotosForVariants(variants, results) {
-  const byLabel = {};
-  (results || []).forEach((r) => {
-    if (!r || !r.url || !r.label) return;
-    const k = normalizeShadeName(r.label);
-    if (!k) return;
-    (byLabel[k] = byLabel[k] || []).push(r.url);
-  });
-  const out = {};
+  const list = (results || [])
+    .filter((r) => r && r.url && r.label)
+    .map((r) => ({ url: r.url, key: normalizeShadeName(r.label) }))
+    .filter((r) => r.key);
+  const photos = {};
+  let matched = 0;
+  let blocked = 0;
   for (const v of variants) {
-    const urls = byLabel[normalizeShadeName(v.label)];
-    if (!urls) continue;
-    for (const u of urls) {
-      const flat = await isFlatColorImage(u);
-      if (flat === false) { out[v.id] = u; break; }
+    const vk = normalizeShadeName(v.label);
+    if (!vk) continue;
+    let cands = list.filter((r) => r.key === vk);
+    if (cands.length === 0) {
+      cands = list.filter((r) => r.key.includes(vk) || vk.includes(r.key));
+    }
+    if (cands.length === 0) continue;
+    matched += 1;
+    for (const c of cands) {
+      const flat = await isFlatColorImage(c.url);
+      if (flat === null) blocked += 1;
+      if (flat === false) { photos[v.id] = c.url; break; }
     }
   }
-  return out;
+  return { photos, matched, blocked, total: list.length };
 }
 
 function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onSearchProductVideo, onExtractImagesFromUrl, onExtractVideosFromUrl, onExtractVariantsFromUrl, onExtractVariantsFromImage,  onImportProductFromUrl, onMirrorImage, onAnalyzePerfumeImage,onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
@@ -5430,7 +5436,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
         setVariantImagePhotoNote("در حال جستجوی عکسِ رژلب‌ها در صفحه… ممکن است ۳۰ تا ۶۰ ثانیه طول بکشد.");
         try {
           const results = await onExtractImagesFromUrl(pageUrl);
-          const photos = await pickProductPhotosForVariants(mapped, results);
+          const { photos, matched, blocked, total } = await pickProductPhotosForVariants(mapped, results);
           const count = Object.keys(photos).length;
           setForm((f) => ({
             ...f,
@@ -5441,7 +5447,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
           setVariantImagePhotoNote(
             count > 0
               ? `عکس ۲ برای ${count.toLocaleString("fa-IR")} از ${mapped.length.toLocaleString("fa-IR")} رنگ خودکار پر شد — بقیه را دستی تکمیل کن.`
-              : "عکسِ رژلبی با نام این رنگ‌ها در آن صفحه پیدا نشد — عکس ۲ را دستی پر کن."
+              : `از صفحه ${total.toLocaleString("fa-IR")} عکسِ نام‌دار گرفته شد؛ نامِ ${matched.toLocaleString("fa-IR")} رنگ با آن‌ها یکی بود${blocked ? ` و ${blocked.toLocaleString("fa-IR")} عکس به‌خاطر محدودیتِ مرورگر قابل بررسی نبود` : ""} — ولی عکسِ رژلب پیدا نشد.`
           );
         } catch (err) {
           setVariantImagePhotoNote(err.message || "پیدا کردنِ عکسِ رژلب‌ها از صفحه ناموفق بود — عکس ۲ را دستی پر کن.");
