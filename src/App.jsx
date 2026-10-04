@@ -4768,18 +4768,21 @@ function isFlatColorImage(url) {
         const ctx = c.getContext("2d", { willReadFrequently: true });
         ctx.drawImage(img, 0, 0, size, size);
         const d = ctx.getImageData(0, 0, size, size).data;
-        const n = d.length / 4;
-        let sum = [0, 0, 0];
+        let n = 0;
+        const sum = [0, 0, 0];
         for (let i = 0; i < d.length; i += 4) {
+          if (d[i + 3] < 128) continue;
+          n += 1;
           sum[0] += d[i]; sum[1] += d[i + 1]; sum[2] += d[i + 2];
         }
+        if (n < 20) { resolve(null); return; }
         const mean = sum.map((s) => s / n);
         let varSum = 0;
         for (let i = 0; i < d.length; i += 4) {
+          if (d[i + 3] < 128) continue;
           varSum += Math.pow(d[i] - mean[0], 2) + Math.pow(d[i + 1] - mean[1], 2) + Math.pow(d[i + 2] - mean[2], 2);
         }
-        const std = Math.sqrt(varSum / (n * 3));
-        resolve(std < 18);
+        resolve(Math.sqrt(varSum / (n * 3)) < 18);
       } catch (e) {
         resolve(null);
       }
@@ -5269,7 +5272,7 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
     setForm((f) => ({ ...f, variantsList: (f.variantsList || []).map((v) => (v.id === videoSearchTarget ? { ...v, video: url } : v)) }));
     closeVideoSearch();
   }
-   function addAllShadesFromResults() {
+async function addAllShadesFromResults() {
     const labeled = (imageSearchResults || []).filter(
       (r) => r && r.url && r.label && !/^https?:/i.test(r.label)
     );
@@ -5277,29 +5280,55 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
       setImageSearchError("هیچ رنگِ نام‌داری در نتیجه‌ها پیدا نشد — عکس‌ها را یکی‌یکی انتخاب کن.");
       return;
     }
-    const existing = new Set((form.variantsList || []).map((v) => String(v.label || "").trim().toLowerCase()));
-    const added = [];
-    labeled.forEach((r, i) => {
-      const label = String(r.label).trim();
-      const key = label.toLowerCase();
-      if (!label || existing.has(key)) return;
-      existing.add(key);
-      added.push({
-        id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
-        label,
-        hex: "",
-        image: r.url,
-        image2: "",
-        image3: "",
-        video: "",
+    setImageSearchLoading(true);
+    setImageSearchError("");
+    try {
+      const groups = new Map();
+      labeled.forEach((r) => {
+        const key = normalizeShadeName(r.label);
+        if (!key) return;
+        if (!groups.has(key)) groups.set(key, { label: String(r.label).trim(), urls: [] });
+        const g = groups.get(key);
+        if (!g.urls.includes(r.url)) g.urls.push(r.url);
       });
-    });
-    if (added.length === 0) {
-      setImageSearchError("همه‌ی این رنگ‌ها قبلاً در لیست هستند.");
-      return;
+      const existing = new Set((form.variantsList || []).map((v) => normalizeShadeName(v.label)));
+      const added = [];
+      let idx = 0;
+      for (const [key, g] of groups) {
+        if (existing.has(key)) continue;
+        existing.add(key);
+        let image = g.urls[0];
+        let image2 = "";
+        if (g.urls.length > 1) {
+          const flags = [];
+          for (const u of g.urls) flags.push(await isFlatColorImage(u));
+          const flatIdx = flags.findIndex((fl) => fl === true);
+          const photoIdx = flags.findIndex((fl, i) => fl !== true && i !== flatIdx);
+          if (flatIdx !== -1 && photoIdx !== -1) {
+            image = g.urls[flatIdx];
+            image2 = g.urls[photoIdx];
+          }
+        }
+        idx += 1;
+        added.push({
+          id: `v${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+          label: g.label,
+          hex: "",
+          image,
+          image2,
+          image3: "",
+          video: "",
+        });
+      }
+      if (added.length === 0) {
+        setImageSearchError("همه‌ی این رنگ‌ها قبلاً در لیست هستند.");
+        return;
+      }
+      setForm((f) => ({ ...f, variantsList: [...(f.variantsList || []), ...added] }));
+      closeImageSearch();
+    } finally {
+      setImageSearchLoading(false);
     }
-    setForm((f) => ({ ...f, variantsList: [...(f.variantsList || []), ...added] }));
-    closeImageSearch();
   }
 
   async function pickImageSearchResult(url, label, source) {
@@ -5319,6 +5348,21 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
       }
       setImageSearchLoading(false);
     }
+
+    // اگر برای «عکس ۱» یک رنگ انتخاب شد و در همین نتایج، عکسِ دیگری (مثلاً رژلب) با همان نام هست، برای «عکس ۲» برداشته می‌شود
+    let companionUrl = "";
+    const isImage1Target = !!target && target !== "main" && (!target.includes("::") || target.endsWith("::image"));
+    if (isImage1Target && okLabel) {
+      const key = normalizeShadeName(okLabel);
+      const others = (imageSearchResults || []).filter(
+        (r) => r && r.url && r.url !== url && r.label && normalizeShadeName(r.label) === key && /res\.cloudinary\.com/i.test(r.url)
+      );
+      for (const o of others) {
+        const flat = await isFlatColorImage(o.url);
+        if (flat !== true) { companionUrl = o.url; break; }
+      }
+    }
+
     if (target === "main") {
       setForm((f) => ({ ...f, image: finalUrl }));
     } else if (target && target.includes("::")) {
@@ -5326,19 +5370,34 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
       setForm((f) => ({
         ...f,
         variantsList: (f.variantsList || []).map((v) =>
-          v.id === vid ? { ...v, [fieldKey]: finalUrl, label: v.label || okLabel } : v
+          v.id === vid
+            ? {
+                ...v,
+                [fieldKey]: finalUrl,
+                label: v.label || okLabel,
+                ...(fieldKey === "image" && companionUrl && !v.image2 ? { image2: companionUrl } : {}),
+              }
+            : v
         ),
       }));
     } else if (target) {
       setForm((f) => ({
         ...f,
         variantsList: (f.variantsList || []).map((v) =>
-          v.id === target ? { ...v, image: finalUrl, label: v.label || okLabel } : v
+          v.id === target
+            ? {
+                ...v,
+                image: finalUrl,
+                label: v.label || okLabel,
+                ...(companionUrl && !v.image2 ? { image2: companionUrl } : {}),
+              }
+            : v
         ),
       }));
     }
     closeImageSearch();
   }
+   
 
   const [variantUrlInput, setVariantUrlInput] = useState("");
   const [variantUrlLoading, setVariantUrlLoading] = useState(false);
