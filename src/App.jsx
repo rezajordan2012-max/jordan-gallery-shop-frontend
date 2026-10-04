@@ -4746,6 +4746,69 @@ async function runFreeOcrExtraction(file) {
     await worker.terminate();
   }
 }
+function normalizeShadeName(s) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/[’'`´]/g, "")
+    .replace(/[^a-z0-9\u0600-\u06FF]+/g, " ")
+    .trim();
+}
+
+// تشخیص اینکه عکس یک سوآچِ تخت‌رنگ است (true) یا عکسِ واقعیِ محصول (false)؛ اگر نشد تشخیص داد null
+function isFlatColorImage(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const size = 40;
+        const c = document.createElement("canvas");
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, size, size);
+        const d = ctx.getImageData(0, 0, size, size).data;
+        const n = d.length / 4;
+        let sum = [0, 0, 0];
+        for (let i = 0; i < d.length; i += 4) {
+          sum[0] += d[i]; sum[1] += d[i + 1]; sum[2] += d[i + 2];
+        }
+        const mean = sum.map((s) => s / n);
+        let varSum = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          varSum += Math.pow(d[i] - mean[0], 2) + Math.pow(d[i + 1] - mean[1], 2) + Math.pow(d[i + 2] - mean[2], 2);
+        }
+        const std = Math.sqrt(varSum / (n * 3));
+        resolve(std < 18);
+      } catch (e) {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+// برای هر رنگ، از میان عکس‌های صفحه همان‌هایی که نامشان یکی است، عکسِ غیرتخت‌رنگ (رژلب) را برمی‌گرداند
+async function pickProductPhotosForVariants(variants, results) {
+  const byLabel = {};
+  (results || []).forEach((r) => {
+    if (!r || !r.url || !r.label) return;
+    const k = normalizeShadeName(r.label);
+    if (!k) return;
+    (byLabel[k] = byLabel[k] || []).push(r.url);
+  });
+  const out = {};
+  for (const v of variants) {
+    const urls = byLabel[normalizeShadeName(v.label)];
+    if (!urls) continue;
+    for (const u of urls) {
+      const flat = await isFlatColorImage(u);
+      if (flat === false) { out[v.id] = u; break; }
+    }
+  }
+  return out;
+}
 
 function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onSearchProductVideo, onExtractImagesFromUrl, onExtractVideosFromUrl, onExtractVariantsFromUrl, onExtractVariantsFromImage,  onImportProductFromUrl, onMirrorImage, onAnalyzePerfumeImage,onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
@@ -5320,7 +5383,8 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
   const [variantImageError, setVariantImageError] = useState("");
   const [variantImageAddedCount, setVariantImageAddedCount] = useState(0);
   const [variantImageNote, setVariantImageNote] = useState("");
-
+const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
+  const [variantImagePhotoNote, setVariantImagePhotoNote] = useState("");
   async function handleExtractVariantsFromImage(e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -5332,6 +5396,7 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
     setVariantImageError("");
     setVariantImageAddedCount(0);
     setVariantImageNote("");
+    setVariantImagePhotoNote("");
     setVariantImageLoading(true);
     try {
       const base64 = await new Promise((resolve, reject) => {
@@ -5342,17 +5407,15 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
       });
       const { variants: found, imageNote } = await onExtractVariantsFromImage(base64);
       const mapped = (found || [])
-  .filter((v) => v && v.label)
-  .map((v, i) => ({
-    id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
-    label: v.label,
-    hex: v.hex || "",
-    image: v.image || "", // نتیجه‌ی تشخیص، همینجا (فیلدِ ۱ اصلی) قرار می‌گیرد — همین عکس هم
-                           // پس‌زمینه‌ی دایره‌ی انتخابِ رنگ می‌شود، هم بعدِ انتخابِ رنگ به‌عنوانِ
-                           // تصویرِ اصلیِ نمایش‌داده‌شده در صفحه‌ی محصول
-    image2: "",
-    image3: "",
-  }));
+        .filter((v) => v && v.label)
+        .map((v, i) => ({
+          id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          label: v.label,
+          hex: v.hex || "",
+          image: v.image || "",
+          image2: "",
+          image3: "",
+        }));
       if (mapped.length === 0) {
         setVariantImageError("هیچ طیف رنگی روی این عکس پیدا نشد — مطمئن شو اسکرین‌شات کاملِ ردیف‌های رنگ (دایره + اسمِ کنارش) را شامل می‌شود.");
         return;
@@ -5360,6 +5423,30 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
       setForm((f) => ({ ...f, variantsList: [...(f.variantsList || []), ...mapped] }));
       setVariantImageAddedCount(mapped.length);
       if (imageNote) setVariantImageNote(imageNote);
+
+      // پر کردنِ خودکارِ «عکس ۲» (عکسِ رژلب) از صفحه‌ی محصول، فقط اگر لینک داده شده باشد
+      const pageUrl = variantImageSourceUrl.trim();
+      if (/^https?:\/\//i.test(pageUrl)) {
+        setVariantImagePhotoNote("در حال جستجوی عکسِ رژلب‌ها در صفحه… ممکن است ۳۰ تا ۶۰ ثانیه طول بکشد.");
+        try {
+          const results = await onExtractImagesFromUrl(pageUrl);
+          const photos = await pickProductPhotosForVariants(mapped, results);
+          const count = Object.keys(photos).length;
+          setForm((f) => ({
+            ...f,
+            variantsList: (f.variantsList || []).map((v) =>
+              photos[v.id] && !v.image2 ? { ...v, image2: photos[v.id] } : v
+            ),
+          }));
+          setVariantImagePhotoNote(
+            count > 0
+              ? `عکس ۲ برای ${count.toLocaleString("fa-IR")} از ${mapped.length.toLocaleString("fa-IR")} رنگ خودکار پر شد — بقیه را دستی تکمیل کن.`
+              : "عکسِ رژلبی با نام این رنگ‌ها در آن صفحه پیدا نشد — عکس ۲ را دستی پر کن."
+          );
+        } catch (err) {
+          setVariantImagePhotoNote(err.message || "پیدا کردنِ عکسِ رژلب‌ها از صفحه ناموفق بود — عکس ۲ را دستی پر کن.");
+        }
+      }
     } catch (err) {
       setVariantImageError(err.message || "استخراج طیف رنگ از عکس ناموفق بود");
     } finally {
@@ -7038,6 +7125,15 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
             <p className="text-muted" style={{ fontSize: 10.5, lineHeight: 1.8 }}>
               یک اسکرین‌شات از لیستِ رنگ‌هایِ سایتِ مبدأ بگیر (همان پنجره‌ای که با زدنِ «Select Color» یا مشابهش باز می‌شود و هر رنگ را با یک دایره + اسمِ کنارش نشان می‌دهد) و همینجا آپلودش کن. رنگِ هر سوآچ مستقیماً از پیکسل‌هایِ همان عکس خوانده می‌شود (نه حدسِ هوش مصنوعی) — یعنی بدونِ هیچ افت یا تغییرِ رنگی، دقیقاً همان چیزی که در عکس می‌بینی.
             </p>
+            <input
+          value={variantImageSourceUrl}
+          onChange={(e) => setVariantImageSourceUrl(e.target.value)}
+          placeholder="لینک صفحه‌ی محصول (اختیاری — برای پر شدن خودکارِ عکس ۲)"
+          className="bg-panel border border-hair rounded px-3 py-2 text-sm"
+          style={{ color: "#241E3D" }}
+          dir="ltr"
+          disabled={variantImageLoading}
+        />
             <label
               className="btn-gold rounded px-4 py-2 text-sm flex items-center justify-center gap-1.5 w-fit"
               style={{ cursor: variantImageLoading ? "default" : "pointer", opacity: variantImageLoading ? 0.6 : 1 }}
@@ -7054,6 +7150,9 @@ const [videoSearchTarget, setVideoSearchTarget] = useState(null);
             {variantImageNote && (
               <p style={{ fontSize: 11.5, color: "#D97706" }}>{variantImageNote}</p>
             )}
+            {variantImagePhotoNote && (
+          <p style={{ fontSize: 11.5, color: "#0EA5A4" }}>{variantImagePhotoNote}</p>
+        )}
           </div>
 
           {(form.variantsList || []).map((v) => (
