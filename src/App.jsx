@@ -37,7 +37,7 @@ async function fetchWithRetry(url, options = {}, { retries = 6, delayMs = 4000 }
 }
 
 const FONTS = `
-  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Baloo+2:wght@500;600;700;800&family=Lalezar&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Baloo+2:wght@500;600;700;800&family=Lalezar&family=Great+Vibes&display=swap');
 
   .maison-root {
     font-family: 'Vazirmatn', sans-serif;
@@ -2001,7 +2001,6 @@ function ShadeChip({ hex, image, selected, id }) {
       />
       <path d="M12 12 C18 6 28 6 38 12" fill="none" stroke="#FFFFFF" strokeOpacity="0.5" strokeWidth="2.2" strokeLinecap="round" />
       <path d="M14 23 C26 28 38 33 48 33" fill="none" stroke={dark} strokeOpacity="0.22" strokeWidth="1.8" strokeLinecap="round" />
-      <text x="31" y="24" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontSize="15" fontWeight="600" fill="#FFFFFF" fillOpacity="0.78" style={{ pointerEvents: "none" }}>J</text>
     </svg>
   );
 }
@@ -2144,6 +2143,26 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
           onTouchStart={handleGalleryTouchStart}
           onTouchEnd={handleGalleryTouchEnd}
         >
+        {selectedVariant && selectedVariant.label && (
+            <span
+              dir="auto"
+              style={{
+                position: "absolute",
+                top: 10,
+                left: 12,
+                zIndex: 3,
+                maxWidth: "55%",
+                pointerEvents: "none",
+                fontFamily: "'Great Vibes', 'Vazirmatn', cursive",
+                fontSize: 21,
+                lineHeight: 1.15,
+                color: "#1D4ED8",
+                textShadow: "0 0 4px rgba(255,255,255,0.95), 0 0 8px rgba(255,255,255,0.8)",
+              }}
+            >
+              {selectedVariant.label}
+            </span>
+          )}
           {displayImage ? (
             <img
               src={framedProductImageUrl(displayImage)}
