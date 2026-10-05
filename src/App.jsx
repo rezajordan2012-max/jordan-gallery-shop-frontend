@@ -1754,12 +1754,14 @@ function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, cate
           ٪{discountPct.toLocaleString("fa-IR")} تخفیف
         </span>
       )}
-      <div className="flex items-center justify-center" style={{ background: "#FFFFFF", height: 129, overflow: "hidden" }}>
+          <div className="flex items-center justify-center" style={{ background: "#FFFFFF", aspectRatio: "1 / 1", overflow: "hidden" }}>
         {displayImage ? (
           <img
-            src={framedProductImageUrl(displayImage)}
+            src={framedProductImageUrl(displayImage, 800)}
             alt={product.name}
-            style={productImageStyle(product)}
+            loading="lazy"
+            decoding="async"
+            style={{ width: "100%", height: "100%", objectFit: "contain", padding: 6, boxSizing: "border-box" }}
             onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextSibling.style.display = "flex"; }}
           />
         ) : null}
