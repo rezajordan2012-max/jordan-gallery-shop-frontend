@@ -1830,117 +1830,129 @@ function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, cate
 
 // نوار افقیِ خودکار برای «پرفروش‌ترین‌های» یک دسته در صفحه‌ی اصلی.
 function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalDiscountPercent, categoryMedia }) {
-  const outerRef = useRef(null);
-  const trackRef = useRef(null);
-  const animNameRef = useRef(`railmove_${category}_${reverse ? "r" : "f"}_${Math.random().toString(36).slice(2, 8)}`);
-  const [paused, setPaused] = useState(false);
-  const [loopWidth, setLoopWidth] = useState(0);
-
   const items = useMemo(() => (products || []).slice(0, 10), [products]);
-  const canLoop = items.length >= 1;
-  const repeatCount = !canLoop ? 1 : items.length <= 2 ? 14 : items.length <= 4 ? 8 : items.length <= 8 ? 4 : 3;
-  const railItems = canLoop ? Array.from({ length: repeatCount }, () => items).flat() : items;
-
-  const RAIL_SPEED_PX_PER_SEC = 30;
-  const cycleSeconds = loopWidth > 0 ? loopWidth / RAIL_SPEED_PX_PER_SEC : 0;
+  const n = items.length;
+  const wrapRef = useRef(null);
+  const cardRefs = useRef([]);
+  const touchRef = useRef(null);
+  const resumeTimer = useRef(null);
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [dims, setDims] = useState({ w: 360, h: 380 });
 
   useLayoutEffect(() => {
-    if (!canLoop) { setLoopWidth(0); return; }
-    let cancelled = false;
-    let raf2 = null;
     function measure() {
-      if (cancelled) return;
-      const el = trackRef.current;
-      if (!el) return;
-      const w = el.scrollWidth / repeatCount;
-      if (w > 0) setLoopWidth(w);
+      const w = wrapRef.current ? wrapRef.current.offsetWidth : 360;
+      let h = 0;
+      cardRefs.current.forEach((el) => { if (el && el.offsetHeight > h) h = el.offsetHeight; });
+      setDims((d) => (d.w === w && d.h === (h || d.h) ? d : { w, h: h || d.h }));
     }
-    const raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(measure);
-    });
-    let resizeTimer = null;
-    function onResize() {
-      window.clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(measure, 200);
-    }
-    window.addEventListener("resize", onResize);
+    measure();
+    const t1 = window.setTimeout(measure, 300);
+    const t2 = window.setTimeout(measure, 1200);
+    window.addEventListener("resize", measure);
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf1);
-      if (raf2) cancelAnimationFrame(raf2);
-      window.clearTimeout(resizeTimer);
-      window.removeEventListener("resize", onResize);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.removeEventListener("resize", measure);
     };
-  }, [canLoop, items.length, repeatCount]);
+  }, [n]);
 
-  function handlePauseStart() { setPaused(true); }
-  function handlePauseEndSoon() { window.setTimeout(() => setPaused(false), 900); }
+  useEffect(() => {
+    if (n < 2 || paused) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => {
+      setActive((a) => (a + (reverse ? -1 : 1) + n) % n);
+    }, 3600);
+    return () => window.clearInterval(id);
+  }, [n, paused, reverse]);
 
-  if (items.length === 0) return null;
+  useEffect(() => () => window.clearTimeout(resumeTimer.current), []);
+
+  function pauseFor(ms) {
+    setPaused(true);
+    window.clearTimeout(resumeTimer.current);
+    resumeTimer.current = window.setTimeout(() => setPaused(false), ms || 5000);
+  }
+  function go(delta) {
+    setActive((a) => (a + delta + n) % n);
+    pauseFor(5000);
+  }
+  function onTouchStart(e) {
+    const t = e.touches && e.touches[0];
+    touchRef.current = t ? { x: t.clientX, y: t.clientY } : null;
+    pauseFor(6000);
+  }
+  function onTouchEnd(e) {
+    const s = touchRef.current;
+    touchRef.current = null;
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!s || !t) return;
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) go(dx < 0 ? 1 : -1);
+  }
+
+  if (n === 0) return null;
+
+  const cardW = Math.max(150, Math.min(240, Math.round(dims.w * 0.62)));
+  const step = cardW * 0.6;
 
   return (
-    <div className="mb-8">
+    <div className="mb-10">
       <div className="flex items-center gap-2 mb-3 px-1">
         <Sparkles size={15} color="#FF3E8E" />
         <h3 className="font-display" style={{ fontSize: 17 }}>{CATEGORY_LABEL[category]}</h3>
       </div>
-      {loopWidth > 0 && (
-        <style>{`
-          @keyframes ${animNameRef.current} {
-            from { transform: translateX(${reverse ? `-${(100 / repeatCount).toFixed(6)}%` : "0%"}); }
-            to { transform: translateX(${reverse ? "0%" : `-${(100 / repeatCount).toFixed(6)}%`}); }
-          }
-        `}</style>
-      )}
+
       <div
-        ref={outerRef}
-        className="rail-scroll"
+        ref={wrapRef}
         dir="ltr"
-        onMouseEnter={handlePauseStart}
-        onMouseLeave={handlePauseEndSoon}
-        onTouchStart={handlePauseStart}
-        onTouchEnd={handlePauseEndSoon}
-        onPointerDown={handlePauseStart}
-        onPointerUp={handlePauseEndSoon}
-        style={{ overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 6, direction: "ltr" }}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        style={{
+          position: "relative",
+          height: dims.h + 28,
+          perspective: 1100,
+          perspectiveOrigin: "50% 40%",
+          overflow: "hidden",
+          touchAction: "pan-y",
+        }}
       >
-        {/* نکته‌ی مهمِ فنی: کل سایت dir="rtl" است، اما ریاضیِ حرکتِ خودکارِ این نوار (translateX از
-            0 به -X% و برعکس برای جهتِ معکوس) بر مبنای مختصاتِ چپ‌به‌راستِ استاندارد نوشته شده.
-            وقتی این کانتینر ارثِ rtl را از صفحه می‌گرفت، مرورگر موقعیتِ اسکرولِ اولیه/داخلی‌اش را
-            طبقِ قواعدِ RTL (که با اسکرولِ دستی‌ای که ما با transform شبیه‌سازی می‌کنیم هم‌خوان
-            نیست) تنظیم می‌کرد — دقیقاً همین ناهماهنگی باعث می‌شد مرورگر بخشی از فضای واقعاً
-            پرشده را نشان ندهد و به‌جایش یک فضای خالی و سفید در سمتِ راستِ محصول نمایش دهد. با
-            ثابت‌کردنِ جهتِ این کانتینر (و ردیفِ داخلی‌اش) روی ltr، محاسبه‌ی اسکرول و ترنسفورم
-            دقیقاً همان چیزی می‌شود که در کد نوشته‌ایم، و محصولات کاملاً پشتِ‌سرِهم و بدونِ هیچ
-            فاصله‌ی خالی نمایش داده می‌شوند. متنِ فارسیِ داخلِ هر کارت هم چون خودِ ProductCard و
-            زیرمجموعه‌هایش دوباره dir="rtl" می‌گیرند (پایین‌تر)، هیچ‌وقت آسیب نمی‌بیند.
-        */}
-        <div
-          ref={trackRef}
-          className="rail-track"
-          style={{
-            display: "inline-flex",
-            flexWrap: "nowrap",
-            gap: 14,
-            direction: "ltr",
-            // نکته: جهتِ حرکت (چپ یا راست) دیگر به‌وسیله‌ی animationDirection:"reverse" کنترل
-            // نمی‌شود — چون پشتیبانیِ این ویژگی در برخی وب‌ویوهای موبایل/مرورگرهای درون‌برنامه‌ای
-            // (مثل همان چیزی که پیش‌نمایشِ داخلِ اپ‌های واسطه، مثلاً هنگامِ باز کردنِ لینکِ Vercel
-            // از داخلِ یک اپِ دیگر، استفاده می‌کنند) گاهی ناقص یا متفاوت است و باعث می‌شد همه‌ی
-            // ردیف‌ها با وجودِ کدِ درست، یک‌شکل به نظر برسند. حالا جهتِ حرکت مستقیماً داخلِ خودِ
-            // کی‌فریم (بالاتر) تعریف شده — یعنی صفرتاصدِ هر مسیر برایِ چپ یا راست رفتن جداگانه
-            // نوشته شده، نه یک مسیر که با یک ویژگیِ جانبی معکوس شود؛ این‌طور دیگر به پشتیبانیِ
-            // مرورگر از reverse وابسته نیستیم و رفتار در همه‌جا یکسان و قابل‌اطمینان می‌ماند.
-            animation: loopWidth > 0 ? `${animNameRef.current} ${cycleSeconds}s linear infinite` : "none",
-            animationPlayState: paused ? "paused" : "running",
-          }}
-        >
-          {railItems.map((p, i) => (
+        {items.map((p, i) => {
+          let o = ((i - active) % n + n) % n;
+          if (o > n / 2) o -= n;
+          const abs = Math.abs(o);
+          const visible = abs <= 2;
+          return (
             <div
-              key={`${p.id}-${i}`}
+              key={p.id}
+              ref={(el) => { cardRefs.current[i] = el; }}
               className="rail-item"
               dir="rtl"
-              style={{ flex: "0 0 auto", width: "calc(50vw - 16px)", maxWidth: 210 }}
+              onClickCapture={(e) => {
+                if (o !== 0) {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setActive(i);
+                  pauseFor(5000);
+                }
+              }}
+              style={{
+                position: "absolute",
+                top: 8,
+                left: (dims.w - cardW) / 2,
+                width: cardW,
+                transform: `translateX(${o * step}px) translateZ(${-abs * 140}px) rotateY(${-o * 34}deg) scale(${1 - abs * 0.04})`,
+                opacity: visible ? (abs === 0 ? 1 : abs === 1 ? 0.9 : 0.45) : 0,
+                zIndex: 10 - abs,
+                pointerEvents: visible ? "auto" : "none",
+                filter: abs === 0 ? "none" : `brightness(${1 - abs * 0.06})`,
+                transition: "transform 0.6s cubic-bezier(.22,.8,.24,1), opacity 0.5s ease, filter 0.5s ease",
+                willChange: "transform",
+              }}
             >
               <ProductCard
                 product={p}
@@ -1950,9 +1962,31 @@ function ProductRail({ category, products, reverse, onOpen, onAddToCart, globalD
                 categoryMedia={categoryMedia}
               />
             </div>
+          );
+        })}
+      </div>
+
+      {n > 1 && (
+        <div className="flex items-center justify-center gap-1.5 mt-2">
+          {items.map((p, i) => (
+            <button
+              key={p.id}
+              type="button"
+              aria-label={`محصول ${i + 1}`}
+              onClick={() => { setActive(i); pauseFor(5000); }}
+              style={{
+                width: i === active ? 18 : 6,
+                height: 6,
+                borderRadius: 999,
+                border: "none",
+                padding: 0,
+                background: i === active ? "#FF3E8E" : "rgba(123,92,246,0.25)",
+                transition: "width 0.3s ease, background 0.3s ease",
+              }}
+            />
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }
