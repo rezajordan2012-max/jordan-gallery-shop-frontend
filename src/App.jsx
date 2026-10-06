@@ -5460,8 +5460,8 @@ async function addAllShadesFromResults() {
           id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
           label: v.label,
           hex: v.hex || "",
-          image: "",           // عکسِ ۱ (اصلی) خالی می‌ماند — مدیر خودش دستی پر می‌کند
-          image2: v.image || "", // نتیجه‌ی استخراجِ لینک اینجا قرار می‌گیرد
+          image: v.image || "",
+          image2: "",
           image3: "",           // عکسِ ۳ هم خالی می‌ماند
         }));
       if (mapped.length === 0) {
