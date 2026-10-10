@@ -5226,7 +5226,18 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
       setBarcodeLookupLoading(false);
     }
   }
-
+  function handleManualBarcodeSearch() {
+    const code = String(form.barcode || "")
+      .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
+      .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d))
+      .replace(/[\s-]/g, "")
+      .trim();
+    if (code.length < 6) {
+      setBarcodeLookupMessage({ type: "error", text: "کد بارکد را کامل وارد کن (حداقل ۶ رقم)" });
+      return;
+    }
+    handleBarcodeDetected(code);
+  }
   const [imageSearchTarget, setImageSearchTarget] = useState(null);
   const [imageSearchQuery, setImageSearchQuery] = useState("");
   const [imageSearchLoading, setImageSearchLoading] = useState(false);
@@ -6642,13 +6653,26 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
         <div className="sm:col-span-2 flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <input
-              placeholder="بارکد محصول (اختیاری)"
+              placeholder="بارکد محصول (اختیاری) — دستی بنویس و جستجو بزن"
               value={form.barcode}
               onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); handleManualBarcodeSearch(); }
+              }}
+              inputMode="numeric"
               className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
-              style={{ color: "#241E3D" }}
+              style={{ color: "#241E3D", minWidth: 0 }}
               dir="ltr"
             />
+            <button
+              type="button"
+              onClick={handleManualBarcodeSearch}
+              disabled={barcodeLookupLoading || !String(form.barcode || "").trim()}
+              className="btn-ghost rounded px-3 py-2 text-sm flex items-center gap-1.5 flex-shrink-0"
+              style={{ borderColor: "#FF3E8E", color: "#FF3E8E" }}
+            >
+              <Search size={14} /> {barcodeLookupLoading ? "..." : "جستجو"}
+            </button>
             <button
               type="button"
               onClick={() => setScannerOpen(true)}
