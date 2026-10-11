@@ -1199,6 +1199,22 @@ function optimizedMediaUrl(url, kind = "image") {
 }
 
 // برای نمایش قیمت با جداکننده‌ی هزارگان (۳ رقم ۳ رقم) حین تایپ در پنل مدیریت
+function sanitizeVolumeInput(raw) {
+  let s = String(raw || "")
+    .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
+    .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d))
+    .replace(/[٫,،]/g, ".")
+    .replace(/[^0-9.]/g, "");
+  const i = s.indexOf(".");
+  if (i !== -1) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, "").slice(0, 2);
+  return s;
+}
+
+function formatVolumeText(volume, unit) {
+  const n = Number(volume);
+  if (!volume || !Number.isFinite(n) || n <= 0) return "";
+  return `${n.toLocaleString("fa-IR", { maximumFractionDigits: 2 })} ${unit === "g" ? "گرم" : "میل"}`;
+}
 function formatPriceInput(digitsStr) {
   if (!digitsStr) return "";
   const n = Number(digitsStr);
@@ -2390,7 +2406,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
             const specsBlock = (() => {
               const specs = [
                 { label: "برند", value: product.brand },
-                { label: "حجم", value: product.volume ? `${product.volume} میل` : "" },
+               { label: product.volumeUnit === "g" ? "وزن" : "حجم", value: formatVolumeText(product.volume, product.volumeUnit) },
               ];
               if (product.category === "perfume") {
                 specs.push(
@@ -4575,7 +4591,7 @@ async function handleCheckout() {
 }
 
 function emptyForm() {
-  return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", mainAccords: "", scentScore: "", scentRatings: "", longevityScore: "", longevityRatings: "", sillageScore: "", sillageRatings: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", volume: "", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
+  return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", mainAccords: "", scentScore: "", scentRatings: "", longevityScore: "", longevityRatings: "", sillageScore: "", sillageRatings: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", volume: "", volumeUnit: "ml", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
 function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenImageSearch, onOpenVideoSearch, productContext }) {
@@ -5867,6 +5883,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
       fragranticaRating: p.fragranticaRating || "",
       volume: p.volume || "",
       barcode: p.barcode || "",
+      volumeUnit: p.volumeUnit === "g" ? "g" : "ml",
       imageFit: p.imageFit === "cover" ? "cover" : "contain",
       imagePosX: Number.isFinite(Number(p.imagePosX)) ? Number(p.imagePosX) : 50,
       imagePosY: Number.isFinite(Number(p.imagePosY)) ? Number(p.imagePosY) : 50,
@@ -7021,20 +7038,31 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
           </div>
         )}
 
-        {form.category !== "electronics" && (
-          <div className="flex items-center gap-1">
+                {form.category !== "electronics" && (
+          <div className="flex items-center gap-2">
             <input
-              type="number"
-              min="0"
-              step="1"
-              placeholder="حجم (اختیاری)"
+              type="text"
+              inputMode="decimal"
+              placeholder="حجم / وزن (اختیاری) — مثلاً 4.25"
               value={form.volume}
-              onChange={(e) => setForm({ ...form, volume: e.target.value })}
+              onChange={(e) => setForm({ ...form, volume: sanitizeVolumeInput(e.target.value) })}
               className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm flex-1"
-              style={{ color: "#241E3D" }}
+              style={{ color: "#241E3D", minWidth: 0 }}
               dir="ltr"
             />
-            <span className="text-muted" style={{ fontSize: 11 }}>میل</span>
+            <div className="flex gap-1 flex-shrink-0">
+              {[{ k: "ml", l: "میل" }, { k: "g", l: "گرم" }].map((u) => (
+                <button
+                  key={u.k}
+                  type="button"
+                  onClick={() => setForm({ ...form, volumeUnit: u.k })}
+                  className="btn-ghost rounded-full px-3 py-1.5 text-xs"
+                  style={(form.volumeUnit || "ml") === u.k ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : undefined}
+                >
+                  {u.l}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
