@@ -4589,7 +4589,42 @@ async function handleCheckout() {
     </div>
   );
 }
+const BRAND_EN_FROM_FA = (() => {
+  const map = {};
+  Object.entries(BRAND_FA_MAP).forEach(([en, fa]) => {
+    if (!map[fa]) map[fa] = en.replace(/\b\w/g, (c) => c.toUpperCase());
+  });
+  Object.assign(map, {
+    "مک": "MAC", "میبلین": "Maybelline", "شیگلم": "SHEGLAM", "کیکو": "KIKO",
+    "استی لادر": "Estee Lauder", "نارس": "NARS", "لورال": "L'Oreal",
+    "بنفیت": "Benefit", "کلینیک": "Clinique", "فنتی": "Fenty Beauty",
+  });
+  return map;
+})();
 
+function toEnglishBrand(brand) {
+  const b = String(brand || "").trim();
+  if (!b) return "";
+  if (/^[\x00-\x7F]+$/.test(b)) return b;
+  return BRAND_EN_FROM_FA[b] || "";
+}
+
+function englishProductContext(form) {
+  const brandEn = toEnglishBrand(form.brand);
+  const base = String(form.nameEn || "").trim() || String(form.name || "").trim();
+  const brandPart = brandEn && !base.toLowerCase().includes(brandEn.toLowerCase()) ? brandEn : "";
+  return `${brandPart} ${base}`.replace(/\s+/g, " ").trim();
+}
+
+function buildVariantImageQuery(productContext, label, fieldKey) {
+  const ctx = String(productContext || "").trim();
+  const shade = String(label || "").trim();
+  const tail =
+    fieldKey === "image" ? "swatch smear png transparent background"
+    : fieldKey === "image2" ? "product bottle white background"
+    : "";
+  return `${ctx} ${shade} ${tail}`.replace(/\s+/g, " ").trim();
+}
 function emptyForm() {
   return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", mainAccords: "", scentScore: "", scentRatings: "", longevityScore: "", longevityRatings: "", sillageScore: "", sillageRatings: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", volume: "", volumeUnit: "ml", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
@@ -4699,7 +4734,7 @@ async function handleVideoFile(e) {
               </label>
               <button
                 type="button"
-                onClick={() => onOpenImageSearch(`${variant.id}::${f.key}`, `${productContext || ""} ${variant.label || ""}`.trim())}
+                onClick={() => onOpenImageSearch(`${variant.id}::${f.key}`, buildVariantImageQuery(productContext, variant.label, f.key))}
                 className="btn-ghost rounded px-3 py-1.5 text-xs flex items-center gap-1.5"
               >
                 <Search size={13} /> جستجو
@@ -7317,7 +7352,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
               onUploadImage={onUploadImage}
               onOpenImageSearch={openImageSearch}
               onOpenVideoSearch={openVideoSearch}
-              productContext={`${form.brand} ${form.name}`.trim()}
+              productContext={englishProductContext(form)}
             />
           ))}
           <button
