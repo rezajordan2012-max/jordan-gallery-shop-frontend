@@ -4619,10 +4619,7 @@ function englishProductContext(form) {
 function buildVariantImageQuery(productContext, label, fieldKey) {
   const ctx = String(productContext || "").trim();
   const shade = String(label || "").trim();
-  const tail =
-    fieldKey === "image" ? "swatch smear png transparent background"
-    : fieldKey === "image2" ? "product bottle white background"
-    : "";
+  const tail = fieldKey === "image" ? "swatch" : fieldKey === "image2" ? "foundation" : "";
   return `${ctx} ${shade} ${tail}`.replace(/\s+/g, " ").trim();
 }
 function emptyForm() {
