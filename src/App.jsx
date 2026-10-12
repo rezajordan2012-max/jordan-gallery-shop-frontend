@@ -3224,18 +3224,18 @@ const [paymentResult, setPaymentResult] = useState(null); // null | { status, re
     return { variants: data.variants || [], imageNote: data.imageNote || "" };
   }
 
-  async function updateHeroBanners(banners) {
-    const res = await fetch(`${API_BASE_URL}/api/settings`, {
-      method: "PUT",
+    async function browseApi(path, body) {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ heroBanners: banners }),
+      body: JSON.stringify(body || {}),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "ذخیره‌ی بنرها ناموفق بود");
-    setHeroBanners(banners);
-    setBannerIndex(0);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "خطا در مرورگر راه‌دور");
+    return data;
   }
 
+  async function updateHeroBanners(banners) {
   async function updateGlobalDiscount(percent) {
     const res = await fetch(`${API_BASE_URL}/api/settings`, {
       method: "PUT",
@@ -4029,6 +4029,7 @@ async function handleCheckout() {
           onImportProductFromUrl={importProductFromUrl}
           onMirrorImage={mirrorImage}
           onAnalyzePerfumeImage={analyzePerfumeImageWithGemini}
+          onBrowseApi={browseApi}
         />
       ) : view === "account" && user ? (
         <AccountPage
@@ -4903,7 +4904,7 @@ async function pickProductPhotosForVariants(variants, results) {
   return { photos, matched, blocked, total: list.length };
 }
 
-function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onSearchProductVideo, onExtractImagesFromUrl, onExtractVideosFromUrl, onExtractVariantsFromUrl, onExtractVariantsFromImage,  onImportProductFromUrl, onMirrorImage, onAnalyzePerfumeImage,onSearchPerfume, onGetPerfumeDetails, onTranslatePerfumeText }) {
+function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onSearchProductVideo, onExtractImagesFromUrl, onExtractVideosFromUrl, onExtractVariantsFromUrl, onExtractVariantsFromImage,  onImportProductFromUrl, onMirrorImage,  onAnalyzePerfumeImage, onBrowseApi, onSearchPerfume,onGetPerfumeDetails, onTranslatePerfumeText }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroSaving, setHeroSaving] = useState(false);
@@ -5368,6 +5369,24 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     }
     setForm((f) => ({ ...f, variantsList: [...(f.variantsList || []), ...added] }));
     closeImageSearch();
+  }
+
+    function applyBrowsePick(url, labelOverride, detectedLabel, hex, field) {
+    const target = imageSearchTarget;
+    if (!target || !url) return;
+    if (target === "main") {
+      setForm((f) => ({ ...f, image: url }));
+      return;
+    }
+    const vid = target.split("::")[0];
+    setForm((f) => ({
+      ...f,
+      variantsList: (f.variantsList || []).map((v) =>
+        v.id === vid
+          ? { ...v, [field]: url, label: labelOverride || v.label || detectedLabel || "", hex: v.hex || hex || "" }
+          : v
+      ),
+    }));
   }
 
   async function runImageSearch() {
@@ -7506,69 +7525,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
               </h3>
               <button onClick={closeImageSearch}><X size={18} color="#241E3D" /></button>
             </div>
-            <div className="bg-panel-2 border border-hair rounded-lg p-3 mb-3 flex flex-col gap-2">
-              <p className="text-gold flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700 }}>
-                <LinkIcon size={13} /> دریافت عکس و طیف رنگ از لینک سایت
-              </p>
-              <div className="flex items-center gap-2">
-                <input
-                  value={linkVariantUrl}
-                  onChange={(e) => setLinkVariantUrl(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runLinkExtraction(); } }}
-                  placeholder="https://..."
-                  className="bg-panel border border-hair rounded px-3 py-2 text-sm flex-1"
-                  style={{ color: "#241E3D", minWidth: 0 }}
-                  dir="ltr"
-                  disabled={linkVariantLoading}
-                />
-                <button
-                  type="button"
-                  onClick={runLinkExtraction}
-                  disabled={linkVariantLoading || !linkVariantUrl.trim()}
-                  className="btn-gold rounded px-3 py-2 text-sm flex-shrink-0"
-                >
-                  {linkVariantLoading ? "..." : "دریافت"}
-                </button>
-              </div>
-              {linkVariantLoading && (
-                <p className="text-muted" style={{ fontSize: 11 }}>
-                  در حال باز کردن صفحه و دانلود رنگ‌ها و عکس‌ها… ممکن است ۳۰ تا ۹۰ ثانیه طول بکشد.
-                </p>
-              )}
-              {linkVariantError && <p style={{ fontSize: 11.5, color: "#D6336C" }}>{linkVariantError}</p>}
-              {linkVariantNote && <p style={{ fontSize: 11.5, color: "#D97706" }}>{linkVariantNote}</p>}
-              {linkVariantFound.length > 0 && (
-                <>
-                  <div className="grid grid-cols-4 gap-2">
-                    {linkVariantFound.map((v, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => pickImageSearchResult(v.image || "", v.label, "")}
-                        disabled={!v.image}
-                        className="rounded-lg border border-hair flex flex-col items-center"
-                        style={{ background: "#FFFFFF", padding: 4, opacity: v.image ? 1 : 0.6 }}
-                        title={v.label}
-                      >
-                        {v.image ? (
-                          <img src={v.image} alt="" referrerPolicy="no-referrer" style={{ width: "100%", height: 48, objectFit: "cover", borderRadius: 6 }} />
-                        ) : (
-                          <span style={{ width: "100%", height: 48, borderRadius: 6, background: v.hex || "#EEE" }} />
-                        )}
-                        <span style={{ fontSize: 9.5, marginTop: 3, lineHeight: 1.3, wordBreak: "break-word" }}>{v.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={addLinkVariantsToList}
-                    className="btn-gold rounded w-full py-2 text-sm flex items-center justify-center gap-1.5"
-                  >
-                    <Plus size={14} /> افزودن همه‌ی {linkVariantFound.length.toLocaleString("fa-IR")} رنگ به لیست
-                  </button>
-                </>
-              )}
-            </div>
+            <BrowseImagePicker target={imageSearchTarget} api={onBrowseApi} onApply={applyBrowsePick} />
 
             <form onSubmit={(e) => { e.preventDefault(); runImageSearch(); }} className="flex items-center gap-2 mb-3">
   <input
@@ -7697,5 +7654,201 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
         </div>
       )}
     </section>
+  );
+}
+function BrowseImagePicker({ target, onApply, api }) {
+  const [addr, setAddr] = useState("");
+  const [sid, setSid] = useState("");
+  const sidRef = useRef("");
+  const [shot, setShot] = useState("");
+  const [vp, setVp] = useState({ width: 412, height: 760 });
+  const [curUrl, setCurUrl] = useState("");
+  const [mode, setMode] = useState("nav"); // nav = ناوبری | pick = انتخاب عکس
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [picked, setPicked] = useState(null);
+  const [labelInput, setLabelInput] = useState("");
+  const [removeBg, setRemoveBg] = useState(false);
+  const [done, setDone] = useState("");
+  const imgRef = useRef(null);
+
+  const isMain = target === "main";
+  const fields = isMain
+    ? [{ key: "main", label: "ثبت به‌عنوان عکس اصلی محصول" }]
+    : [
+        { key: "image", label: "ثبت در عکس ۱" },
+        { key: "image2", label: "ثبت در عکس ۲" },
+        { key: "image3", label: "ثبت در عکس ۳" },
+      ];
+
+  useEffect(() => {
+    return () => {
+      if (sidRef.current) api("/api/browse/close", { sid: sidRef.current }).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function run(fn) {
+    setBusy(true);
+    setErr("");
+    try { await fn(); } catch (e) { setErr(e.message || "خطا"); } finally { setBusy(false); }
+  }
+
+  function openSite() {
+    const url = addr.trim();
+    if (!/^https?:\/\//i.test(url)) { setErr("لینک را کامل با https:// وارد کن"); return; }
+    setPicked(null);
+    setDone("");
+    run(async () => {
+      const d = await api("/api/browse/open", { url });
+      sidRef.current = d.sid;
+      setSid(d.sid);
+      setShot(d.shot);
+      setCurUrl(d.url);
+      setVp({ width: d.width || 412, height: d.height || 760 });
+    });
+  }
+
+  function coords(e) {
+    const r = imgRef.current.getBoundingClientRect();
+    return { x: Math.round(((e.clientX - r.left) / r.width) * vp.width), y: Math.round(((e.clientY - r.top) / r.height) * vp.height) };
+  }
+
+  function handleTap(e) {
+    if (busy || !sid) return;
+    const { x, y } = coords(e);
+    setDone("");
+    if (mode === "nav") {
+      run(async () => {
+        const d = await api("/api/browse/action", { sid, type: "click", x, y });
+        setShot(d.shot);
+        setCurUrl(d.url);
+        setPicked(null);
+      });
+    } else {
+      run(async () => {
+        const d = await api("/api/browse/pick", { sid, x, y, removeBackground: removeBg });
+        setPicked(d);
+        if (d.label && !labelInput.trim()) setLabelInput(d.label);
+      });
+    }
+  }
+
+  function doScroll(dy) {
+    if (busy || !sid) return;
+    run(async () => {
+      const d = await api("/api/browse/action", { sid, type: "scroll", dy });
+      setShot(d.shot);
+    });
+  }
+  function doBack() {
+    if (busy || !sid) return;
+    run(async () => {
+      const d = await api("/api/browse/action", { sid, type: "back" });
+      setShot(d.shot);
+      setCurUrl(d.url);
+      setPicked(null);
+    });
+  }
+
+  function apply(fieldKey) {
+    if (!picked) return;
+    onApply(picked.url, labelInput.trim(), picked.label, picked.hex, fieldKey);
+    setDone(fieldKey === "main" ? "عکس اصلی محصول ثبت شد ✓" : `در ${fieldKey === "image" ? "عکس ۱" : fieldKey === "image2" ? "عکس ۲" : "عکس ۳"} ثبت شد ✓ — می‌توانی عکس بعدی را هم انتخاب کنی`);
+    setPicked(null);
+  }
+
+  return (
+    <div className="bg-panel-2 border border-hair rounded-lg p-3 mb-3 flex flex-col gap-2">
+      <p className="text-gold flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700 }}>
+        <LinkIcon size={13} /> مرورگر سایت مبدأ — وارد صفحه‌ی محصول شو و عکس/رنگ را انتخاب کن
+      </p>
+      <div className="flex items-center gap-2">
+        <input
+          value={addr}
+          onChange={(e) => setAddr(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); openSite(); } }}
+          placeholder="https://www.maccosmetics.com  (صفحه‌ی اصلی یا خودِ محصول)"
+          className="bg-panel border border-hair rounded px-3 py-2 text-sm flex-1"
+          style={{ color: "#241E3D", minWidth: 0 }}
+          dir="ltr"
+        />
+        <button type="button" onClick={openSite} disabled={busy || !addr.trim()} className="btn-gold rounded px-3 py-2 text-sm flex-shrink-0">
+          {busy && !shot ? "..." : "باز کن"}
+        </button>
+      </div>
+
+      {err && <p style={{ fontSize: 11.5, color: "#D6336C" }}>{err}</p>}
+      {busy && <p className="text-muted" style={{ fontSize: 11 }}>در حال انجام… چند ثانیه صبر کن.</p>}
+
+      {shot && (
+        <>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={() => setMode("nav")} className="btn-ghost rounded-full px-3 py-1 text-xs"
+              style={mode === "nav" ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.12)" } : undefined}>
+              ناوبری (باز کردن منو و محصول)
+            </button>
+            <button type="button" onClick={() => { setMode("pick"); setPicked(null); }} className="btn-ghost rounded-full px-3 py-1 text-xs"
+              style={mode === "pick" ? { borderColor: "#0EA5A4", color: "#0EA5A4", background: "rgba(14,165,164,0.12)" } : undefined}>
+              انتخاب عکس / رنگ
+            </button>
+            <button type="button" onClick={() => doScroll(-500)} disabled={busy} className="btn-ghost rounded px-2 py-1 text-xs">▲</button>
+            <button type="button" onClick={() => doScroll(500)} disabled={busy} className="btn-ghost rounded px-2 py-1 text-xs">▼</button>
+            <button type="button" onClick={doBack} disabled={busy} className="btn-ghost rounded px-2 py-1 text-xs">بازگشت</button>
+          </div>
+          <p className="text-muted" style={{ fontSize: 10.5, lineHeight: 1.8 }}>
+            {mode === "nav"
+              ? "حالت ناوبری: روی منو، دسته‌بندی، محصول و شماره‌ی رنگ (مثلاً NC25) بزن تا صفحه عوض شود."
+              : "حالت انتخاب: روی خودِ عکسِ محصول یا دایره‌ی رنگ بزن؛ عکس همان نقطه آپلود می‌شود."}
+          </p>
+          {curUrl && <p className="text-muted" style={{ fontSize: 10, direction: "ltr", textAlign: "left", wordBreak: "break-all" }}>{curUrl}</p>}
+
+          <img
+            ref={imgRef}
+            src={shot}
+            alt="صفحه‌ی سایت مبدأ"
+            onClick={handleTap}
+            style={{
+              width: "100%", borderRadius: 8, border: mode === "pick" ? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)",
+              cursor: "pointer", opacity: busy ? 0.6 : 1, background: "#fff", display: "block",
+            }}
+          />
+
+          {mode === "pick" && (
+            <label className="flex items-center gap-2" style={{ fontSize: 11 }}>
+              <input type="checkbox" checked={removeBg} onChange={(e) => setRemoveBg(e.target.checked)} />
+              حذف پس‌زمینه‌ی عکس (فقط برای عکس خودِ محصول؛ سهمیه‌ی remove.bg مصرف می‌کند)
+            </label>
+          )}
+
+          {picked && (
+            <div className="bg-panel border border-hair rounded-lg p-2 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <img src={picked.url} alt="" referrerPolicy="no-referrer" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(123,92,246,0.3)" }} />
+                <div className="flex flex-col gap-1 flex-1" style={{ minWidth: 0 }}>
+                  <span className="text-muted" style={{ fontSize: 10.5 }}>نام/کد رنگ (اختیاری، مثلاً NC25)</span>
+                  <input
+                    value={labelInput}
+                    onChange={(e) => setLabelInput(e.target.value)}
+                    placeholder={picked.label || "NC25"}
+                    className="bg-panel-2 border border-hair rounded px-2 py-1.5 text-xs"
+                    style={{ color: "#241E3D" }}
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {fields.map((f) => (
+                  <button key={f.key} type="button" onClick={() => apply(f.key)} className="btn-gold rounded px-3 py-1.5 text-xs">
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {done && <p style={{ fontSize: 11.5, color: "#0EA5A4" }}>{done}</p>}
+        </>
+      )}
+    </div>
   );
 }
