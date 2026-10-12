@@ -5291,6 +5291,11 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   const [imageSearchLoading, setImageSearchLoading] = useState(false);
   const [imageSearchResults, setImageSearchResults] = useState([]);
   const [imageSearchError, setImageSearchError] = useState("");
+  const [linkVariantUrl, setLinkVariantUrl] = useState("");
+  const [linkVariantLoading, setLinkVariantLoading] = useState(false);
+  const [linkVariantError, setLinkVariantError] = useState("");
+  const [linkVariantNote, setLinkVariantNote] = useState("");
+  const [linkVariantFound, setLinkVariantFound] = useState([]);
 
   function openImageSearch(target, defaultQuery) {
     setImageSearchTarget(target);
@@ -5303,6 +5308,66 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     setImageSearchTarget(null);
     setImageSearchResults([]);
     setImageSearchError("");
+  }
+
+    async function runLinkExtraction() {
+    const url = linkVariantUrl.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      setLinkVariantError("لینک کامل صفحه‌ی محصول را با https:// وارد کن");
+      return;
+    }
+    setLinkVariantLoading(true);
+    setLinkVariantError("");
+    setLinkVariantNote("");
+    setLinkVariantFound([]);
+    setImageSearchResults([]);
+    setImageSearchError("");
+    let firstFailed = false;
+    try {
+      try {
+        const { variants, imageNote } = await onExtractVariantsFromUrl(url);
+        setLinkVariantFound((variants || []).filter((v) => v && v.label));
+        setLinkVariantNote(imageNote || "");
+      } catch (err) {
+        firstFailed = true;
+        setLinkVariantError(err.message || "استخراج طیف رنگ ناموفق بود");
+      }
+      if (!firstFailed) {
+        try {
+          const imgs = await onExtractImagesFromUrl(url);
+          setImageSearchResults(imgs || []);
+        } catch (err) {
+          setImageSearchError(err.message || "استخراج عکس‌ها ناموفق بود");
+        }
+      }
+    } finally {
+      setLinkVariantLoading(false);
+    }
+  }
+
+  function addLinkVariantsToList() {
+    const existing = new Set((form.variantsList || []).map((v) => normalizeShadeName(v.label)));
+    const added = [];
+    linkVariantFound.forEach((v, i) => {
+      const key = normalizeShadeName(v.label);
+      if (!key || existing.has(key)) return;
+      existing.add(key);
+      added.push({
+        id: `v${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+        label: v.label,
+        hex: v.hex || "",
+        image: v.image || "",
+        image2: "",
+        image3: "",
+        video: "",
+      });
+    });
+    if (added.length === 0) {
+      setLinkVariantError("همه‌ی این رنگ‌ها قبلاً در لیست هستند.");
+      return;
+    }
+    setForm((f) => ({ ...f, variantsList: [...(f.variantsList || []), ...added] }));
+    closeImageSearch();
   }
 
   async function runImageSearch() {
@@ -7441,6 +7506,70 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
               </h3>
               <button onClick={closeImageSearch}><X size={18} color="#241E3D" /></button>
             </div>
+            <div className="bg-panel-2 border border-hair rounded-lg p-3 mb-3 flex flex-col gap-2">
+              <p className="text-gold flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700 }}>
+                <LinkIcon size={13} /> دریافت عکس و طیف رنگ از لینک سایت
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  value={linkVariantUrl}
+                  onChange={(e) => setLinkVariantUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runLinkExtraction(); } }}
+                  placeholder="https://..."
+                  className="bg-panel border border-hair rounded px-3 py-2 text-sm flex-1"
+                  style={{ color: "#241E3D", minWidth: 0 }}
+                  dir="ltr"
+                  disabled={linkVariantLoading}
+                />
+                <button
+                  type="button"
+                  onClick={runLinkExtraction}
+                  disabled={linkVariantLoading || !linkVariantUrl.trim()}
+                  className="btn-gold rounded px-3 py-2 text-sm flex-shrink-0"
+                >
+                  {linkVariantLoading ? "..." : "دریافت"}
+                </button>
+              </div>
+              {linkVariantLoading && (
+                <p className="text-muted" style={{ fontSize: 11 }}>
+                  در حال باز کردن صفحه و دانلود رنگ‌ها و عکس‌ها… ممکن است ۳۰ تا ۹۰ ثانیه طول بکشد.
+                </p>
+              )}
+              {linkVariantError && <p style={{ fontSize: 11.5, color: "#D6336C" }}>{linkVariantError}</p>}
+              {linkVariantNote && <p style={{ fontSize: 11.5, color: "#D97706" }}>{linkVariantNote}</p>}
+              {linkVariantFound.length > 0 && (
+                <>
+                  <div className="grid grid-cols-4 gap-2">
+                    {linkVariantFound.map((v, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => pickImageSearchResult(v.image || "", v.label, "")}
+                        disabled={!v.image}
+                        className="rounded-lg border border-hair flex flex-col items-center"
+                        style={{ background: "#FFFFFF", padding: 4, opacity: v.image ? 1 : 0.6 }}
+                        title={v.label}
+                      >
+                        {v.image ? (
+                          <img src={v.image} alt="" referrerPolicy="no-referrer" style={{ width: "100%", height: 48, objectFit: "cover", borderRadius: 6 }} />
+                        ) : (
+                          <span style={{ width: "100%", height: 48, borderRadius: 6, background: v.hex || "#EEE" }} />
+                        )}
+                        <span style={{ fontSize: 9.5, marginTop: 3, lineHeight: 1.3, wordBreak: "break-word" }}>{v.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addLinkVariantsToList}
+                    className="btn-gold rounded w-full py-2 text-sm flex items-center justify-center gap-1.5"
+                  >
+                    <Plus size={14} /> افزودن همه‌ی {linkVariantFound.length.toLocaleString("fa-IR")} رنگ به لیست
+                  </button>
+                </>
+              )}
+            </div>
+
             <form onSubmit={(e) => { e.preventDefault(); runImageSearch(); }} className="flex items-center gap-2 mb-3">
   <input
     autoFocus
