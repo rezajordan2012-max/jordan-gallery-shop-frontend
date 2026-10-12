@@ -3236,6 +3236,17 @@ const [paymentResult, setPaymentResult] = useState(null); // null | { status, re
   }
 
   async function updateHeroBanners(banners) {
+    const res = await fetch(`${API_BASE_URL}/api/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ heroBanners: banners }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "ذخیره‌ی بنرها ناموفق بود");
+    setHeroBanners(banners);
+    setBannerIndex(0);
+  }
+
   async function updateGlobalDiscount(percent) {
     const res = await fetch(`${API_BASE_URL}/api/settings`, {
       method: "PUT",
