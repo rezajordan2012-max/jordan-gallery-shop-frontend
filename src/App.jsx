@@ -5382,14 +5382,27 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
     closeImageSearch();
   }
 
-    function applyBrowsePick(url, labelOverride, detectedLabel, hex, field) {
+    // رنگِ جدید می‌سازد و عکسِ انتخاب‌شده را در فیلدِ خواسته می‌گذارد؛ شناسه‌ی رنگِ ساخته‌شده را برمی‌گرداند
+  function addNewVariantFromBrowse(url, label, hex, field) {
+    const id = `v${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    setForm((f) => ({
+      ...f,
+      variantsList: [
+        ...(f.variantsList || []),
+        { id, label: label || "", hex: hex || "", image: "", image2: "", image3: "", video: "", [field]: url },
+      ],
+    }));
+    return id;
+  }
+
+  function applyBrowsePick(url, labelOverride, detectedLabel, hex, field, variantIdOverride) {
     const target = imageSearchTarget;
     if (!target || !url) return;
     if (target === "main") {
       setForm((f) => ({ ...f, image: url }));
       return;
     }
-    const vid = target.split("::")[0];
+    const vid = variantIdOverride || target.split("::")[0];
     setForm((f) => ({
       ...f,
       variantsList: (f.variantsList || []).map((v) =>
@@ -7536,7 +7549,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
               </h3>
               <button onClick={closeImageSearch}><X size={18} color="#241E3D" /></button>
             </div>
-            <BrowseImagePicker target={imageSearchTarget} api={onBrowseApi} onApply={applyBrowsePick} />
+            <BrowseImagePicker target={imageSearchTarget} api={onBrowseApi} onApply={applyBrowsePick} onAddVariant={addNewVariantFromBrowse} />
 
             <form onSubmit={(e) => { e.preventDefault(); runImageSearch(); }} className="flex items-center gap-2 mb-3">
   <input
@@ -7667,7 +7680,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
     </section>
   );
 }
-function BrowseImagePicker({ target, onApply, api }) {
+function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
   const [addr, setAddr] = useState("");
   const [sid, setSid] = useState("");
   const sidRef = useRef("");
@@ -7681,6 +7694,7 @@ function BrowseImagePicker({ target, onApply, api }) {
   const [labelInput, setLabelInput] = useState("");
   const [removeBg, setRemoveBg] = useState(false);
   const [done, setDone] = useState("");
+  const [activeVariantId, setActiveVariantId] = useState("");
   const imgRef = useRef(null);
 
   const isMain = target === "main";
@@ -7762,11 +7776,42 @@ function BrowseImagePicker({ target, onApply, api }) {
     });
   }
 
+  // بعد از هر ثبت: صفحه‌ی سایت و حالت انتخاب پاک می‌شود تا با «باز کن» عکس بعدی را بگیری؛ پنجره بسته نمی‌شود
+  function resetAfterSave(message) {
+    const oldSid = sidRef.current;
+    if (oldSid) api("/api/browse/close", { sid: oldSid }).catch(() => {});
+    sidRef.current = "";
+    setSid("");
+    setShot("");
+    setCurUrl("");
+    setMode("nav");
+    setPicked(null);
+    setErr("");
+    setDone(message);
+  }
+
   function apply(fieldKey) {
     if (!picked) return;
-    onApply(picked.url, labelInput.trim(), picked.label, picked.hex, fieldKey);
-    setDone(fieldKey === "main" ? "عکس اصلی محصول ثبت شد ✓" : `در ${fieldKey === "image" ? "عکس ۱" : fieldKey === "image2" ? "عکس ۲" : "عکس ۳"} ثبت شد ✓ — می‌توانی عکس بعدی را هم انتخاب کنی`);
-    setPicked(null);
+    const names = { image: "عکس ۱", image2: "عکس ۲", image3: "عکس ۳" };
+    const vid = activeVariantId;
+    onApply(picked.url, labelInput.trim(), picked.label, picked.hex, fieldKey, vid || undefined);
+    resetAfterSave(
+      fieldKey === "main"
+        ? "عکس اصلی محصول ثبت شد ✓ — آدرس سایت را عوض کن یا دوباره «باز کن» را بزن"
+        : `در ${names[fieldKey]} ثبت شد ✓ — دوباره «باز کن» را بزن تا عکس بعدی را انتخاب کنی`
+    );
+  }
+
+  // ساخت رنگ جدید (نام + عکس) و تبدیلش به رنگ هدف برای ثبت‌های بعدی (عکس ۲ و ۳)
+  function addAsNewVariant(fieldKey) {
+    if (!picked) return;
+    const label = labelInput.trim() || picked.label || "";
+    if (!label) { setErr("اول نام یا شماره‌ی رنگ را بنویس (مثلاً NC30)"); return; }
+    const newId = onAddVariant(picked.url, label, picked.hex, fieldKey);
+    setActiveVariantId(newId);
+    setLabelInput("");
+    const names = { image: "عکس ۱", image2: "عکس ۲", image3: "عکس ۳" };
+    resetAfterSave(`رنگ «${label}» ساخته شد و عکسش در ${names[fieldKey]} ثبت شد ✓ — برای عکس‌های بعدیِ همین رنگ دوباره «باز کن» را بزن`);
   }
 
   return (
@@ -7855,6 +7900,28 @@ function BrowseImagePicker({ target, onApply, api }) {
                   </button>
                 ))}
               </div>
+              {!isMain && (
+                <div className="flex flex-col gap-1 pt-1" style={{ borderTop: "1px dashed rgba(123,92,246,0.25)" }}>
+                  <span className="text-muted" style={{ fontSize: 10.5 }}>
+                    {activeVariantId
+                      ? "رنگِ جدیدِ فعلی انتخاب است؛ دکمه‌های بالا روی همین رنگ ثبت می‌کنند. برای رنگِ دیگر، نام را عوض کن و یکی از دکمه‌های زیر را بزن:"
+                      : "یا این عکس را به‌عنوان یک رنگِ جدید (با نامی که بالا نوشتی) به لیست اضافه کن:"}
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => addAsNewVariant("image")} className="btn-ghost rounded px-3 py-1.5 text-xs" style={{ borderColor: "#0EA5A4", color: "#0EA5A4" }}>
+                      + رنگ جدید با این عکس (عکس ۱)
+                    </button>
+                    <button type="button" onClick={() => addAsNewVariant("image2")} className="btn-ghost rounded px-3 py-1.5 text-xs" style={{ borderColor: "#0EA5A4", color: "#0EA5A4" }}>
+                      + رنگ جدید (عکس ۲)
+                    </button>
+                  </div>
+                  {activeVariantId && (
+                    <button type="button" onClick={() => setActiveVariantId("")} className="text-muted self-start" style={{ fontSize: 11 }}>
+                      برگشت به رنگِ اولِ پنجره (لغوِ رنگِ جدیدِ فعلی)
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {done && <p style={{ fontSize: 11.5, color: "#0EA5A4" }}>{done}</p>}
