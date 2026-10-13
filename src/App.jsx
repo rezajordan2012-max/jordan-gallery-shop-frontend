@@ -7716,7 +7716,10 @@ function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
   async function run(fn) {
     setBusy(true);
     setErr("");
-    try { await fn(); } catch (e) { setErr(e.message || "خطا"); } finally { setBusy(false); }
+    try { await fn(); } catch (e) {
+      const msg = e.message || "خطا";
+      setErr(/نشست مرورگر بسته/.test(msg) ? "نشست بسته شد (احتمالاً بی‌کاری یا کمبود حافظه سرور). دکمه‌ی «باز کن» را بزن؛ آدرس همان است." : msg);
+    } finally { setBusy(false); }
   }
 
   function openSite() {
@@ -7804,10 +7807,19 @@ function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
 
   // بعد از هر ثبت: صفحه‌ی سایت و حالت انتخاب پاک می‌شود تا با «باز کن» عکس بعدی را بگیری؛ پنجره بسته نمی‌شود
   function resetAfterSave(message) {
-    // نشست و صفحه‌ی سایت مبدأ باز می‌ماند؛ فقط انتخابِ فعلی پاک می‌شود
+    // صفحه‌ی سایت باز می‌ماند؛ به حالت ناوبری برمی‌گردیم تا بتوانی اسکرول/ورق بزنی
     setPicked(null);
+    setMode("nav");
     setErr("");
     setDone(message);
+    // یک اسکرین‌شات تازه می‌گیریم تا مطمئن شویم نشست هنوز زنده است
+    if (sidRef.current) {
+      api("/api/browse/action", { sid: sidRef.current, type: "scroll", dy: 0 })
+        .then((d) => { setShot(d.shot); setCurUrl(d.url); })
+        .catch((e) => {
+          setErr(e.message || "نشست بسته شده");
+        });
+    }
   }
 
   function apply(fieldKey) {
