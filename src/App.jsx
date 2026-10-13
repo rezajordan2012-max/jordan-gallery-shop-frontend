@@ -5383,6 +5383,16 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
   }
 
     // رنگِ جدید می‌سازد و عکسِ انتخاب‌شده را در فیلدِ خواسته می‌گذارد؛ شناسه‌ی رنگِ ساخته‌شده را برمی‌گرداند
+  // یک ردیف رنگِ خالی می‌سازد و شناسه‌اش را برمی‌گرداند (برای میانبرِ داخل پنجره)
+  function addEmptyVariantFromBrowse() {
+    const id = `v${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    setForm((f) => ({
+      ...f,
+      variantsList: [...(f.variantsList || []), { id, label: "", hex: "", image: "", image2: "", image3: "", video: "" }],
+    }));
+    return id;
+  }
+
   function addNewVariantFromBrowse(url, label, hex, field) {
     const id = `v${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setForm((f) => ({
@@ -7549,7 +7559,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
               </h3>
               <button onClick={closeImageSearch}><X size={18} color="#241E3D" /></button>
             </div>
-            <BrowseImagePicker target={imageSearchTarget} api={onBrowseApi} onApply={applyBrowsePick} onAddVariant={addNewVariantFromBrowse} />
+            <BrowseImagePicker target={imageSearchTarget} api={onBrowseApi} onApply={applyBrowsePick} onAddVariant={addNewVariantFromBrowse} onAddEmptyVariant={addEmptyVariantFromBrowse} />
 
             <form onSubmit={(e) => { e.preventDefault(); runImageSearch(); }} className="flex items-center gap-2 mb-3">
   <input
@@ -7680,7 +7690,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
     </section>
   );
 }
-function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
+function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, api }) {
   const [addr, setAddr] = useState("");
   const [sid, setSid] = useState("");
   const sidRef = useRef("");
@@ -7695,6 +7705,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
   const [removeBg, setRemoveBg] = useState(false);
   const [done, setDone] = useState("");
   const [activeVariantId, setActiveVariantId] = useState("");
+  const [newVariantCount, setNewVariantCount] = useState(0);
   const imgRef = useRef(null);
 
   const isMain = target === "main";
@@ -7720,6 +7731,18 @@ function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
       const msg = e.message || "خطا";
       setErr(/نشست مرورگر بسته/.test(msg) ? "نشست بسته شد (احتمالاً بی‌کاری یا کمبود حافظه سرور). دکمه‌ی «باز کن» را بزن؛ آدرس همان است." : msg);
     } finally { setBusy(false); }
+  }
+
+  // میانبر: ردیف رنگِ جدید در پنل ساخته می‌شود و هدفِ ثبت‌های بعدی (عکس ۱، ۲، ۳) می‌شود
+  function startNewColor() {
+    if (!onAddEmptyVariant) return;
+    const newId = onAddEmptyVariant();
+    setActiveVariantId(newId);
+    setNewVariantCount((c) => c + 1);
+    setLabelInput("");
+    setPicked(null);
+    setErr("");
+    setDone("ردیف رنگِ جدید ساخته شد ✓ — حالا رنگ را در سایت انتخاب کن، نامش را بنویس و در عکس ۱ و ۲ و ۳ ثبت کن");
   }
 
   function openSite() {
@@ -7851,6 +7874,17 @@ function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
       <p className="text-gold flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 700 }}>
         <LinkIcon size={13} /> مرورگر سایت مبدأ — وارد صفحه‌ی محصول شو و عکس/رنگ را انتخاب کن
       </p>
+      {!isMain && onAddEmptyVariant && (
+        <button
+          type="button"
+          onClick={startNewColor}
+          className="btn-ghost rounded px-3 py-2 text-xs self-start flex items-center gap-1.5"
+          style={{ borderColor: "#0EA5A4", color: "#0EA5A4", background: "rgba(14,165,164,0.08)" }}
+        >
+          <Plus size={13} /> افزودن رنگ / شماره‌ی جدید
+          {newVariantCount > 0 ? ` (${newVariantCount.toLocaleString("fa-IR")} رنگ ساخته شد)` : ""}
+        </button>
+      )}
       <div className="flex items-center gap-2">
         <input
           value={addr}
