@@ -7804,13 +7804,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
 
   // بعد از هر ثبت: صفحه‌ی سایت و حالت انتخاب پاک می‌شود تا با «باز کن» عکس بعدی را بگیری؛ پنجره بسته نمی‌شود
   function resetAfterSave(message) {
-    const oldSid = sidRef.current;
-    if (oldSid) api("/api/browse/close", { sid: oldSid }).catch(() => {});
-    sidRef.current = "";
-    setSid("");
-    setShot("");
-    setCurUrl("");
-    setMode("nav");
+    // نشست و صفحه‌ی سایت مبدأ باز می‌ماند؛ فقط انتخابِ فعلی پاک می‌شود
     setPicked(null);
     setErr("");
     setDone(message);
@@ -7823,8 +7817,8 @@ function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
     onApply(picked.url, labelInput.trim(), picked.label, picked.hex, fieldKey, vid || undefined);
     resetAfterSave(
       fieldKey === "main"
-        ? "عکس اصلی محصول ثبت شد ✓ — آدرس سایت را عوض کن یا دوباره «باز کن» را بزن"
-        : `در ${names[fieldKey]} ثبت شد ✓ — دوباره «باز کن» را بزن تا عکس بعدی را انتخاب کنی`
+        ? "عکس اصلی محصول ثبت شد ✓"
+        : `در ${names[fieldKey]} ثبت شد ✓ — صفحه باز است؛ روی عکس بعدی بزن و «ثبت در عکس بعدی» را انتخاب کن`
     );
   }
 
@@ -7837,7 +7831,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
     setActiveVariantId(newId);
     setLabelInput("");
     const names = { image: "عکس ۱", image2: "عکس ۲", image3: "عکس ۳" };
-    resetAfterSave(`رنگ «${label}» ساخته شد و عکسش در ${names[fieldKey]} ثبت شد ✓ — برای عکس‌های بعدیِ همین رنگ دوباره «باز کن» را بزن`);
+    resetAfterSave(`رنگ «${label}» ساخته شد و عکسش در ${names[fieldKey]} ثبت شد ✓ — صفحه باز است؛ عکس بعدیِ همین رنگ را انتخاب کن`);
   }
 
   return (
