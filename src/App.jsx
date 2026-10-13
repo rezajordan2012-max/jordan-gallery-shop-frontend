@@ -7739,7 +7739,33 @@ function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
     return { x: Math.round(((e.clientX - r.left) / r.width) * vp.width), y: Math.round(((e.clientY - r.top) / r.height) * vp.height) };
   }
 
+  const dragRef = useRef(null);
+  function onDragStart(e) {
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    dragRef.current = { y: t.clientY, x: t.clientX, moved: false };
+  }
+  function onDragEnd(e) {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (!d) return;
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    const dy = d.y - t.clientY;
+    if (Math.abs(dy) > 18 && !busy && sid) {
+      // کشیدنِ انگشت به بالا = رفتن به پایینِ صفحه؛ مقدار را به مقیاسِ صفحه‌ی سایت تبدیل می‌کنیم
+      const r = imgRef.current ? imgRef.current.getBoundingClientRect() : null;
+      const scale = r ? vp.height / r.height : 1;
+      d.moved = true;
+      suppressTapRef.current = true;
+      window.setTimeout(() => { suppressTapRef.current = false; }, 400);
+      doScroll(Math.round(dy * scale * 1.4));
+    }
+  }
+  const suppressTapRef = useRef(false);
+
   function handleTap(e) {
+    if (suppressTapRef.current) return;
     if (busy || !sid) return;
     const { x, y } = coords(e);
     setDone("");
@@ -7863,9 +7889,12 @@ function BrowseImagePicker({ target, onApply, onAddVariant, api }) {
             ref={imgRef}
             src={shot}
             alt="صفحه‌ی سایت مبدأ"
-            onClick={handleTap}
+                onClick={handleTap}
+            onTouchStart={onDragStart}
+            onTouchEnd={onDragEnd}
             style={{
-              width: "100%", borderRadius: 8, border: mode === "pick" ? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)",
+              touchAction: "pan-y",
+              width: "100%", borderRadius: 8, border: mode === "pick"? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)",
               cursor: "pointer", opacity: busy ? 0.6 : 1, background: "#fff", display: "block",
             }}
           />
