@@ -7778,7 +7778,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     const t = e.changedTouches && e.changedTouches[0];
     if (!t) return;
     const dy = d.y - t.clientY;
-    if (Math.abs(dy) > 18 && !busy && sid) {
+    if (Math.abs(dy) > 18 && sidRef.current) {
       // کشیدنِ انگشت به بالا = رفتن به پایینِ صفحه؛ مقدار را به مقیاسِ صفحه‌ی سایت تبدیل می‌کنیم
       const r = imgRef.current ? imgRef.current.getBoundingClientRect() : null;
       const scale = r ? vp.height / r.height : 1;
@@ -7810,14 +7810,38 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
       });
     }
   }
+  const scrollAccRef = useRef(0);
+  const scrollTimerRef = useRef(null);
+  const scrollingRef = useRef(false);
 
-  function doScroll(dy) {
-    if (busy || !sid) return;
-    run(async () => {
-      const d = await api("/api/browse/action", { sid, type: "scroll", dy });
+  async function flushScroll() {
+    if (scrollingRef.current) { scrollTimerRef.current = setTimeout(flushScroll, 200); return; }
+    const dy = Math.max(-4000, Math.min(4000, scrollAccRef.current));
+    scrollAccRef.current = 0;
+    if (!dy || !sidRef.current) return;
+    scrollingRef.current = true;
+    setBusy(true);
+    setErr("");
+    try {
+      const d = await api("/api/browse/action", { sid: sidRef.current, type: "scroll", dy });
       setShot(d.shot);
-    });
+    } catch (e) {
+      const msg = e.message || "خطا";
+      setErr(/نشست مرورگر بسته/.test(msg) ? "نشست بسته شد. دکمه‌ی «باز کن» را بزن." : msg);
+    } finally {
+      scrollingRef.current = false;
+      setBusy(false);
+    }
   }
+
+  // ضربه‌های پشت‌سرهم جمع می‌شوند و با یک درخواست اجرا می‌شوند (هیچ ضربه‌ای نادیده گرفته نمی‌شود)
+  function doScroll(dy) {
+    if (!sidRef.current) return;
+    scrollAccRef.current += dy;
+    clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(flushScroll, 180);
+  }
+
   function doBack() {
     if (busy || !sid) return;
     run(async () => {
@@ -7914,9 +7938,10 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
               style={mode === "pick" ? { borderColor: "#0EA5A4", color: "#0EA5A4", background: "rgba(14,165,164,0.12)" } : undefined}>
               انتخاب عکس / رنگ
             </button>
-            <button type="button" onClick={() => doScroll(-500)} disabled={busy} className="btn-ghost rounded px-2 py-1 text-xs">▲</button>
-            <button type="button" onClick={() => doScroll(500)} disabled={busy} className="btn-ghost rounded px-2 py-1 text-xs">▼</button>
-            <button type="button" onClick={doBack} disabled={busy} className="btn-ghost rounded px-2 py-1 text-xs">بازگشت</button>
+               <button type="button" onClick={() => doScroll(-500)} className="btn-ghost rounded px-3 py-1 text-xs">▲ بالا</button>
+            <button type="button" onClick={() => doScroll(500)} className="btn-ghost rounded px-3 py-1 text-xs">▼ پایین</button>
+            <button type="button" onClick={() => doScroll(-2000)} className="btn-ghost rounded px-3 py-1 text-xs">⇈ پرش بالا</button>
+            <button type="button" onClick={() => doScroll(2000)} className="btn-ghost rounded px-3 py-1 text-xs">⇊ پرش پایین</button>
           </div>
           <p className="text-muted" style={{ fontSize: 10.5, lineHeight: 1.8 }}>
             {mode === "nav"
@@ -7933,7 +7958,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
             onTouchStart={onDragStart}
             onTouchEnd={onDragEnd}
             style={{
-              touchAction: "pan-y",
+              touchAction: "none",
               width: "100%", borderRadius: 8, border: mode === "pick"? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)",
               cursor: "pointer", opacity: busy ? 0.6 : 1, background: "#fff", display: "block",
             }}
