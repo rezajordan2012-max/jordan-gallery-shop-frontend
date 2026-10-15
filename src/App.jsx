@@ -2548,7 +2548,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 );
               })();
 
-            const similarBlock =
+                        const similarBlock =
               product.category === "perfume" &&
               product.similarName &&
               (() => {
@@ -2558,27 +2558,29 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                   <div className="mb-6">
                     <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 10, color: "#FF3E8E" }}>شبیه‌ترین عطر</h2>
                     <div className="flex items-center gap-4" style={{ background: "#F3F1FA", borderRadius: 16, padding: 14 }}>
+                      {/* در صفحه‌ی راست‌به‌چپ، اولین عنصر سمت راست می‌نشیند: نمودار اول، عکس دوم (سمت چپ) */}
+                      <div className="flex flex-col gap-2 flex-1" style={{ minWidth: 0, direction: "ltr" }}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "#40395C", textAlign: "left", minWidth: 0, wordBreak: "break-word" }}>{product.similarName}</span>
+                          {pct > 0 && (
+                            <span style={{ fontSize: 14, fontWeight: 800, color: barColor, flexShrink: 0 }}>{pct.toLocaleString("fa-IR")}٪</span>
+                          )}
+                        </div>
+                        {pct > 0 && (
+                          <div style={{ height: 10, borderRadius: 999, background: "#E2E8F0", overflow: "hidden", direction: "ltr" }}>
+                            <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: barColor }} />
+                          </div>
+                        )}
+                      </div>
                       <div style={{ width: 76, height: 76, borderRadius: "50%", background: "#FFFFFF", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(123,92,246,0.18)" }}>
                         {product.similarImage ? (
                           <img src={product.similarImage} alt={product.similarName} referrerPolicy="no-referrer" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                         ) : null}
                       </div>
-                      <div className="flex flex-col gap-2 flex-1" style={{ minWidth: 0 }}>
-                        {pct > 0 && (
-                          <div style={{ height: 8, borderRadius: 999, background: "#E2E8F0", overflow: "hidden" }}>
-                            <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: barColor }} />
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between gap-2">
-                          <span style={{ fontSize: 14, fontWeight: 700, color: "#40395C", direction: "ltr", textAlign: "left" }}>{product.similarName}</span>
-                         {pct > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: barColor, flexShrink: 0 }}>{pct.toLocaleString("fa-IR")}٪</span>}
-                        </div>
-                      </div>
                     </div>
                   </div>
                 );
               })();
-
             const notesOrIngredientsBlock =
               product.category === "perfume" ? (
                 (product.topNotes || product.middleNotes || product.baseNotes) && (
