@@ -2548,6 +2548,37 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
                 );
               })();
 
+            const similarBlock =
+              product.category === "perfume" &&
+              product.similarName &&
+              (() => {
+                const pct = Math.max(0, Math.min(100, Number(product.similarPercent) || 0));
+                const barColor = pct >= 80 ? "#16A34A" : pct >= 60 ? "#0EA5A4" : pct >= 40 ? "#D97706" : "#9CA3AF";
+                return (
+                  <div className="mb-6">
+                    <h2 className="font-display" style={{ fontSize: 15.5, marginBottom: 10, color: "#FF3E8E" }}>شبیه‌ترین عطر</h2>
+                    <div className="flex items-center gap-4" style={{ background: "#F3F1FA", borderRadius: 16, padding: 14 }}>
+                      <div style={{ width: 76, height: 76, borderRadius: "50%", background: "#FFFFFF", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(123,92,246,0.18)" }}>
+                        {product.similarImage ? (
+                          <img src={product.similarImage} alt={product.similarName} referrerPolicy="no-referrer" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                        ) : null}
+                      </div>
+                      <div className="flex flex-col gap-2 flex-1" style={{ minWidth: 0 }}>
+                        {pct > 0 && (
+                          <div style={{ height: 8, borderRadius: 999, background: "#E2E8F0", overflow: "hidden" }}>
+                            <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: barColor }} />
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between gap-2">
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "#40395C", direction: "ltr", textAlign: "left" }}>{product.similarName}</span>
+                         {pct > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: barColor, flexShrink: 0 }}>{pct.toLocaleString("fa-IR")}٪</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })();
+
             const notesOrIngredientsBlock =
               product.category === "perfume" ? (
                 (product.topNotes || product.middleNotes || product.baseNotes) && (
@@ -2603,6 +2634,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
               return (
                 <>
                   {mainAccordsBlock}
+                  {similarBlock}
                   {notesOrIngredientsBlock}
                   {performanceBlock}
                   {propertiesBlock}
@@ -4635,7 +4667,7 @@ function buildVariantImageQuery(productContext, label, fieldKey) {
   return `${ctx} ${shade} ${tail}`.replace(/\s+/g, " ").trim();
 }
 function emptyForm() {
-  return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", mainAccords: "", scentScore: "", scentRatings: "", longevityScore: "", longevityRatings: "", sillageScore: "", sillageRatings: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", volume: "", volumeUnit: "ml", image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
+  return { id: null, name: "", nameEn: "", brand: "", barcode: "", category: "perfume", subcategory: "", type: "", facets: {}, price: "", discountPercent: "", description: "", properties: "", ingredients: "", topNotes: "", middleNotes: "", baseNotes: "", mainAccords: "", scentScore: "", scentRatings: "", longevityScore: "", longevityRatings: "", sillageScore: "", sillageRatings: "", perfumer: "", countryOfOrigin: "", yearMade: "", fragranticaRating: "", similarName: "", similarPercent: "", similarImage: "", volume: "", volumeUnit: "ml",image: "", imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1, variantsList: [] };
 }
 
 function VariantRowEditor({ variant, onChange, onRemove, onUploadImage, onOpenImageSearch, onOpenVideoSearch, productContext }) {
@@ -5086,6 +5118,9 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         countryOfOrigin: info.countryOfOrigin || f.countryOfOrigin,
         yearMade: info.yearMade || f.yearMade,
         barcode: info.barcode || f.barcode,
+        similarName: info.similarName || f.similarName,
+        similarPercent: info.similarPercent ? String(info.similarPercent) : f.similarPercent,
+        similarImage: info.similarImage || f.similarImage,
         scentScore: (f.scentScore === "" || f.scentScore == null) && Number.isFinite(Number(info.scentScore)) ? String(info.scentScore) : f.scentScore,
         scentRatings: (f.scentRatings === "" || f.scentRatings == null) && Number.isFinite(Number(info.scentRatings)) ? String(info.scentRatings) : f.scentRatings,
         longevityScore: (f.longevityScore === "" || f.longevityScore == null) && Number.isFinite(Number(info.longevityScore)) ? String(info.longevityScore) : f.longevityScore,
@@ -5765,6 +5800,26 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
     }
   }
 
+    async function handleSimilarImageFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setFormError("فایل انتخاب‌شده تصویر نیست"); return; }
+    setFormError("");
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const url = await onUploadImage(base64, false);
+      setForm((f) => ({ ...f, similarImage: url }));
+    } catch (err) {
+      setFormError(err.message || "آپلود تصویر ناموفق بود");
+    }
+  }
+
   async function handleImageFile(e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -6033,6 +6088,9 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
       fragranticaRating: p.fragranticaRating || "",
       volume: p.volume || "",
       barcode: p.barcode || "",
+      similarName: p.similarName || "",
+      similarPercent: p.similarPercent ? String(p.similarPercent) : "",
+      similarImage: p.similarImage || "",
       volumeUnit: p.volumeUnit === "g" ? "g" : "ml",
       imageFit: p.imageFit === "cover" ? "cover" : "contain",
       imagePosX: Number.isFinite(Number(p.imagePosX)) ? Number(p.imagePosX) : 50,
@@ -7051,7 +7109,51 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
                 dir="ltr"
               />
               <p className="text-muted" style={{ fontSize: 10.5 }}>
-                این آکوردها هم مثل نت‌ها در پیشنهاد خودکار «حس رایحه / طبع / گروه بویایی» پایین‌تر استفاده می‌شوند — و چون خلاصه‌ترین توصیف رایحه‌اند، وزنشان در پیشنهاد بیشتر است.
+                این آکوردها هم مثل نت‌ها در پیشنهاد خودکار «حس رایحه / طبع / گروه بویایی» پایین‌تر استفاده می‌شوند —
+              </p>
+
+              <div className="flex flex-col gap-2 mt-3 pt-3" style={{ borderTop: "1px dashed rgba(123,92,246,0.25)" }}>
+                <label className="text-gold" style={{ fontSize: 11.5 }}>شبیه‌ترین عطر (اختیاری) — با لینک Parfumo خودکار پر می‌شود</label>
+                <input
+                  placeholder="نام عطر مشابه (مثلاً Yum Boujee Marshmallow)"
+                  value={form.similarName}
+                  onChange={(e) => setForm({ ...form, similarName: e.target.value })}
+                  className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+                  style={{ color: "#241E3D" }}
+                  dir="ltr"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="درصد شباهت (۰ تا ۱۰۰، مثلاً 81)"
+                  value={form.similarPercent}
+                  onChange={(e) => setForm({ ...form, similarPercent: e.target.value })}
+                  className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
+                  style={{ color: "#241E3D" }}
+                />
+                <div className="flex items-center gap-2">
+                  {form.similarImage ? (
+                    <img src={form.similarImage} alt="" referrerPolicy="no-referrer" style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(123,92,246,0.3)" }} />
+                  ) : (
+                    <span style={{ width: 52, height: 52, borderRadius: "50%", border: "1px dashed rgba(123,92,246,0.4)" }} />
+                  )}
+                  <label className="btn-ghost rounded px-3 py-2 text-xs cursor-pointer">
+                    آپلود عکس عطر مشابه
+                    <input type="file" accept="image/*" onChange={handleSimilarImageFile} style={{ display: "none" }} />
+                  </label>
+                  <input
+                    placeholder="یا لینک عکس را بچسبان"
+                    value={form.similarImage}
+                    onChange={(e) => setForm({ ...form, similarImage: e.target.value })}
+                    className="bg-panel-2 border border-hair rounded px-2 py-1.5 text-xs flex-1"
+                    style={{ color: "#241E3D", minWidth: 0 }}
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+              <p className="text-muted" style={{ fontSize: 10.5 }}>
+                فقط نام عطر لازم است؛ درصد و عکس اختیاری‌اند. اگر نام را خالی بگذاری، این بخش در صفحه‌ی محصول نمایش داده نمی‌شود.
               </p>
             </div>
 
