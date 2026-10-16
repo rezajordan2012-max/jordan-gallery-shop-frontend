@@ -1828,10 +1828,16 @@ function HeliDelivery({ id, index = 0, className = "", minTop = 200, children })
         io.disconnect();
         HELI_SEEN.add(id);
         const r = el.getBoundingClientRect();
-    <div ref={ref} className={`heli-wrap${initialRef.current === "done" ? " fade-in-up" : ""} ${className}`}>
+        if (r.top < minTop || r.width < 60) {
+          setState("done");
+          return;
+        }
         const cx = r.left + r.width / 2;
         const now = Date.now();
-        if (now - heliBurstStart > 1500) { heliBurstStart = now; heliBurstCount = 0; }
+        if (now - heliBurstStart > 1500) {
+          heliBurstStart = now;
+          heliBurstCount = 0;
+        }
         const delay = Math.min(heliBurstCount, 5) * 0.45;
         heliBurstCount += 1;
         setGeo({ cx, top: r.top, sx: window.innerWidth - cx + 180, ex: -(cx + 200), delay });
@@ -1841,13 +1847,13 @@ function HeliDelivery({ id, index = 0, className = "", minTop = 200, children })
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [state, id]);
+  }, [state, id, minTop]);
 
   const playing = state === "playing" && geo;
   const vars = playing ? { "--sx": `${geo.sx}px`, "--ex": `${geo.ex}px`, "--hd": `${geo.delay}s` } : undefined;
 
   return (
-    <div ref={ref} className={`heli-wrap${initialRef.current === "done" ? " fade-in-up" : ""}`}>
+    <div ref={ref} className={`heli-wrap${initialRef.current === "done" ? " fade-in-up" : ""} ${className}`}>
       <div className={playing ? "heli-card-move" : undefined} style={{ ...(vars || {}), opacity: state === "idle" ? 0 : 1 }}>
         <div className={playing ? "heli-card-swing" : undefined}>
           {playing && (
