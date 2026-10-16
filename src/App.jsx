@@ -1805,7 +1805,7 @@ function HeliSvg() {
 
 // هر کارت محصول را یک هلیکوپتر با چهار ریسمان می‌آورد، در جایش می‌گذارد و می‌رود.
 // فقط یک بار برای هر محصول و فقط برای ۸ کارتِ اول اجرا می‌شود؛ با «کاهش حرکت» در سیستم، اجرا نمی‌شود.
-function HeliDelivery({ id, index = 0, children }) {
+function HeliDelivery({ id, index = 0, className = "", minTop = 200, children }) {
   const ref = useRef(null);
   const initialRef = useRef(null);
   if (initialRef.current === null) {
@@ -1828,7 +1828,7 @@ function HeliDelivery({ id, index = 0, children }) {
         io.disconnect();
         HELI_SEEN.add(id);
         const r = el.getBoundingClientRect();
-        if (r.top < 200 || r.width < 60) { setState("done"); return; }
+    <div ref={ref} className={`heli-wrap${initialRef.current === "done" ? " fade-in-up" : ""} ${className}`}>
         const cx = r.left + r.width / 2;
         const now = Date.now();
         if (now - heliBurstStart > 1500) { heliBurstStart = now; heliBurstCount = 0; }
@@ -2336,8 +2336,14 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
         }}
       >
       <div className="lg:flex lg:items-start lg:gap-10">
+        <HeliDelivery
+          id={"detail-" + product.id}
+          index={0}
+          minTop={150}
+          className="mb-5 lg:mb-0 lg:sticky lg:top-24 lg:w-[420px] lg:flex-shrink-0"
+        >
         <div
-          className="rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-96 lg:h-[520px] lg:w-[420px] lg:flex-shrink-0"
+          className="rounded-2xl border border-hair overflow-hidden flex items-center justify-center w-full h-96 lg:h-[520px]"
           style={{ background: "#FFFFFF", position: "relative" }}
           onTouchStart={handleGalleryTouchStart}
           onTouchEnd={handleGalleryTouchEnd}
@@ -2433,6 +2439,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
             </>
           )}
         </div>
+        </HeliDelivery>
 
         <div className="lg:flex-1 lg:min-w-0">
           <div className="flex items-center mb-1">
