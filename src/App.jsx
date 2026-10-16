@@ -1875,6 +1875,107 @@ function HeliDelivery({ id, index = 0, children }) {
   );
 }
 
+// ===== هلیکوپتر تحویل محصول =====
+const HELI_SEEN = new Set();
+let heliBurstStart = 0;
+let heliBurstCount = 0;
+
+function HeliSvg() {
+  return (
+    <svg viewBox="0 0 110 56" width="110" height="56" style={{ display: "block", overflow: "visible", transform: "scaleX(-1)" }}>
+      <defs>
+        <linearGradient id="heliBodyGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#7B5CF6" />
+          <stop offset="1" stopColor="#FF3E8E" />
+        </linearGradient>
+      </defs>
+      <g className="heli-rotor"><ellipse cx="55" cy="7" rx="50" ry="2.4" fill="#2B2540" opacity="0.85" /></g>
+      <rect x="53" y="7" width="4" height="9" fill="#2B2540" />
+      <path d="M10 25 L42 22 L42 31 L10 30 Z" fill="#6A4BE0" />
+      <path d="M6 12 L16 14 L14 30 L8 30 Z" fill="#FF3E8E" />
+      <g className="heli-tail"><ellipse cx="9" cy="21" rx="2" ry="9" fill="#2B2540" opacity="0.8" /></g>
+      <ellipse cx="62" cy="29" rx="28" ry="14" fill="url(#heliBodyGrad)" />
+      <path d="M70 18 Q88 20 88 30 L70 30 Z" fill="#CFE8FF" opacity="0.95" />
+      <path d="M44 49 H92" stroke="#2B2540" strokeWidth="3" strokeLinecap="round" />
+      <path d="M54 41 L52 49 M78 41 L80 49" stroke="#2B2540" strokeWidth="2.4" />
+      <circle cx="55" cy="52" r="3" fill="#D4A017" stroke="#2B2540" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+// هر کارت محصول را یک هلیکوپتر با چهار ریسمان می‌آورد، در جایش می‌گذارد و می‌رود.
+// فقط یک بار برای هر محصول و فقط برای ۸ کارتِ اول اجرا می‌شود؛ با «کاهش حرکت» در سیستم، اجرا نمی‌شود.
+function HeliDelivery({ id, index = 0, children }) {
+  const ref = useRef(null);
+  const initialRef = useRef(null);
+  if (initialRef.current === null) {
+    let s = "idle";
+    if (typeof window === "undefined" || HELI_SEEN.has(id) || index >= 8) s = "done";
+    else if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) s = "done";
+    else if (typeof IntersectionObserver === "undefined") s = "done";
+    initialRef.current = s;
+  }
+  const [state, setState] = useState(initialRef.current);
+  const [geo, setGeo] = useState(null);
+
+  useEffect(() => {
+    if (state !== "idle") return undefined;
+    const el = ref.current;
+    if (!el) return undefined;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0] || !entries[0].isIntersecting) return;
+        io.disconnect();
+        HELI_SEEN.add(id);
+        const r = el.getBoundingClientRect();
+        if (r.top < 200 || r.width < 60) { setState("done"); return; }
+        const cx = r.left + r.width / 2;
+        const now = Date.now();
+        if (now - heliBurstStart > 1500) { heliBurstStart = now; heliBurstCount = 0; }
+        const delay = Math.min(heliBurstCount, 5) * 0.45;
+        heliBurstCount += 1;
+        setGeo({ cx, top: r.top, sx: window.innerWidth - cx + 180, ex: -(cx + 200), delay });
+        setState("playing");
+      },
+      { threshold: 0.4 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [state, id]);
+
+  const playing = state === "playing" && geo;
+  const vars = playing ? { "--sx": `${geo.sx}px`, "--ex": `${geo.ex}px`, "--hd": `${geo.delay}s` } : undefined;
+
+  return (
+    <div ref={ref} className={`heli-wrap${initialRef.current === "done" ? " fade-in-up" : ""}`}>
+      <div className={playing ? "heli-card-move" : undefined} style={{ ...(vars || {}), visibility: state === "idle" ? "hidden" : "visible" }}>
+        <div className={playing ? "heli-card-swing" : undefined}>
+          {playing && (
+            <div className="heli-ropes" aria-hidden="true">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                {[8, 36, 64, 92].map((x) => (
+                  <line key={x} x1="50" y1="0" x2={x} y2="100" stroke="#3A3355" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+                ))}
+              </svg>
+            </div>
+          )}
+          {children}
+        </div>
+      </div>
+      {playing && (
+        <div
+          className="heli-fly"
+          aria-hidden="true"
+          style={{ ...vars, left: geo.cx - 55, top: geo.top - 190 }}
+          onAnimationEnd={(e) => { if (e.animationName === "heliFly") setState("done"); }}
+        >
+          <HeliSvg />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, categoryMedia }) {
   const displayImage = product.image || "";
   const hasVariants = product.variants && product.variants.length > 0;
