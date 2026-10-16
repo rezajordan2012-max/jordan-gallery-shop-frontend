@@ -181,7 +181,7 @@ const FONTS = `
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  .  .fade-in-up { animation: fadeInUp 0.5s ease both; }
+  .fade-in-up { animation: fadeInUp 0.5s ease both; }
 
   /* ===== هلیکوپتر تحویل محصول ===== */
   .heli-wrap { position: relative; }
@@ -1848,7 +1848,7 @@ function HeliDelivery({ id, index = 0, children }) {
 
   return (
     <div ref={ref} className={`heli-wrap${initialRef.current === "done" ? " fade-in-up" : ""}`}>
-      <div className={playing ? "heli-card-move" : undefined} style={{ ...(vars || {}), visibility: state === "idle" ? "hidden" : "visible" }}>
+      <div className={playing ? "heli-card-move" : undefined} style={{ ...(vars || {}), opacity: state === "idle" ? 0 : 1 }}>
         <div className={playing ? "heli-card-swing" : undefined}>
           {playing && (
             <div className="heli-ropes" aria-hidden="true">
