@@ -183,6 +183,51 @@ const FONTS = `
   }
   .fade-in-up { animation: fadeInUp 0.5s ease both; }
 
+  /* ===== هلیکوپتر تحویل محصول ===== */
+  .heli-wrap { position: relative; }
+  .heli-card-move { animation: heliCardMove 2.7s cubic-bezier(.25,.6,.3,1) both; animation-delay: var(--hd, 0s); will-change: transform; }
+  .heli-card-swing { position: relative; transform-origin: 50% -74px; animation: heliSwing 2.7s ease-in-out both; animation-delay: var(--hd, 0s); }
+  .heli-ropes { position: absolute; left: 0; right: 0; bottom: 100%; height: 74px; pointer-events: none; animation: heliRopes 2.7s cubic-bezier(.25,.6,.3,1) both; animation-delay: var(--hd, 0s); }
+  .heli-ropes svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .heli-fly { position: fixed; width: 110px; height: 56px; z-index: 60; pointer-events: none; animation: heliFly 3.9s cubic-bezier(.25,.6,.3,1) both; animation-delay: var(--hd, 0s); will-change: transform; filter: drop-shadow(0 6px 6px rgba(36,30,61,0.25)); }
+  .heli-rotor { transform-box: fill-box; transform-origin: center; animation: heliRotor .12s linear infinite alternate; }
+  .heli-tail { transform-box: fill-box; transform-origin: center; animation: heliTail .09s linear infinite alternate; }
+  @keyframes heliCardMove {
+    0%   { transform: translate(var(--sx), -60px); }
+    52%  { transform: translate(0, -60px); }
+    62%  { transform: translate(0, -60px); }
+    80%  { transform: translate(0, 0); }
+    88%  { transform: translate(0, 3px); }
+    100% { transform: translate(0, 0); }
+  }
+  @keyframes heliSwing {
+    0%   { transform: rotate(5deg); }
+    14%  { transform: rotate(-5deg); }
+    28%  { transform: rotate(4deg); }
+    42%  { transform: rotate(-3deg); }
+    56%  { transform: rotate(2deg); }
+    70%  { transform: rotate(-1deg); }
+    82%, 100% { transform: rotate(0deg); }
+  }
+  @keyframes heliRopes {
+    0%, 62% { height: 74px; opacity: 1; }
+    80%     { height: 134px; opacity: 1; }
+    90%     { height: 134px; opacity: 1; }
+    100%    { height: 134px; opacity: 0; }
+  }
+  @keyframes heliFly {
+    0%   { transform: translate(var(--sx), 0) rotate(-5deg); }
+    36%  { transform: translate(0, 0) rotate(0deg); }
+    50%  { transform: translate(0, -4px) rotate(0deg); }
+    62%  { transform: translate(0, 0) rotate(0deg); animation-timing-function: cubic-bezier(.5,0,.9,.5); }
+    100% { transform: translate(var(--ex), -150px) rotate(-7deg); }
+  }
+  @keyframes heliRotor { from { transform: scaleX(1); } to { transform: scaleX(.2); } }
+  @keyframes heliTail { from { transform: scaleY(1); } to { transform: scaleY(.25); } }
+  @media (prefers-reduced-motion: reduce) {
+    .heli-card-move, .heli-card-swing, .heli-ropes, .heli-fly { animation: none !important; }
+  }
+
   .cart-drawer { transition: transform 0.35s cubic-bezier(.2,.8,.2,1); }
 
   .nav-link { position: relative; padding-bottom: 4px; transition: color 0.18s ease; }
@@ -1729,6 +1774,107 @@ function BarcodeScannerModal({ onDetected, onClose }) {
 
 
 // کارت محصول در فهرست/کاتالوگ.
+// ===== هلیکوپتر تحویل محصول =====
+const HELI_SEEN = new Set();
+let heliBurstStart = 0;
+let heliBurstCount = 0;
+
+function HeliSvg() {
+  return (
+    <svg viewBox="0 0 110 56" width="110" height="56" style={{ display: "block", overflow: "visible", transform: "scaleX(-1)" }}>
+      <defs>
+        <linearGradient id="heliBodyGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#7B5CF6" />
+          <stop offset="1" stopColor="#FF3E8E" />
+        </linearGradient>
+      </defs>
+      <g className="heli-rotor"><ellipse cx="55" cy="7" rx="50" ry="2.4" fill="#2B2540" opacity="0.85" /></g>
+      <rect x="53" y="7" width="4" height="9" fill="#2B2540" />
+      <path d="M10 25 L42 22 L42 31 L10 30 Z" fill="#6A4BE0" />
+      <path d="M6 12 L16 14 L14 30 L8 30 Z" fill="#FF3E8E" />
+      <g className="heli-tail"><ellipse cx="9" cy="21" rx="2" ry="9" fill="#2B2540" opacity="0.8" /></g>
+      <ellipse cx="62" cy="29" rx="28" ry="14" fill="url(#heliBodyGrad)" />
+      <path d="M70 18 Q88 20 88 30 L70 30 Z" fill="#CFE8FF" opacity="0.95" />
+      <path d="M44 49 H92" stroke="#2B2540" strokeWidth="3" strokeLinecap="round" />
+      <path d="M54 41 L52 49 M78 41 L80 49" stroke="#2B2540" strokeWidth="2.4" />
+      <circle cx="55" cy="52" r="3" fill="#D4A017" stroke="#2B2540" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+// هر کارت محصول را یک هلیکوپتر با چهار ریسمان می‌آورد، در جایش می‌گذارد و می‌رود.
+// فقط یک بار برای هر محصول و فقط برای ۸ کارتِ اول اجرا می‌شود؛ با «کاهش حرکت» در سیستم، اجرا نمی‌شود.
+function HeliDelivery({ id, index = 0, children }) {
+  const ref = useRef(null);
+  const initialRef = useRef(null);
+  if (initialRef.current === null) {
+    let s = "idle";
+    if (typeof window === "undefined" || HELI_SEEN.has(id) || index >= 8) s = "done";
+    else if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) s = "done";
+    else if (typeof IntersectionObserver === "undefined") s = "done";
+    initialRef.current = s;
+  }
+  const [state, setState] = useState(initialRef.current);
+  const [geo, setGeo] = useState(null);
+
+  useEffect(() => {
+    if (state !== "idle") return undefined;
+    const el = ref.current;
+    if (!el) return undefined;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0] || !entries[0].isIntersecting) return;
+        io.disconnect();
+        HELI_SEEN.add(id);
+        const r = el.getBoundingClientRect();
+        if (r.top < 200 || r.width < 60) { setState("done"); return; }
+        const cx = r.left + r.width / 2;
+        const now = Date.now();
+        if (now - heliBurstStart > 1500) { heliBurstStart = now; heliBurstCount = 0; }
+        const delay = Math.min(heliBurstCount, 5) * 0.45;
+        heliBurstCount += 1;
+        setGeo({ cx, top: r.top, sx: window.innerWidth - cx + 180, ex: -(cx + 200), delay });
+        setState("playing");
+      },
+      { threshold: 0.4 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [state, id]);
+
+  const playing = state === "playing" && geo;
+  const vars = playing ? { "--sx": `${geo.sx}px`, "--ex": `${geo.ex}px`, "--hd": `${geo.delay}s` } : undefined;
+
+  return (
+    <div ref={ref} className={`heli-wrap${initialRef.current === "done" ? " fade-in-up" : ""}`}>
+      <div className={playing ? "heli-card-move" : undefined} style={{ ...(vars || {}), visibility: state === "idle" ? "hidden" : "visible" }}>
+        <div className={playing ? "heli-card-swing" : undefined}>
+          {playing && (
+            <div className="heli-ropes" aria-hidden="true">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                {[8, 36, 64, 92].map((x) => (
+                  <line key={x} x1="50" y1="0" x2={x} y2="100" stroke="#3A3355" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+                ))}
+              </svg>
+            </div>
+          )}
+          {children}
+        </div>
+      </div>
+      {playing && (
+        <div
+          className="heli-fly"
+          aria-hidden="true"
+          style={{ ...vars, left: geo.cx - 55, top: geo.top - 190 }}
+          onAnimationEnd={(e) => { if (e.animationName === "heliFly") setState("done"); }}
+        >
+          <HeliSvg />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProductCard({ product, onOpen, onAddToCart, globalDiscountPercent, categoryMedia }) {
   const displayImage = product.image || "";
   const hasVariants = product.variants && product.variants.length > 0;
@@ -4399,7 +4545,7 @@ async function handleCheckout() {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {filteredProducts.map((p, i) => (
-                  <div key={p.id} className="fade-in-up" style={{ animationDelay: `${Math.min(i, 8) * 0.06}s` }}>
+                  <HeliDelivery key={p.id} id={p.id} index={i}>
                     <ProductCard
                       product={p}
                       onOpen={openProduct}
@@ -4407,7 +4553,7 @@ async function handleCheckout() {
                       globalDiscountPercent={globalDiscountPercent}
                       categoryMedia={categoryTileMedia[p.category]}
                     />
-                  </div>
+                  </HeliDelivery>
                 ))}
               </div>
             )}
