@@ -1853,7 +1853,7 @@ function HeliDelivery({ id, index = 0, children }) {
           {playing && (
             <div className="heli-ropes" aria-hidden="true">
               <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-                {[8, 36, 64, 92].map((x) => (
+                {[22, 78].map((x) => (
                   <line key={x} x1="50" y1="0" x2={x} y2="100" stroke="#3A3355" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
                 ))}
               </svg>
