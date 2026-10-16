@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   ShoppingBag, ShoppingCart, X, Plus, Minus, Trash2, LayoutDashboard,
   Store, Pencil, Check, Menu, Sparkles, User, LogOut, Lock, Upload, Search, Camera, Link as LinkIcon
@@ -1822,35 +1823,57 @@ function HeliDelivery({ id, index = 0, className = "", minTop = 200, children })
     if (state !== "idle") return undefined;
     const el = ref.current;
     if (!el) return undefined;
+    let timer = null;
     const io = new IntersectionObserver(
       (entries) => {
         if (!entries[0] || !entries[0].isIntersecting) return;
         io.disconnect();
-        HELI_SEEN.add(id);
-        const r = el.getBoundingClientRect();
-        if (r.top < minTop || r.width < 60) {
-          setState("done");
-          return;
-        }
-        const cx = r.left + r.width / 2;
-        const now = Date.now();
-        if (now - heliBurstStart > 1500) {
-          heliBurstStart = now;
-          heliBurstCount = 0;
-        }
-        const delay = Math.min(heliBurstCount, 5) * 0.45;
-        heliBurstCount += 1;
-        setGeo({ cx, top: r.top, sx: window.innerWidth - cx + 180, ex: -(cx + 200), delay });
-        setState("playing");
+        timer = window.setTimeout(() => {
+          const r = el.getBoundingClientRect();
+          if (r.top < minTop || r.top > window.innerHeight - 80 || r.width < 60) {
+            HELI_SEEN.add(id);
+            setState("done");
+            return;
+          }
+          const cx = r.left + r.width / 2;
+          const now = Date.now();
+          if (now - heliBurstStart > 1500) {
+            heliBurstStart = now;
+            heliBurstCount = 0;
+          }
+          const delay = Math.min(heliBurstCount, 5) * 0.45;
+          heliBurstCount += 1;
+          setGeo({ cx, top: r.top, sx: window.innerWidth - cx + 180, ex: -(cx + 200), delay });
+          setState("playing");
+        }, 350);
       },
       { threshold: 0.4 }
     );
     io.observe(el);
-    return () => io.disconnect();
+    return () => {
+      io.disconnect();
+      if (timer) window.clearTimeout(timer);
+    };
   }, [state, id, minTop]);
 
   const playing = state === "playing" && geo;
   const vars = playing ? { "--sx": `${geo.sx}px`, "--ex": `${geo.ex}px`, "--hd": `${geo.delay}s` } : undefined;
+
+  const heli = playing ? (
+    <div
+      className="heli-fly"
+      aria-hidden="true"
+      style={{ ...vars, left: geo.cx - 55, top: geo.top - 190 }}
+      onAnimationEnd={(e) => {
+        if (e.animationName === "heliFly") {
+          HELI_SEEN.add(id);
+          setState("done");
+        }
+      }}
+    >
+      <HeliSvg />
+    </div>
+  ) : null;
 
   return (
     <div ref={ref} className={`heli-wrap${initialRef.current === "done" ? " fade-in-up" : ""} ${className}`}>
@@ -1868,16 +1891,7 @@ function HeliDelivery({ id, index = 0, className = "", minTop = 200, children })
           {children}
         </div>
       </div>
-      {playing && (
-        <div
-          className="heli-fly"
-          aria-hidden="true"
-          style={{ ...vars, left: geo.cx - 55, top: geo.top - 190 }}
-          onAnimationEnd={(e) => { if (e.animationName === "heliFly") setState("done"); }}
-        >
-          <HeliSvg />
-        </div>
-      )}
+      {heli && typeof document !== "undefined" ? createPortal(heli, document.body) : null}
     </div>
   );
 }
