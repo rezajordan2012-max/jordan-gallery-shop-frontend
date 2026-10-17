@@ -245,8 +245,222 @@ const FONTS = `
   @media (prefers-reduced-motion: reduce) {
     .pz-under, .pz-group, .pz-piece { animation: none !important; }
   }
+  /* ===== دودِ جادویی عکسِ محصول ===== */
+  .smk-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
+  .smk-product { position: absolute; inset: 0; z-index: 2; transform-origin: 50% 90%; animation: smkFall 2.9s both 1s; will-change: transform, opacity, filter; }
+  .smk-rock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform-origin: 50% 90%; animation: smkRock 1.9s ease-in-out 2.65s both; will-change: transform; }
+  .smk-shadow { position: absolute; left: 50%; top: 89.5%; width: 46%; height: 5%; border-radius: 50%; z-index: 1; pointer-events: none; background: radial-gradient(ellipse, rgba(70,45,90,.34), rgba(70,45,90,0) 70%); opacity: 0; transform: translate(-50%,-50%) scale(.3); animation: smkShadow .55s ease-in 2.15s both; }
+  @keyframes smkFall {
+    0%   { transform: translate(0,3%) scale(.5); opacity: 0; filter: blur(14px); animation-timing-function: ease-out; }
+    10%  { transform: translate(0,0) scale(.64); opacity: 1; filter: blur(3px); animation-timing-function: cubic-bezier(.2,.7,.3,1); }
+    16%  { filter: blur(0); }
+    33%  { transform: translate(0,-23%) scale(.7); opacity: 1; filter: none; animation-timing-function: ease-in-out; }
+    40%  { transform: translate(0,-25%) scale(.7); animation-timing-function: ease-in-out; }
+    47%  { transform: translate(0,-24.4%) scale(.7); animation-timing-function: cubic-bezier(.62,0,.95,.5); }
+    57%  { transform: translate(0,0) scale(1.05,.94); animation-timing-function: ease-out; }
+    63%  { transform: translate(0,-4.4%) scale(1); animation-timing-function: cubic-bezier(.55,0,.9,.55); }
+    70%  { transform: translate(0,0) scale(1.02,.97); animation-timing-function: ease-out; }
+    75%  { transform: translate(0,-1.3%) scale(1); animation-timing-function: ease-in; }
+    80%, 100% { transform: none; opacity: 1; }
+  }
+  @keyframes smkRock {
+    0%   { transform: rotate(0) translateX(0); }
+    12%  { transform: rotate(-9deg) translateX(-2.6%); }
+    28%  { transform: rotate(7deg) translateX(2%); }
+    43%  { transform: rotate(-5deg) translateX(-1.3%); }
+    57%  { transform: rotate(3.4deg) translateX(.9%); }
+    71%  { transform: rotate(-1.9deg) translateX(-.4%); }
+    85%  { transform: rotate(.8deg); }
+    100% { transform: rotate(0) translateX(0); }
+  }
+  @keyframes smkShadow { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.3); } 100% { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
+  @media (prefers-reduced-motion: reduce) {
+    .smk-product, .smk-rock, .smk-shadow { animation: none !important; }
+    .smk-canvas { display: none; }
+  }
 
-  .cart-drawer { transition: transform 0.35s cubic-bezier(.2,.8,.2,1); }
+// ===== دودِ جادویی عکسِ محصول: ستونِ دودِ حجیم از وسطِ کف بالا می‌رود، محصول از میانش پدیدار می‌شود،
+// بالا می‌رود، ناگهان سقوط می‌کند و نامتعادل تکان‌تکان می‌خورد تا ثابت شود. =====
+const SMOKE_SEEN = new Set();
+
+function createSmokePlume(canvas) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = canvas.clientWidth || 360;
+  const H = canvas.clientHeight || 360;
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.scale(dpr, dpr);
+
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+
+  function makeSprite() {
+    const S = 192;
+    const c = document.createElement("canvas");
+    c.width = S;
+    c.height = S;
+    const g = c.getContext("2d");
+    function blob(x, y, r, rgb, al) {
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, "rgba(" + rgb + "," + al + ")");
+      gr.addColorStop(0.45, "rgba(" + rgb + "," + al * 0.62 + ")");
+      gr.addColorStop(1, "rgba(" + rgb + ",0)");
+      g.fillStyle = gr;
+      g.beginPath();
+      g.arc(x, y, r, 0, 6.2832);
+      g.fill();
+    }
+    let i;
+    for (i = 0; i < 6; i++) {
+      const a = rnd() * 6.2832, d = rnd() * 38;
+      blob(96 + Math.cos(a) * d + 10, 96 + Math.sin(a) * d + 14, 40 + rnd() * 26, "118,112,150", 0.3);
+    }
+    for (i = 0; i < 12; i++) {
+      const a = rnd() * 6.2832, d = rnd() * 44;
+      blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d, 34 + rnd() * 34, "214,210,234", 0.62);
+    }
+    for (i = 0; i < 6; i++) {
+      const a = rnd() * 6.2832, d = rnd() * 34;
+      blob(96 + Math.cos(a) * d - 12, 96 + Math.sin(a) * d - 16, 26 + rnd() * 24, "250,248,255", 0.5);
+    }
+    return c;
+  }
+  const sprites = [makeSprite(), makeSprite(), makeSprite(), makeSprite()];
+
+  const x0 = W * 0.5;
+  const y0 = H * 0.95;
+  const EMIT_FROM = 0.05, EMIT_TO = 2.4, RATE = 120;
+  const LAND = 2.65;
+  const parts = [];
+  const n = Math.round((EMIT_TO - EMIT_FROM) * RATE);
+  let i;
+  for (i = 0; i < n; i++) {
+    parts.push({
+      kind: 0,
+      t0: EMIT_FROM + (i + rnd() * 0.9) / RATE,
+      life: 2.2 + rnd() * 0.7,
+      rise: H * (1.0 + rnd() * 0.3),
+      sp: Math.floor(rnd() * 4),
+      rot: rnd() * 6.2832, rotv: (rnd() - 0.5) * 0.6,
+      ph: rnd() * 6.2832,
+      jit: (rnd() - 0.5) * 0.22,
+      rs: 0.72 + rnd() * 0.62,
+      al: 0.62 + rnd() * 0.22,
+    });
+  }
+  for (i = 0; i < 36; i++) {
+    const dir = i % 2 ? 1 : -1;
+    parts.push({
+      kind: 1, t0: LAND + rnd() * 0.06, life: 0.85 + rnd() * 0.5,
+      vx: dir * W * (0.12 + rnd() * 0.33), up: H * (0.04 + rnd() * 0.09),
+      sp: Math.floor(rnd() * 4), rot: rnd() * 6.2832, rotv: rnd() - 0.5,
+      rs: 0.6 + rnd() * 0.5, al: 0.55,
+    });
+  }
+
+  const ss = (a, b, x) => { const v = Math.max(0, Math.min(1, (x - a) / (b - a))); return v * v * (3 - 2 * v); };
+
+  return {
+    duration: 5.3,
+    render(t) {
+      ctx.clearRect(0, 0, W, H);
+      for (let k = 0; k < parts.length; k++) {
+        const p = parts[k];
+        const a = (t - p.t0) / p.life;
+        if (a < 0 || a > 1) continue;
+        let x, y, r, al;
+        if (p.kind === 0) {
+          const e = Math.pow(a, 0.85);
+          const amp = 0.02 + 0.05 * a;
+          const sway = Math.sin(a * 8.2 + p.ph * 0.25 + t * 1.15 + p.t0 * 2.2) * amp + Math.sin(a * 17 + p.ph) * 0.022 * a;
+          x = x0 + W * (0.13 * Math.pow(e, 1.2) + sway + p.jit * Math.pow(a, 0.8));
+          y = y0 - p.rise * e;
+          r = W * (0.03 + 0.19 * Math.pow(a, 0.66)) * p.rs;
+          al = p.al * ss(0, 0.07, a) * (1 - ss(0.55, 1, a));
+        } else {
+          const ee = 1 - Math.pow(1 - a, 2);
+          x = x0 + p.vx * ee * p.life * 0.9;
+          y = H * 0.93 - p.up * ee * 1.2;
+          r = W * (0.05 + 0.08 * ee) * p.rs;
+          al = p.al * ss(0, 0.1, a) * (1 - ss(0.35, 1, a));
+        }
+        ctx.globalAlpha = al;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(p.rot + p.rotv * (t - p.t0));
+        ctx.drawImage(sprites[p.sp], -r, -r, r * 2, r * 2);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
+}
+
+function SmokeImage({ playKey, src, alt, style }) {
+  const [state, setState] = useState(() => {
+    if (typeof window === "undefined" || !src || SMOKE_SEEN.has(playKey)) return "done";
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return "done";
+    return "wait";
+  });
+  const canvasRef = useRef(null);
+
+  // ۱) عکس را پیش‌بارگذاری می‌کنیم؛ اگر تا ۶۰۰ میلی‌ثانیه نیامد، همان‌جا شروع می‌کنیم.
+  useEffect(() => {
+    if (state !== "wait") return undefined;
+    let cancelled = false;
+    const go = (next) => () => {
+      if (cancelled) return;
+      SMOKE_SEEN.add(playKey);
+      setState(next);
+    };
+    const im = new Image();
+    im.onload = go("playing");
+    im.onerror = go("done");
+    im.src = src;
+    if (im.complete && im.naturalWidth) go("playing")();
+    const t = window.setTimeout(go("playing"), 600);
+    return () => { cancelled = true; window.clearTimeout(t); };
+  }, [state, src, playKey]);
+
+  // ۲) دود را روی بوم می‌کشیم و در پایان به عکس ساده برمی‌گردیم.
+  useEffect(() => {
+    if (state !== "playing") return undefined;
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
+    const plume = createSmokePlume(canvas);
+    if (!plume) { setState("done"); return undefined; }
+    let raf = 0;
+    const t0 = performance.now();
+    const loop = (now) => {
+      const t = (now - t0) / 1000;
+      plume.render(t);
+      if (t < plume.duration) raf = requestAnimationFrame(loop);
+      else setState("done");
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [state]);
+
+  if (state === "done") return <img src={src} alt={alt} style={style} />;
+  if (state === "wait") return <img src={src} alt={alt} style={{ ...style, opacity: 0 }} />;
+
+  return (
+    <>
+      <div className="smk-shadow" aria-hidden="true" />
+      <div className="smk-product">
+        <div className="smk-rock">
+          <img src={src} alt={alt} style={style} />
+        </div>
+      </div>
+      <canvas ref={canvasRef} className="smk-canvas" aria-hidden="true" />
+    </>
+  );
+}
+
+function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, categoryMedia }) {
+
 
   .nav-link { position: relative; padding-bottom: 4px; transition: color 0.18s ease; }
   .nav-link::after {
@@ -2489,7 +2703,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
             </span>
           )}
           {displayImage ? (
-            <PuzzleImage
+            <SmokeImage
               playKey={"detail-" + product.id}
               src={framedProductImageUrl(displayImage, 800)}
               alt={product.name}
