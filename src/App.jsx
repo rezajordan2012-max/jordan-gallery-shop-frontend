@@ -229,6 +229,23 @@ const FONTS = `
     .heli-card-move, .heli-card-swing, .heli-ropes, .heli-fly { animation: none !important; }
   }
 
+  /* ===== پازلِ عکسِ محصول ===== */
+  .pz-under { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; animation: pzUnder 0.3s ease 1.7s both; }
+  .pz-group { position: absolute; inset: 0; animation: pzSnap 0.45s ease-out 1.8s both; }
+  .pz-piece { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; will-change: transform, opacity; animation: pzFly 1.35s cubic-bezier(.22,.9,.3,1) both; animation-delay: var(--pd, 0s); transform-origin: var(--po, 50% 50%); }
+  @keyframes pzFly {
+    0%   { transform: translate(var(--px), var(--py)) rotate(var(--pr)) scale(.8); opacity: 0; }
+    18%  { opacity: 1; }
+    72%  { transform: translate(0, 0) rotate(0deg) scale(1.04); opacity: 1; }
+    88%  { transform: translate(0, 0) rotate(0deg) scale(.985); opacity: 1; }
+    100% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  }
+  @keyframes pzSnap { 0% { transform: scale(1); } 40% { transform: scale(1.025); } 100% { transform: scale(1); } }
+  @keyframes pzUnder { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .pz-under, .pz-group, .pz-piece { animation: none !important; }
+  }
+
   .cart-drawer { transition: transform 0.35s cubic-bezier(.2,.8,.2,1); }
 
   .nav-link { position: relative; padding-bottom: 4px; transition: color 0.18s ease; }
@@ -2260,6 +2277,85 @@ function SmearSwatch({ hex }) {
   );
 }
 
+// ===== پازلِ عکسِ محصول: چهار تکه از چهار گوشه وارد می‌شوند و به هم می‌چسبند =====
+const PUZZLE_SEEN = new Set();
+
+function jigsawEdge(x0, y0, x1, y1, bx, by) {
+  const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  const ux = (x1 - x0) / len, uy = (y1 - y0) / len;
+  const pt = (du, dv) => `${(mx + ux * du + bx * dv).toFixed(4)},${(my + uy * du + by * dv).toFixed(4)}`;
+  return (
+    ` L${pt(-0.035, 0)} C${pt(-0.035, 0.022)} ${pt(-0.062, 0.028)} ${pt(-0.062, 0.05)}` +
+    ` C${pt(-0.062, 0.095)} ${pt(0.062, 0.095)} ${pt(0.062, 0.05)}` +
+    ` C${pt(0.062, 0.028)} ${pt(0.035, 0.022)} ${pt(0.035, 0)} L${x1},${y1}`
+  );
+}
+
+const PUZZLE_PIECES = [
+  { k: "tl", d: "M0,0 L0.5,0" + jigsawEdge(0.5, 0, 0.5, 0.5, 1, 0) + jigsawEdge(0.5, 0.5, 0, 0.5, 0, -1) + " L0,0 Z", px: "-85%", py: "-75%", pr: "-18deg", pd: "0s", po: "25% 25%" },
+  { k: "tr", d: "M0.5,0 L1,0 L1,0.5" + jigsawEdge(1, 0.5, 0.5, 0.5, 0, 1) + jigsawEdge(0.5, 0.5, 0.5, 0, 1, 0) + " Z", px: "85%", py: "-75%", pr: "16deg", pd: "0.15s", po: "75% 25%" },
+  { k: "bl", d: "M0,0.5" + jigsawEdge(0, 0.5, 0.5, 0.5, 0, -1) + jigsawEdge(0.5, 0.5, 0.5, 1, -1, 0) + " L0,1 Z", px: "-85%", py: "75%", pr: "14deg", pd: "0.3s", po: "25% 75%" },
+  { k: "br", d: "M0.5,0.5" + jigsawEdge(0.5, 0.5, 1, 0.5, 0, 1) + " L1,1 L0.5,1" + jigsawEdge(0.5, 1, 0.5, 0.5, -1, 0) + " Z", px: "85%", py: "75%", pr: "-16deg", pd: "0.45s", po: "75% 75%" },
+];
+
+function PuzzleImage({ playKey, src, alt, style }) {
+  const [state, setState] = useState(() => {
+    if (typeof window === "undefined" || !src || PUZZLE_SEEN.has(playKey)) return "done";
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return "done";
+    return "wait";
+  });
+
+  useEffect(() => {
+    if (state !== "wait") return undefined;
+    let cancelled = false;
+    const go = (next) => () => {
+      if (cancelled) return;
+      PUZZLE_SEEN.add(playKey);
+      setState(next);
+    };
+    const im = new Image();
+    im.onload = go("playing");
+    im.onerror = go("done");
+    im.src = src;
+    if (im.complete && im.naturalWidth) go("playing")();
+    const t = window.setTimeout(go("done"), 4000);
+    return () => { cancelled = true; window.clearTimeout(t); };
+  }, [state, src, playKey]);
+
+  if (state === "done") return <img src={src} alt={alt} style={style} />;
+  if (state === "wait") return <img src={src} alt={alt} style={{ ...style, opacity: 0 }} />;
+
+  return (
+    <>
+      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true" focusable="false">
+        <defs>
+          {PUZZLE_PIECES.map((p) => (
+            <clipPath key={p.k} id={`pz-${p.k}`} clipPathUnits="objectBoundingBox">
+              <path d={p.d} />
+            </clipPath>
+          ))}
+        </defs>
+      </svg>
+      <div className="pz-under">
+        <img src={src} alt={alt} style={style} />
+      </div>
+      <div className="pz-group" onAnimationEnd={(e) => { if (e.animationName === "pzSnap") setState("done"); }}>
+        {PUZZLE_PIECES.map((p) => (
+          <div
+            key={p.k}
+            className="pz-piece"
+            aria-hidden="true"
+            style={{ clipPath: `url(#pz-${p.k})`, WebkitClipPath: `url(#pz-${p.k})`, "--px": p.px, "--py": p.py, "--pr": p.pr, "--pd": p.pd, "--po": p.po }}
+          >
+            <img src={src} alt="" style={style} />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, categoryMedia }) {
   const hasVariants = !!product && product.variants && product.variants.length > 0;
   const [variantId, setVariantId] = useState("");
@@ -2356,14 +2452,8 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
         }}
       >
       <div className="lg:flex lg:items-start lg:gap-10">
-        <HeliDelivery
-          id={"detail-" + product.id}
-          index={0}
-          minTop={150}
-          className="mb-5 lg:mb-0 lg:sticky lg:top-24 lg:w-[420px] lg:flex-shrink-0"
-        >
         <div
-          className="rounded-2xl border border-hair overflow-hidden flex items-center justify-center w-full h-96 lg:h-[520px]"
+          className="rounded-2xl border border-hair overflow-hidden flex items-center justify-center mb-5 lg:mb-0 lg:sticky lg:top-24 h-96 lg:h-[520px] lg:w-[420px] lg:flex-shrink-0"
           style={{ background: "#FFFFFF", position: "relative" }}
           onTouchStart={handleGalleryTouchStart}
           onTouchEnd={handleGalleryTouchEnd}
@@ -2389,7 +2479,8 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
             </span>
           )}
           {displayImage ? (
-            <img
+            <PuzzleImage
+              playKey={"detail-" + product.id}
               src={framedProductImageUrl(displayImage)}
               alt={product.name}
               style={selectedVariant && displayImage ? { width: "100%", height: "100%", objectFit: "contain" } : productImageStyle(product)}
@@ -2459,7 +2550,6 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
             </>
           )}
         </div>
-        </HeliDelivery>
 
         <div className="lg:flex-1 lg:min-w-0">
           <div className="flex items-center mb-1">
