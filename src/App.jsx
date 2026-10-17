@@ -230,9 +230,9 @@ const FONTS = `
   }
 
   /* ===== پازلِ عکسِ محصول ===== */
-  .pz-under { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; animation: pzUnder 0.3s ease 1.7s both; }
-  .pz-group { position: absolute; inset: 0; animation: pzSnap 0.45s ease-out 1.8s both; }
-  .pz-piece { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; will-change: transform, opacity; animation: pzFly 1.35s cubic-bezier(.22,.9,.3,1) both; animation-delay: var(--pd, 0s); transform-origin: var(--po, 50% 50%); }
+  .pz-under { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; animation: pzUnder 0.25s ease 1.2s both; }
+  .pz-group { position: absolute; inset: 0; animation: pzSnap 0.4s ease-out 1.3s both; }
+  .pz-piece { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; will-change: transform, opacity;  animation: pzFly 1s cubic-bezier(.22,.9,.3,1) both;animation-delay: var(--pd, 0s); transform-origin: var(--po, 50% 50%); }
   @keyframes pzFly {
     0%   { transform: translate(var(--px), var(--py)) rotate(var(--pr)) scale(.8); opacity: 0; }
     18%  { opacity: 1; }
@@ -2294,9 +2294,9 @@ function jigsawEdge(x0, y0, x1, y1, bx, by) {
 
 const PUZZLE_PIECES = [
   { k: "tl", d: "M0,0 L0.5,0" + jigsawEdge(0.5, 0, 0.5, 0.5, 1, 0) + jigsawEdge(0.5, 0.5, 0, 0.5, 0, -1) + " L0,0 Z", px: "-85%", py: "-75%", pr: "-18deg", pd: "0s", po: "25% 25%" },
-  { k: "tr", d: "M0.5,0 L1,0 L1,0.5" + jigsawEdge(1, 0.5, 0.5, 0.5, 0, 1) + jigsawEdge(0.5, 0.5, 0.5, 0, 1, 0) + " Z", px: "85%", py: "-75%", pr: "16deg", pd: "0.15s", po: "75% 25%" },
-  { k: "bl", d: "M0,0.5" + jigsawEdge(0, 0.5, 0.5, 0.5, 0, -1) + jigsawEdge(0.5, 0.5, 0.5, 1, -1, 0) + " L0,1 Z", px: "-85%", py: "75%", pr: "14deg", pd: "0.3s", po: "25% 75%" },
-  { k: "br", d: "M0.5,0.5" + jigsawEdge(0.5, 0.5, 1, 0.5, 0, 1) + " L1,1 L0.5,1" + jigsawEdge(0.5, 1, 0.5, 0.5, -1, 0) + " Z", px: "85%", py: "75%", pr: "-16deg", pd: "0.45s", po: "75% 75%" },
+  { k: "tr", d: "M0.5,0 L1,0 L1,0.5" + jigsawEdge(1, 0.5, 0.5, 0.5, 0, 1) + jigsawEdge(0.5, 0.5, 0.5, 0, 1, 0) + " Z", px: "85%", py: "-75%", pr: "16deg", pd: "0.08s", po: "75% 25%" },
+  { k: "bl", d: "M0,0.5" + jigsawEdge(0, 0.5, 0.5, 0.5, 0, -1) + jigsawEdge(0.5, 0.5, 0.5, 1, -1, 0) + " L0,1 Z", px: "-85%", py: "75%", pr: "14deg", pd: "0.16s", po: "25% 75%" },
+  { k: "br", d: "M0.5,0.5" + jigsawEdge(0.5, 0.5, 1, 0.5, 0, 1) + " L1,1 L0.5,1" + jigsawEdge(0.5, 1, 0.5, 0.5, -1, 0) + " Z", px: "85%", py: "75%", pr: "-16deg", pd: "0.24s", po: "75% 75%" },
 ];
 
 function PuzzleImage({ playKey, src, alt, style }) {
@@ -2319,7 +2319,7 @@ function PuzzleImage({ playKey, src, alt, style }) {
     im.onerror = go("done");
     im.src = src;
     if (im.complete && im.naturalWidth) go("playing")();
-    const t = window.setTimeout(go("done"), 4000);
+    const t = window.setTimeout(go("playing"), 600);
     return () => { cancelled = true; window.clearTimeout(t); };
   }, [state, src, playKey]);
 
@@ -2491,7 +2491,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
           {displayImage ? (
             <PuzzleImage
               playKey={"detail-" + product.id}
-              src={framedProductImageUrl(displayImage)}
+              src={framedProductImageUrl(displayImage, 800)}
               alt={product.name}
               style={selectedVariant && displayImage ? { width: "100%", height: "100%", objectFit: "contain" } : productImageStyle(product)}
             />
