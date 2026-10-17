@@ -247,31 +247,32 @@ const FONTS = `
   }
   /* ===== دودِ جادویی عکسِ محصول ===== */
   .smk-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
-  .smk-product { position: absolute; inset: 0; z-index: 2; transform-origin: 50% 90%; animation: smkFall 2.9s both 1s; will-change: transform, opacity, filter; }
-  .smk-rock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform-origin: 50% 90%; animation: smkRock 1.9s ease-in-out 2.65s both; will-change: transform; }
-  .smk-shadow { position: absolute; left: 50%; top: 89.5%; width: 46%; height: 5%; border-radius: 50%; z-index: 1; pointer-events: none; background: radial-gradient(ellipse, rgba(70,45,90,.34), rgba(70,45,90,0) 70%); opacity: 0; transform: translate(-50%,-50%) scale(.3); animation: smkShadow .55s ease-in 2.15s both; }
+  .smk-product { position: absolute; inset: 0; z-index: 2; transform-origin: 50% 90%; animation: smkFall 4.6s both .4s; will-change: transform; }
+  .smk-rock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform-origin: 50% 90%; animation: smkRock 5.6s ease-in-out .4s both; will-change: transform; }
+  .smk-shadow { position: absolute; left: 50%; top: 89.5%; width: 46%; height: 5%; border-radius: 50%; z-index: 1; pointer-events: none; background: radial-gradient(ellipse, rgba(70,45,90,.34), rgba(70,45,90,0) 70%); opacity: 0; transform: translate(-50%,-50%) scale(.3); animation: smkShadow .5s ease-in 3.45s both; }
   @keyframes smkFall {
-    0%   { transform: translate(0,3%) scale(.5); opacity: 0; filter: blur(14px); animation-timing-function: ease-out; }
-    10%  { transform: translate(0,0) scale(.64); opacity: 1; filter: blur(3px); animation-timing-function: cubic-bezier(.2,.7,.3,1); }
-    16%  { filter: blur(0); }
-    33%  { transform: translate(0,-23%) scale(.7); opacity: 1; filter: none; animation-timing-function: ease-in-out; }
-    40%  { transform: translate(0,-25%) scale(.7); animation-timing-function: ease-in-out; }
-    47%  { transform: translate(0,-24.4%) scale(.7); animation-timing-function: cubic-bezier(.62,0,.95,.5); }
-    57%  { transform: translate(0,0) scale(1.05,.94); animation-timing-function: ease-out; }
-    63%  { transform: translate(0,-4.4%) scale(1); animation-timing-function: cubic-bezier(.55,0,.9,.55); }
-    70%  { transform: translate(0,0) scale(1.02,.97); animation-timing-function: ease-out; }
-    75%  { transform: translate(0,-1.3%) scale(1); animation-timing-function: ease-in; }
-    80%, 100% { transform: none; opacity: 1; }
+    0%     { transform: translate(0,105%) scale(.9); animation-timing-function: cubic-bezier(.3,.05,.45,1); }
+    40%    { transform: translate(4%,-112%) scale(.95); }
+    67.4%  { transform: translate(4%,-112%) scale(.95); animation-timing-function: cubic-bezier(.6,0,.95,.55); }
+    77.2%  { transform: translate(0,0) scale(1.06,.93); animation-timing-function: ease-out; }
+    82.6%  { transform: translate(0,-4.4%) scale(1); animation-timing-function: cubic-bezier(.55,0,.9,.55); }
+    87%    { transform: translate(0,0) scale(1.025,.97); animation-timing-function: ease-out; }
+    90.2%  { transform: translate(0,-1.3%) scale(1); animation-timing-function: ease-in; }
+    94%, 100% { transform: none; }
   }
   @keyframes smkRock {
-    0%   { transform: rotate(0) translateX(0); }
-    12%  { transform: rotate(-9deg) translateX(-2.6%); }
-    28%  { transform: rotate(7deg) translateX(2%); }
-    43%  { transform: rotate(-5deg) translateX(-1.3%); }
-    57%  { transform: rotate(3.4deg) translateX(.9%); }
-    71%  { transform: rotate(-1.9deg) translateX(-.4%); }
-    85%  { transform: rotate(.8deg); }
-    100% { transform: rotate(0) translateX(0); }
+    0%    { transform: rotate(0); }
+    8%    { transform: rotate(-3deg); }
+    17%   { transform: rotate(3deg); }
+    26%   { transform: rotate(-2deg); }
+    34%, 63.4% { transform: rotate(0) translateX(0); }
+    67.5% { transform: rotate(-9deg) translateX(-2.6%); }
+    72.9% { transform: rotate(7deg) translateX(2%); }
+    78%   { transform: rotate(-5deg) translateX(-1.3%); }
+    82.7% { transform: rotate(3.4deg) translateX(.9%); }
+    87.5% { transform: rotate(-1.9deg) translateX(-.4%); }
+    92.3% { transform: rotate(.8deg); }
+    97.4%, 100% { transform: rotate(0) translateX(0); }
   }
   @keyframes smkShadow { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.3); } 100% { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
   @media (prefers-reduced-motion: reduce) {
@@ -2441,8 +2442,8 @@ function createSmokePlume(canvas) {
 
   const x0 = W * 0.5;
   const y0 = H * 0.95;
-  const EMIT_FROM = 0.05, EMIT_TO = 2.4, RATE = 120;
-  const LAND = 2.65;
+  const EMIT_FROM = 0.05, EMIT_TO = 1.95, RATE = 120;
+  const LAND = 3.95;
   const parts = [];
   const n = Math.round((EMIT_TO - EMIT_FROM) * RATE);
   let i;
@@ -2450,7 +2451,7 @@ function createSmokePlume(canvas) {
     parts.push({
       kind: 0,
       t0: EMIT_FROM + (i + rnd() * 0.9) / RATE,
-      life: 2.2 + rnd() * 0.7,
+      life: 1.8 + rnd() * 0.6,
       rise: H * (1.0 + rnd() * 0.3),
       sp: Math.floor(rnd() * 4),
       rot: rnd() * 6.2832, rotv: (rnd() - 0.5) * 0.6,
@@ -2473,7 +2474,7 @@ function createSmokePlume(canvas) {
   const ss = (a, b, x) => { const v = Math.max(0, Math.min(1, (x - a) / (b - a))); return v * v * (3 - 2 * v); };
 
   return {
-    duration: 5.3,
+    duration: 6.0,
     render(t) {
       ctx.clearRect(0, 0, W, H);
       for (let k = 0; k < parts.length; k++) {
