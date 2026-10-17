@@ -2377,6 +2377,16 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
   useEffect(() => {
     setVariantImageIndex(0);
   }, [variantId]);
+
+  // هر بار که صفحه‌ی یک محصول باز می‌شود، به بالای صفحه (عکس محصول) برگرد.
+  const detailProductId = product ? product.id : null;
+  useLayoutEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    } catch (e) {
+      window.scrollTo(0, 0);
+    }
+  }, [detailProductId]);
   const displayImage = useSmear ? "" : (variantImages[variantImageIndex] || variantImages[0] || (product && product.image) || "");
   const discountPct = product ? effectiveDiscountPercent(product, globalDiscountPercent) : 0;
   const finalPrice = product ? discountedPrice(product, globalDiscountPercent) : 0;
