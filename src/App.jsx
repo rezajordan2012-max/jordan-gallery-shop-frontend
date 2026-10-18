@@ -2513,10 +2513,14 @@ function createTornado(back, front, geo) {
     return levels;
   }
   const bolts = [];
-  [[0.45, 0.85, -0.14, 0.62], [0.95, 0.6, 0.2, 0.5], [3.55, 0.65, 0.16, 0.55], [3.82, 1, -0.06, 0.72]].forEach((cfg) => {
-    const sx = x0 + W * cfg[2] + (rnd() - 0.5) * W * 0.06;
-    const ex = sx + (rnd() - 0.5) * W * 0.26;
-    bolts.push({ t0: cfg[0], big: cfg[1], levels: buildBolt(sx, ex, H * cfg[3]), sx: sx });
+  // [زمان، شدت، جابه‌جایی افقی، ارتفاعِ پایانِ تنه، صاعقه‌ی اصلیِ پشتِ محصول؟]
+  [[0.45, 0.85, -0.14, 0.62, 0], [0.95, 0.6, 0.2, 0.5, 0], [3.72, 1, 0, 0.55, 1]].forEach((cfg) => {
+    const hero = cfg[4] === 1;
+    const sx = x0 + W * cfg[2] + (hero ? 0 : (rnd() - 0.5) * W * 0.06);
+    const ex = sx + (rnd() - 0.5) * W * (hero ? 0.05 : 0.26);
+    // صاعقه‌ی اصلی: دقیقاً وسطِ قاب و پشتِ محصول، حدود یک سانتی‌متر (۳۸ پیکسل) بالاتر
+    const ey = H * cfg[3] - (hero ? 38 : 0);
+    bolts.push({ t0: cfg[0], big: cfg[1], levels: buildBolt(sx, ex, ey), sx: sx, back: hero });
   });
   const boltI = (a) => {
     if (a < 0 || a > 0.7) return 0;
@@ -2542,42 +2546,68 @@ function createTornado(back, front, geo) {
       const b = bolts[q];
       const I = boltI(t - b.t0) * b.big;
       if (I < 0.02) continue;
-      gF.globalAlpha = 1;
-      gF.fillStyle = "rgba(255,216,130," + (0.13 * Math.pow(I, 1.6)).toFixed(3) + ")";
-      gF.fillRect(0, 0, W, H);
-      const rg = gF.createRadialGradient(b.sx, 0, 0, b.sx, 0, H * 0.8);
+      if (!b.back) {
+        gF.globalAlpha = 1;
+        gF.fillStyle = "rgba(255,216,130," + (0.13 * Math.pow(I, 1.6)).toFixed(3) + ")";
+        gF.fillRect(0, 0, W, H);
+      }
+      const gS = b.back ? gB : gF;
+      if (b.back) {
+        // درخششِ خیره‌کننده: نورِ سفید-طلاییِ همه‌جانبه، و رگه‌ی افقیِ نور (مثلِ لنزِ دوربین) از وسطِ صاعقه
+        const mx = b.levels[0][0][Math.floor(b.levels[0][0].length * 0.4)];
+        gB.globalAlpha = 1;
+        gB.fillStyle = "rgba(255,236,170," + (0.2 * Math.pow(I, 1.5)).toFixed(3) + ")";
+        gB.fillRect(0, 0, W, H);
+        const hg = gB.createRadialGradient(mx[0], mx[1], 0, mx[0], mx[1], H * 1.15);
+        hg.addColorStop(0, "rgba(255,246,205," + (0.8 * Math.pow(I, 1.3)).toFixed(3) + ")");
+        hg.addColorStop(0.25, "rgba(255,222,130," + (0.4 * Math.pow(I, 1.3)).toFixed(3) + ")");
+        hg.addColorStop(1, "rgba(255,200,90,0)");
+        gB.fillStyle = hg;
+        gB.fillRect(0, 0, W, H);
+        gB.save();
+        gB.translate(mx[0], mx[1]);
+        gB.scale(W * 0.95, H * 0.05);
+        const fg = gB.createRadialGradient(0, 0, 0, 0, 0, 1);
+        fg.addColorStop(0, "rgba(255,250,225," + (0.85 * I).toFixed(3) + ")");
+        fg.addColorStop(0.35, "rgba(255,214,120," + (0.4 * I).toFixed(3) + ")");
+        fg.addColorStop(1, "rgba(255,200,90,0)");
+        gB.fillStyle = fg;
+        gB.fillRect(-1, -1, 2, 2);
+        gB.restore();
+      }
+      const rg = gS.createRadialGradient(b.sx, 0, 0, b.sx, 0, H * 0.8);
       rg.addColorStop(0, "rgba(255,226,150," + (0.6 * Math.pow(I, 1.3)).toFixed(3) + ")");
       rg.addColorStop(1, "rgba(255,226,150,0)");
-      gF.fillStyle = rg;
-      gF.fillRect(0, 0, W, H);
+      gS.fillStyle = rg;
+      gS.fillRect(0, 0, W, H);
       // نوری که صاعقه به اطراف می‌پراند: هاله‌ی بزرگِ طلایی دور تنه‌ی اصلی
       const mid = b.levels[0][0][Math.floor(b.levels[0][0].length * 0.45)];
-      const rg2 = gF.createRadialGradient(mid[0], mid[1], 0, mid[0], mid[1], H * 0.95);
+      const rg2 = gS.createRadialGradient(mid[0], mid[1], 0, mid[0], mid[1], H * 0.95);
       rg2.addColorStop(0, "rgba(255,214,120," + (0.5 * Math.pow(I, 1.3)).toFixed(3) + ")");
       rg2.addColorStop(0.45, "rgba(255,200,90," + (0.18 * Math.pow(I, 1.3)).toFixed(3) + ")");
       rg2.addColorStop(1, "rgba(255,200,90,0)");
-      gF.fillStyle = rg2;
-      gF.fillRect(0, 0, W, H);
-      gF.lineCap = "round";
-      gF.lineJoin = "round";
+      gS.fillStyle = rg2;
+      gS.fillRect(0, 0, W, H);
+      gS.lineCap = "round";
+      gS.lineJoin = "round";
       for (let lv = 0; lv < 5; lv++) {
         const polys = b.levels[lv];
         if (!polys.length) continue;
         for (let pass = 0; pass < 3; pass++) {
-          gF.beginPath();
+          gS.beginPath();
           for (let s = 0; s < polys.length; s++) {
             const pts = polys[s];
-            gF.moveTo(pts[0][0], pts[0][1]);
-            for (let k2 = 1; k2 < pts.length; k2++) gF.lineTo(pts[k2][0], pts[k2][1]);
+            gS.moveTo(pts[0][0], pts[0][1]);
+            for (let k2 = 1; k2 < pts.length; k2++) gS.lineTo(pts[k2][0], pts[k2][1]);
           }
-          if (pass === 0) { gF.strokeStyle = "rgba(255,168,48," + (0.55 * I).toFixed(3) + ")"; gF.lineWidth = 2.6 * LW[lv] + 0.8; gF.shadowColor = "rgba(255,170,50,1)"; gF.shadowBlur = lv < 2 ? 34 : 14; }
-          else if (pass === 1) { gF.strokeStyle = "rgba(255,214,110," + (0.9 * I).toFixed(3) + ")"; gF.lineWidth = 2 * LW[lv] + 0.4; gF.shadowBlur = 6; }
-          else { gF.strokeStyle = "rgba(255,253,240," + Math.min(1, I * 1.3).toFixed(3) + ")"; gF.lineWidth = 1.1 * LW[lv] + 0.3; gF.shadowBlur = 0; }
-          gF.stroke();
+          if (pass === 0) { gS.strokeStyle = "rgba(255,168,48," + (0.55 * I).toFixed(3) + ")"; gS.lineWidth = 2.6 * LW[lv] + 0.8; gS.shadowColor = "rgba(255,170,50,1)"; gS.shadowBlur = lv < 2 ? 34 : 14; }
+          else if (pass === 1) { gS.strokeStyle = "rgba(255,214,110," + (0.9 * I).toFixed(3) + ")"; gS.lineWidth = 2 * LW[lv] + 0.4; gS.shadowBlur = 6; }
+          else { gS.strokeStyle = "rgba(255,253,240," + Math.min(1, I * 1.3).toFixed(3) + ")"; gS.lineWidth = 1.1 * LW[lv] + 0.3; gS.shadowBlur = 0; }
+          gS.stroke();
         }
       }
-      gF.shadowBlur = 0;
-      gF.shadowColor = "transparent";
+      gS.shadowBlur = 0;
+      gS.shadowColor = "transparent";
     }
   }
 
