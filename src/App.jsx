@@ -2524,7 +2524,7 @@ function createTornado(back, front, geo) {
     warm: { core: "255,251,238", mid: "255,214,130", glow: "255,140,40", tint: "255,190,96", flash: "255,214,140" },
   };
   const bolts = [
-    { t0: 0.9, big: 1, tone: TONES.cool, levels: buildBolt(W * 0.04, -6, W * 0.9, H * 0.96), sx: W * 0.04 },
+    { t0: 0.9, big: 1, tone: TONES.warm, levels: buildBolt(W * 0.04, -6, W * 0.9, H * 0.96), sx: W * 0.04 },
     { t0: 3.72, big: 1, tone: TONES.warm, levels: buildBolt(W * 0.96, -6, W * 0.1, H * 0.92), sx: W * 0.96 },
   ];
   const boltI = (a) => {
@@ -2550,14 +2550,6 @@ function createTornado(back, front, geo) {
         g.fillRect(0, 0, W, H);
         g.globalCompositeOperation = "source-over";
       });
-    }
-    // آسمانِ طوفانی: قاب تیره می‌شود تا نورِ صاعقه خیره‌کننده دیده شود؛ با هر برق لحظه‌ای روشن می‌شود
-    const storm = ss(0.1, 0.6, t) * (1 - ss(4.0, 4.8, t));
-    const dark = 0.46 * storm * (1 - 0.85 * Math.min(1, top));
-    if (dark > 0.004) {
-      gF.globalAlpha = 1;
-      gF.fillStyle = "rgba(12,20,52," + dark.toFixed(3) + ")";
-      gF.fillRect(0, 0, W, H);
     }
     for (let q = 0; q < bolts.length; q++) {
       const b = bolts[q];
