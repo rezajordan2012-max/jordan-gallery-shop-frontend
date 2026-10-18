@@ -245,39 +245,18 @@ const FONTS = `
   @media (prefers-reduced-motion: reduce) {
     .pz-under, .pz-group, .pz-piece { animation: none !important; }
   }
-  /* ===== دودِ جادویی عکسِ محصول ===== */
+  /* ===== گردبادِ جادویی عکسِ محصول ===== */
   .smk-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
-  .smk-product { position: absolute; inset: 0; z-index: 2; transform-origin: 50% 90%; animation: smkFall 4.6s both .4s; will-change: transform; }
-  .smk-rock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform-origin: 50% 90%; animation: smkRock 5.6s ease-in-out .4s both; will-change: transform; }
-  .smk-shadow { position: absolute; left: 50%; top: 89.5%; width: 46%; height: 5%; border-radius: 50%; z-index: 1; pointer-events: none; background: radial-gradient(ellipse, rgba(70,45,90,.34), rgba(70,45,90,0) 70%); opacity: 0; transform: translate(-50%,-50%) scale(.3); animation: smkShadow .5s ease-in 3.45s both; }
-  @keyframes smkFall {
-    0%     { transform: translate(0,105%) scale(.9); animation-timing-function: cubic-bezier(.3,.05,.45,1); }
-    40%    { transform: translate(4%,-112%) scale(.95); }
-    67.4%  { transform: translate(4%,-112%) scale(.95); animation-timing-function: cubic-bezier(.6,0,.95,.55); }
-    77.2%  { transform: translate(0,0) scale(1.06,.93); animation-timing-function: ease-out; }
-    82.6%  { transform: translate(0,-4.4%) scale(1); animation-timing-function: cubic-bezier(.55,0,.9,.55); }
-    87%    { transform: translate(0,0) scale(1.025,.97); animation-timing-function: ease-out; }
-    90.2%  { transform: translate(0,-1.3%) scale(1); animation-timing-function: ease-in; }
-    94%, 100% { transform: none; }
-  }
-  @keyframes smkRock {
-    0%    { transform: rotate(0); }
-    8%    { transform: rotate(-3deg); }
-    17%   { transform: rotate(3deg); }
-    26%   { transform: rotate(-2deg); }
-    34%, 63.4% { transform: rotate(0) translateX(0); }
-    67.5% { transform: rotate(-9deg) translateX(-2.6%); }
-    72.9% { transform: rotate(7deg) translateX(2%); }
-    78%   { transform: rotate(-5deg) translateX(-1.3%); }
-    82.7% { transform: rotate(3.4deg) translateX(.9%); }
-    87.5% { transform: rotate(-1.9deg) translateX(-.4%); }
-    92.3% { transform: rotate(.8deg); }
-    97.4%, 100% { transform: rotate(0) translateX(0); }
-  }
+  .smk-canvas-back { z-index: 1; }
+  .smk-product { position: absolute; inset: 0; z-index: 2; transform-origin: 50% 90%; will-change: transform; mix-blend-mode: multiply; }
+  .smk-rock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform-origin: 50% 90%; will-change: transform; }
+  .smk-shadow { position: absolute; left: 50%; top: 89.5%; width: 46%; height: 5%; border-radius: 50%; z-index: 1; pointer-events: none; background: radial-gradient(ellipse, rgba(70,45,90,.34), rgba(70,45,90,0) 70%); opacity: 0; transform: translate(-50%,-50%) scale(.3); animation: smkShadow .5s ease-in 3.9s both; }
   @keyframes smkShadow { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.3); } 100% { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
   @media (prefers-reduced-motion: reduce) {
-    .smk-product, .smk-rock, .smk-shadow { animation: none !important; }
+    .smk-shadow { animation: none !important; }
     .smk-canvas { display: none; }
+  }
+  }
   }
 
 
@@ -2390,22 +2369,34 @@ function PuzzleImage({ playKey, src, alt, style }) {
   );
 }
 
-// ===== دودِ جادویی عکسِ محصول: ستونِ دودِ حجیم از وسطِ کف بالا می‌رود، محصول از میانش پدیدار می‌شود،
-// بالا می‌رود، ناگهان سقوط می‌کند و نامتعادل تکان‌تکان می‌خورد تا ثابت شود. =====
+// ===== گردبادِ جادویی عکسِ محصول: دود و غبار مارپیچ می‌چرخد، محصول را در شکمِ خود می‌چرخاند و بالا می‌برد،
+// از بالای قاب بیرون می‌برد؛ وقتی غبار محو شد، محصول ناگهان سقوط می‌کند و نامتعادل تکان‌تکان می‌خورد تا ثابت شود. =====
 const SMOKE_SEEN = new Set();
 
-function createSmokePlume(canvas) {
+function createTornado(back, front) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const W = canvas.clientWidth || 360;
-  const H = canvas.clientHeight || 360;
-  canvas.width = Math.round(W * dpr);
-  canvas.height = Math.round(H * dpr);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  ctx.scale(dpr, dpr);
+  const W = back.clientWidth || 360;
+  const H = back.clientHeight || 360;
+  const setup = (c) => {
+    c.width = Math.round(W * dpr);
+    c.height = Math.round(H * dpr);
+    const g = c.getContext("2d");
+    if (g) g.scale(dpr, dpr);
+    return g;
+  };
+  const gb = setup(back);
+  const gf = setup(front);
+  if (!gb || !gf) return null;
 
-  let seed = 7;
+  let seed = 11;
   const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const lerp = (a, b, u) => a + (b - a) * u;
+  const ss = (a, b, x) => { const v = clamp((x - a) / (b - a), 0, 1); return v * v * (3 - 2 * v); };
+  const eIn = (u) => Math.pow(u, 2.2);
+  const eOut = (u) => 1 - (1 - u) * (1 - u);
+  const eIO = (u) => u * u * (3 - 2 * u);
+  const TAU = 6.2832;
 
   function makeSprite() {
     const S = 192;
@@ -2416,95 +2407,177 @@ function createSmokePlume(canvas) {
     function blob(x, y, r, rgb, al) {
       const gr = g.createRadialGradient(x, y, 0, x, y, r);
       gr.addColorStop(0, "rgba(" + rgb + "," + al + ")");
-      gr.addColorStop(0.45, "rgba(" + rgb + "," + al * 0.62 + ")");
+      gr.addColorStop(0.5, "rgba(" + rgb + "," + al * 0.6 + ")");
       gr.addColorStop(1, "rgba(" + rgb + ",0)");
       g.fillStyle = gr;
       g.beginPath();
-      g.arc(x, y, r, 0, 6.2832);
+      g.arc(x, y, r, 0, TAU);
       g.fill();
     }
     let i;
-    for (i = 0; i < 6; i++) {
-      const a = rnd() * 6.2832, d = rnd() * 38;
-      blob(96 + Math.cos(a) * d + 10, 96 + Math.sin(a) * d + 14, 40 + rnd() * 26, "118,112,150", 0.3);
-    }
-    for (i = 0; i < 12; i++) {
-      const a = rnd() * 6.2832, d = rnd() * 44;
-      blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d, 34 + rnd() * 34, "214,210,234", 0.62);
-    }
-    for (i = 0; i < 6; i++) {
-      const a = rnd() * 6.2832, d = rnd() * 34;
-      blob(96 + Math.cos(a) * d - 12, 96 + Math.sin(a) * d - 16, 26 + rnd() * 24, "250,248,255", 0.5);
-    }
+    for (i = 0; i < 7; i++) { const a = rnd() * TAU, d = rnd() * 40; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d + 10, 36 + rnd() * 26, "78,74,82", 0.34); }
+    for (i = 0; i < 9; i++) { const a = rnd() * TAU, d = rnd() * 44; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d, 30 + rnd() * 30, "132,128,136", 0.5); }
+    for (i = 0; i < 4; i++) { const a = rnd() * TAU, d = rnd() * 36; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d - 12, 24 + rnd() * 20, "196,192,198", 0.45); }
+    for (i = 0; i < 3; i++) { const a = rnd() * TAU, d = rnd() * 40; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d + 8, 22 + rnd() * 18, "150,128,100", 0.3); }
     return c;
   }
   const sprites = [makeSprite(), makeSprite(), makeSprite(), makeSprite()];
 
   const x0 = W * 0.5;
   const y0 = H * 0.95;
-  const EMIT_FROM = 0.05, EMIT_TO = 1.95, RATE = 120;
-  const LAND = 3.95;
-  const parts = [];
-  const n = Math.round((EMIT_TO - EMIT_FROM) * RATE);
+  const FALL = 3.95, LAND = 4.4;
+  const smoke = [], specks = [], ground = [], dust = [];
   let i;
-  for (i = 0; i < n; i++) {
-    parts.push({
-      kind: 0,
-      t0: EMIT_FROM + (i + rnd() * 0.9) / RATE,
-      life: 1.8 + rnd() * 0.6,
-      rise: H * (1.0 + rnd() * 0.3),
-      sp: Math.floor(rnd() * 4),
-      rot: rnd() * 6.2832, rotv: (rnd() - 0.5) * 0.6,
-      ph: rnd() * 6.2832,
-      jit: (rnd() - 0.5) * 0.22,
-      rs: 0.72 + rnd() * 0.62,
-      al: 0.62 + rnd() * 0.22,
+  for (i = 0; i < 280; i++) {
+    const h = rnd();
+    smoke.push({
+      h: h, ph: h * 11 + (rnd() - 0.5) * 1.3, w: (1.7 + rnd() * 0.5) * (1.3 - 0.75 * h),
+      j: 0.78 + rnd() * 0.36, rs: 0.7 + rnd() * 0.7, sp: Math.floor(rnd() * 4), al: 0.16 + rnd() * 0.17,
     });
+  }
+  const cols = ["52,47,44", "74,66,58", "150,126,94", "118,104,88", "34,32,34"];
+  for (i = 0; i < 260; i++) {
+    specks.push({
+      h: rnd(), ph: rnd() * TAU, w: 2.3 + rnd() * 1.4, j: 1.0 + rnd() * 0.85, s: 0.9 + rnd() * 2.4,
+      c: cols[Math.floor(rnd() * cols.length)], al: 0.45 + rnd() * 0.45, dr: rnd() * 0.5,
+    });
+  }
+  for (i = 0; i < 46; i++) {
+    ground.push({ ph: rnd() * TAU, w: 0.7 + rnd() * 0.5, rho: 0.1 + rnd() * 0.3, rs: 0.8 + rnd() * 0.8, sp: Math.floor(rnd() * 4), al: 0.3 + rnd() * 0.2 });
   }
   for (i = 0; i < 36; i++) {
     const dir = i % 2 ? 1 : -1;
-    parts.push({
-      kind: 1, t0: LAND + rnd() * 0.06, life: 0.85 + rnd() * 0.5,
-      vx: dir * W * (0.12 + rnd() * 0.33), up: H * (0.04 + rnd() * 0.09),
-      sp: Math.floor(rnd() * 4), rot: rnd() * 6.2832, rotv: rnd() - 0.5,
-      rs: 0.6 + rnd() * 0.5, al: 0.55,
-    });
+    dust.push({ t0: LAND + rnd() * 0.06, life: 0.85 + rnd() * 0.5, vx: dir * W * (0.12 + rnd() * 0.33), up: H * (0.04 + rnd() * 0.09), sp: Math.floor(rnd() * 4), rot: rnd() * TAU, rs: 0.6 + rnd() * 0.5, al: 0.5 });
   }
 
-  const ss = (a, b, x) => { const v = Math.max(0, Math.min(1, (x - a) / (b - a))); return v * v * (3 - 2 * v); };
+  const axisAt = (h, t) => x0 + W * (0.06 * h * h + 0.035 * h * Math.sin(t * 1.4 + h * 4));
+  const rhoAt = (h, t) => W * (0.03 + 0.36 * Math.pow(h, 1.25)) * (0.4 + 0.6 * ss(0.1, 1.5, t));
+  const heightNow = (t) => 1.2 * H * ss(0.1, 1.5, t);
+  const decay = (h, t) => 1 - ss(2.7 + 0.6 * (1 - h), 3.6 + 0.6 * (1 - h), t);
+  const edge = (h) => ss(0, 0.07, h) * (1 - ss(0.93, 1, h));
+
+  // ---- حرکتِ محصول ----
+  const rev = (t) => 1.1 * t + 0.25 * t * t;
+  function flight(t) {
+    const tt = Math.min(t, 3.0);
+    const yc = tt < 1.1
+      ? lerp(1.35 * H, 0.78 * H, eIO(clamp((tt - 0.3) / 0.8, 0, 1)))
+      : lerp(0.78 * H, -0.65 * H, Math.pow(clamp((tt - 1.1) / 1.9, 0, 1), 1.7));
+    const hF = clamp((y0 - yc) / (1.2 * H), 0, 1);
+    const th = TAU * rev(tt);
+    const rp = W * (0.04 + 0.16 * hF);
+    return { yc: yc + 0.025 * H * Math.sin(th), x: axisAt(hF, tt) - x0 + rp * Math.cos(th), th: th, k: clamp((tt - 1.1) / 1.9, 0, 1) };
+  }
+  function track(kf, tt) {
+    if (tt <= kf[0][0]) return kf[0][1];
+    for (let q = 0; q < kf.length - 1; q++) {
+      if (tt < kf[q + 1][0]) {
+        const u = (tt - kf[q][0]) / (kf[q + 1][0] - kf[q][0]);
+        return lerp(kf[q][1], kf[q + 1][1], (kf[q][2] || eIO)(u));
+      }
+    }
+    return kf[kf.length - 1][1];
+  }
+  const L = LAND;
+  const bounceY = [[L, 0, eOut], [L + 0.22, -0.044 * H, eIn], [L + 0.42, 0, eOut], [L + 0.55, -0.013 * H, eIn], [L + 0.68, 0, eIn]];
+  const squX = [[L, 1.06], [L + 0.22, 1], [L + 0.42, 1.025], [L + 0.55, 1]];
+  const squY = [[L, 0.93], [L + 0.22, 1], [L + 0.42, 0.97], [L + 0.55, 1]];
+  const rotK = [[L, 0], [L + 0.23, -9], [L + 0.53, 7], [L + 0.82, -5], [L + 1.08, 3.4], [L + 1.35, -1.9], [L + 1.62, 0.8], [L + 1.85, 0]];
+  const txK = [[L, 0], [L + 0.23, -0.026 * W], [L + 0.53, 0.02 * W], [L + 0.82, -0.013 * W], [L + 1.08, 0.009 * W], [L + 1.35, -0.004 * W], [L + 1.85, 0]];
+  const comp = (yc, sc) => yc - (0.9 * H - 0.4 * H * sc);
+
+  function pose(t) {
+    if (t < FALL) {
+      const f = flight(t);
+      const sc = 0.55 * (1 + 0.07 * Math.sin(f.th));
+      return {
+        ty: comp(f.yc, sc), tx: f.x, sx: sc * (0.72 + 0.28 * Math.abs(Math.cos(f.th * 0.8))), sy: sc,
+        rot: 14 * Math.cos(f.th) + 10 * f.k * Math.sin(f.th * 1.3), rx: 0,
+      };
+    }
+    if (t < LAND) {
+      const u = (t - FALL) / (LAND - FALL);
+      const f = flight(3.0);
+      const sc = lerp(0.55, 1, u);
+      const yc = lerp(f.yc, 0.5 * H, eIn(u));
+      return { ty: comp(yc, sc), tx: f.x * (1 - u), sx: sc, sy: sc, rot: (14 * Math.cos(f.th) + 10 * Math.sin(f.th * 1.3)) * (1 - u), rx: 0 };
+    }
+    return { ty: track(bounceY, t), tx: 0, sx: track(squX, t), sy: track(squY, t), rot: track(rotK, t), rx: track(txK, t) };
+  }
+
+  function drawSmoke(p, t, hh, th, ctxs) {
+    const y = y0 - hh * heightNow(t) + rhoAt(hh, t) * 0.1 * Math.sin(th);
+    const rho = rhoAt(hh, t) * p.j;
+    const x = axisAt(hh, t) + rho * Math.cos(th);
+    const r = W * (0.055 + 0.1 * hh) * p.rs;
+    const al = p.al * ss(0.05, 0.5, t) * decay(hh, t) * edge(hh);
+    if (al < 0.004) return;
+    const g = Math.sin(th) > 0 ? ctxs[1] : ctxs[0];
+    g.globalAlpha = al;
+    g.save();
+    g.translate(x, y);
+    g.rotate(0.35 * Math.cos(th));
+    g.drawImage(sprites[p.sp], -r * 1.5, -r * 0.75, r * 3, r * 1.5);
+    g.restore();
+  }
 
   return {
-    duration: 6.0,
+    duration: 6.5,
+    pose: pose,
     render(t) {
-      ctx.clearRect(0, 0, W, H);
-      for (let k = 0; k < parts.length; k++) {
-        const p = parts[k];
+      gb.clearRect(0, 0, W, H);
+      gf.clearRect(0, 0, W, H);
+      const ctxs = [gb, gf];
+      let k, p;
+      // غبارِ کف
+      for (k = 0; k < ground.length; k++) {
+        p = ground[k];
+        const th = p.ph + TAU * p.w * t;
+        const al = p.al * ss(0.05, 0.6, t) * (1 - ss(3.4, 4.3, t));
+        if (al < 0.004) continue;
+        const r = W * (0.07 + 0.08 * p.rs);
+        const g = Math.sin(th) > 0 ? gf : gb;
+        g.globalAlpha = al;
+        g.drawImage(sprites[p.sp], x0 + W * p.rho * Math.cos(th) * 1.1 - r, H * 0.93 + W * p.rho * 0.12 * Math.sin(th) - r * 0.7, r * 2, r * 1.4);
+      }
+      // ستونِ دود
+      for (k = 0; k < smoke.length; k++) {
+        p = smoke[k];
+        drawSmoke(p, t, p.h, p.ph + TAU * p.w * t, ctxs);
+      }
+      // ذراتِ خاک و آوار
+      for (k = 0; k < specks.length; k++) {
+        p = specks[k];
+        const hh = p.h;
+        const th = p.ph + TAU * p.w * t;
+        const al = p.al * ss(0.1, 0.6, t) * decay(hh, t) * edge(hh);
+        if (al < 0.01) continue;
+        const rho = rhoAt(hh, t) * p.j * (1 + p.dr * ss(0.5, 3, t) * 0.3);
+        const x = axisAt(hh, t) + rho * Math.cos(th);
+        const y = y0 - hh * heightNow(t) + rho * 0.1 * Math.sin(th);
+        const g = Math.sin(th) > 0 ? gf : gb;
+        g.globalAlpha = al;
+        g.fillStyle = "rgb(" + p.c + ")";
+        g.fillRect(x, y, p.s * 1.7, p.s);
+      }
+      // غبارِ فرود
+      for (k = 0; k < dust.length; k++) {
+        p = dust[k];
         const a = (t - p.t0) / p.life;
         if (a < 0 || a > 1) continue;
-        let x, y, r, al;
-        if (p.kind === 0) {
-          const e = Math.pow(a, 0.85);
-          const amp = 0.02 + 0.05 * a;
-          const sway = Math.sin(a * 8.2 + p.ph * 0.25 + t * 1.15 + p.t0 * 2.2) * amp + Math.sin(a * 17 + p.ph) * 0.022 * a;
-          x = x0 + W * (0.13 * Math.pow(e, 1.2) + sway + p.jit * Math.pow(a, 0.8));
-          y = y0 - p.rise * e;
-          r = W * (0.03 + 0.19 * Math.pow(a, 0.66)) * p.rs;
-          al = p.al * ss(0, 0.07, a) * (1 - ss(0.55, 1, a));
-        } else {
-          const ee = 1 - Math.pow(1 - a, 2);
-          x = x0 + p.vx * ee * p.life * 0.9;
-          y = H * 0.93 - p.up * ee * 1.2;
-          r = W * (0.05 + 0.08 * ee) * p.rs;
-          al = p.al * ss(0, 0.1, a) * (1 - ss(0.35, 1, a));
-        }
-        ctx.globalAlpha = al;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(p.rot + p.rotv * (t - p.t0));
-        ctx.drawImage(sprites[p.sp], -r, -r, r * 2, r * 2);
-        ctx.restore();
+        const ee = 1 - Math.pow(1 - a, 2);
+        const x = x0 + p.vx * ee * p.life * 0.9;
+        const y = H * 0.93 - p.up * ee * 1.2;
+        const r = W * (0.05 + 0.08 * ee) * p.rs;
+        gf.globalAlpha = p.al * ss(0, 0.1, a) * (1 - ss(0.35, 1, a));
+        gf.save();
+        gf.translate(x, y);
+        gf.rotate(p.rot);
+        gf.drawImage(sprites[p.sp], -r, -r, r * 2, r * 2);
+        gf.restore();
       }
-      ctx.globalAlpha = 1;
+      gb.globalAlpha = 1;
+      gf.globalAlpha = 1;
     },
   };
 }
@@ -2515,7 +2588,10 @@ function SmokeImage({ playKey, src, alt, style }) {
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return "done";
     return "wait";
   });
-  const canvasRef = useRef(null);
+  const backRef = useRef(null);
+  const frontRef = useRef(null);
+  const prodRef = useRef(null);
+  const rockRef = useRef(null);
 
   // ۱) عکس را پیش‌بارگذاری می‌کنیم؛ اگر تا ۶۰۰ میلی‌ثانیه نیامد، همان‌جا شروع می‌کنیم.
   useEffect(() => {
@@ -2535,19 +2611,23 @@ function SmokeImage({ playKey, src, alt, style }) {
     return () => { cancelled = true; window.clearTimeout(t); };
   }, [state, src, playKey]);
 
-  // ۲) دود را روی بوم می‌کشیم و در پایان به عکس ساده برمی‌گردیم.
+  // ۲) گردباد را روی دو بوم (پشت و جلوی محصول) می‌کشیم و در پایان به عکس ساده برمی‌گردیم.
   useEffect(() => {
     if (state !== "playing") return undefined;
-    const canvas = canvasRef.current;
-    if (!canvas) return undefined;
-    const plume = createSmokePlume(canvas);
-    if (!plume) { setState("done"); return undefined; }
+    const b = backRef.current;
+    const f = frontRef.current;
+    if (!b || !f) return undefined;
+    const tor = createTornado(b, f);
+    if (!tor) { setState("done"); return undefined; }
     let raf = 0;
     const t0 = performance.now();
     const loop = (now) => {
       const t = (now - t0) / 1000;
-      plume.render(t);
-      if (t < plume.duration) raf = requestAnimationFrame(loop);
+      tor.render(t);
+      const ps = tor.pose(t);
+      if (prodRef.current) prodRef.current.style.transform = "translate(" + ps.tx + "px," + ps.ty + "px) scale(" + ps.sx + "," + ps.sy + ")";
+      if (rockRef.current) rockRef.current.style.transform = "rotate(" + ps.rot + "deg) translateX(" + ps.rx + "px)";
+      if (t < tor.duration) raf = requestAnimationFrame(loop);
       else setState("done");
     };
     raf = requestAnimationFrame(loop);
@@ -2560,16 +2640,16 @@ function SmokeImage({ playKey, src, alt, style }) {
   return (
     <>
       <div className="smk-shadow" aria-hidden="true" />
-      <div className="smk-product">
-        <div className="smk-rock">
+      <canvas ref={backRef} className="smk-canvas smk-canvas-back" aria-hidden="true" />
+      <div className="smk-product" ref={prodRef} style={{ transform: "translateY(125%)" }}>
+        <div className="smk-rock" ref={rockRef}>
           <img src={src} alt={alt} style={style} />
         </div>
       </div>
-      <canvas ref={canvasRef} className="smk-canvas" aria-hidden="true" />
+      <canvas ref={frontRef} className="smk-canvas" aria-hidden="true" />
     </>
   );
 }
-
 
 function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, categoryMedia }) {
   const hasVariants = !!product && product.variants && product.variants.length > 0;
