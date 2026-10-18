@@ -2473,10 +2473,11 @@ function createTornado(back, front, geo) {
     });
   }
 
-  // ---- رعد و برق: دو صاعقه هنگامِ شکل‌گرفتنِ گردباد و دو صاعقه هنگامِ پایان (آخری درست قبل از سقوطِ محصول) ----
-  function makeBolt(ax, ay, bx, by, amp) {
+  // ---- رعد و برق طلایی: تنه‌ی اصلی با شاخه‌ها و رگه‌های ریز؛ دو صاعقه هنگامِ شکل‌گرفتنِ گردباد و دو صاعقه هنگامِ پایان
+  // (آخری درست قبل از سقوطِ محصول). نورِ صاعقه دود و غبار را هم طلایی روشن می‌کند. ----
+  function makeBolt(ax, ay, bx, by, amp, iters) {
     let pts = [[ax, ay], [bx, by]];
-    for (let d = 0; d < 6; d++) {
+    for (let d = 0; d < iters; d++) {
       const nx = [];
       for (let q = 0; q < pts.length - 1; q++) {
         const p0 = pts[q], p1 = pts[q + 1];
@@ -2491,55 +2492,83 @@ function createTornado(back, front, geo) {
     }
     return pts;
   }
+  function buildBolt(sx, ex, ey) {
+    const levels = [[], [], [], []];
+    const trunk = makeBolt(sx, -4, ex, ey, W * 0.1, 6);
+    levels[0].push(trunk);
+    const spawn = (poly, depth, count) => {
+      for (let c = 0; c < count; c++) {
+        const idx = Math.floor(poly.length * (0.1 + rnd() * 0.82));
+        const p = poly[idx], q = poly[Math.min(idx + 2, poly.length - 1)];
+        const base = Math.atan2(q[1] - p[1], q[0] - p[0]);
+        let ang = base + (rnd() < 0.5 ? -1 : 1) * (0.35 + rnd() * 0.75);
+        if (Math.sin(ang) < 0.25) ang = Math.PI - ang;
+        const len = depth === 1 ? H * (0.22 + rnd() * 0.3) : depth === 2 ? H * (0.09 + rnd() * 0.16) : H * (0.04 + rnd() * 0.08);
+        const child = makeBolt(p[0], p[1], p[0] + Math.cos(ang) * len, p[1] + Math.sin(ang) * len, len * 0.2, depth === 1 ? 5 : 4);
+        levels[depth].push(child);
+        if (depth < 3) spawn(child, depth + 1, depth === 1 ? 2 + Math.floor(rnd() * 2) : 1 + Math.floor(rnd() * 2));
+      }
+    };
+    spawn(trunk, 1, 8);
+    return levels;
+  }
   const bolts = [];
-  [[0.45, 0.8, -0.12, 0.5], [0.95, 0.55, 0.2, 0.42], [3.55, 0.6, 0.15, 0.46], [3.82, 1, -0.05, 0.64]].forEach((cfg) => {
-    const sx = x0 + W * cfg[2] + (rnd() - 0.5) * W * 0.08;
-    const ex = sx + (rnd() - 0.5) * W * 0.3, ey = H * cfg[3];
-    const main = makeBolt(sx, -4, ex, ey, W * 0.24);
-    const parts = [main];
-    for (let b = 0; b < 3; b++) {
-      const at = main[Math.floor(main.length * (0.2 + rnd() * 0.5))];
-      const dir = rnd() < 0.5 ? -1 : 1;
-      parts.push(makeBolt(at[0], at[1], at[0] + dir * W * (0.1 + rnd() * 0.2), at[1] + H * (0.1 + rnd() * 0.18), W * 0.1));
-    }
-    bolts.push({ t0: cfg[0], big: cfg[1], parts: parts, sx: sx });
+  [[0.45, 0.85, -0.14, 0.62], [0.95, 0.6, 0.2, 0.5], [3.55, 0.65, 0.16, 0.55], [3.82, 1, -0.06, 0.72]].forEach((cfg) => {
+    const sx = x0 + W * cfg[2] + (rnd() - 0.5) * W * 0.06;
+    const ex = sx + (rnd() - 0.5) * W * 0.26;
+    bolts.push({ t0: cfg[0], big: cfg[1], levels: buildBolt(sx, ex, H * cfg[3]), sx: sx });
   });
   const boltI = (a) => {
-    if (a < 0 || a > 0.6) return 0;
-    const m = a < 0.035 ? a / 0.035 : Math.exp(-(a - 0.035) * 11);
-    const r = a > 0.14 ? 0.5 * Math.exp(-(a - 0.14) * 14) : 0;
+    if (a < 0 || a > 0.7) return 0;
+    const m = a < 0.03 ? a / 0.03 : Math.exp(-(a - 0.03) * 9);
+    const r = a > 0.13 ? 0.55 * Math.exp(-(a - 0.13) * 12) : 0;
     return Math.min(1, m + r);
   };
-  function drawBolts(g, t) {
+  const LW = [1, 0.62, 0.4, 0.26];
+  function drawBolts(gB, gF, t) {
+    let top = 0;
+    for (let q = 0; q < bolts.length; q++) top = Math.max(top, boltI(t - bolts[q].t0) * bolts[q].big);
+    if (top < 0.02) return;
+    // نورِ صاعقه روی دود و غبار: همان پیکسل‌های دود را طلایی روشن می‌کنیم
+    [gB, gF].forEach((g) => {
+      g.globalCompositeOperation = "source-atop";
+      g.globalAlpha = 1;
+      g.fillStyle = "rgba(255,208,112," + (0.5 * Math.pow(top, 1.2)).toFixed(3) + ")";
+      g.fillRect(0, 0, W, H);
+      g.globalCompositeOperation = "source-over";
+    });
     for (let q = 0; q < bolts.length; q++) {
       const b = bolts[q];
       const I = boltI(t - b.t0) * b.big;
       if (I < 0.02) continue;
-      // درخششِ آسمان: روشن‌شدنِ ملایمِ کلِ قاب و هاله‌ی بالا
-      g.globalAlpha = 1;
-      g.fillStyle = "rgba(196,186,255," + (0.16 * Math.pow(I, 1.6)).toFixed(3) + ")";
-      g.fillRect(0, 0, W, H);
-      const rg = g.createRadialGradient(b.sx, 0, 0, b.sx, 0, H * 0.75);
-      rg.addColorStop(0, "rgba(214,205,255," + (0.5 * Math.pow(I, 1.4)).toFixed(3) + ")");
-      rg.addColorStop(1, "rgba(214,205,255,0)");
-      g.fillStyle = rg;
-      g.fillRect(0, 0, W, H);
-      g.lineCap = "round";
-      g.lineJoin = "round";
-      for (let pass = 0; pass < 3; pass++) {
-        g.beginPath();
-        for (let s = 0; s < b.parts.length; s++) {
-          const pts = b.parts[s];
-          g.moveTo(pts[0][0], pts[0][1]);
-          for (let k2 = 1; k2 < pts.length; k2++) g.lineTo(pts[k2][0], pts[k2][1]);
+      gF.globalAlpha = 1;
+      gF.fillStyle = "rgba(255,216,130," + (0.13 * Math.pow(I, 1.6)).toFixed(3) + ")";
+      gF.fillRect(0, 0, W, H);
+      const rg = gF.createRadialGradient(b.sx, 0, 0, b.sx, 0, H * 0.8);
+      rg.addColorStop(0, "rgba(255,226,150," + (0.6 * Math.pow(I, 1.3)).toFixed(3) + ")");
+      rg.addColorStop(1, "rgba(255,226,150,0)");
+      gF.fillStyle = rg;
+      gF.fillRect(0, 0, W, H);
+      gF.lineCap = "round";
+      gF.lineJoin = "round";
+      for (let lv = 0; lv < 4; lv++) {
+        const polys = b.levels[lv];
+        if (!polys.length) continue;
+        for (let pass = 0; pass < 3; pass++) {
+          gF.beginPath();
+          for (let s = 0; s < polys.length; s++) {
+            const pts = polys[s];
+            gF.moveTo(pts[0][0], pts[0][1]);
+            for (let k2 = 1; k2 < pts.length; k2++) gF.lineTo(pts[k2][0], pts[k2][1]);
+          }
+          if (pass === 0) { gF.strokeStyle = "rgba(255,150,30," + (0.4 * I).toFixed(3) + ")"; gF.lineWidth = 8 * LW[lv] + 1; gF.shadowColor = "rgba(255,165,40,0.95)"; gF.shadowBlur = 20 * LW[lv] + 6; }
+          else if (pass === 1) { gF.strokeStyle = "rgba(255,208,92," + (0.9 * I).toFixed(3) + ")"; gF.lineWidth = 3.6 * LW[lv] + 0.5; gF.shadowBlur = 8; }
+          else { gF.strokeStyle = "rgba(255,252,232," + Math.min(1, I * 1.25).toFixed(3) + ")"; gF.lineWidth = 1.9 * LW[lv] + 0.4; gF.shadowBlur = 0; }
+          gF.stroke();
         }
-        if (pass === 0) { g.strokeStyle = "rgba(92,70,210," + (0.5 * I).toFixed(3) + ")"; g.lineWidth = 4.2; g.shadowColor = "rgba(150,130,255,0.9)"; g.shadowBlur = 16; }
-        else if (pass === 1) { g.strokeStyle = "rgba(170,150,255," + (0.85 * I).toFixed(3) + ")"; g.lineWidth = 3; g.shadowBlur = 8; }
-        else { g.strokeStyle = "rgba(252,253,255," + Math.min(1, I * 1.2).toFixed(3) + ")"; g.lineWidth = 1.7; g.shadowBlur = 0; }
-        g.stroke();
       }
-      g.shadowBlur = 0;
-      g.shadowColor = "transparent";
+      gF.shadowBlur = 0;
+      gF.shadowColor = "transparent";
     }
   }
 
@@ -2710,7 +2739,7 @@ function createTornado(back, front, geo) {
         gf.drawImage(sprites[p.sp], -r, -r, r * 2, r * 2);
         gf.restore();
       }
-      drawBolts(gf, t);
+      drawBolts(gb, gf, t);
       gb.globalAlpha = 1;
       gf.globalAlpha = 1;
     },
