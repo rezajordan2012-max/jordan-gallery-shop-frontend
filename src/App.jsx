@@ -2525,7 +2525,13 @@ function createTornado(back, front, geo) {
   };
   const bolts = [
     { t0: 0.28, big: 1, back: true, tone: TONES.warm, levels: buildBolt(W * 0.04, -6, W * 0.9, H * 0.96), sx: W * 0.04 },
-    { t0: 3.72, big: 1, tone: TONES.warm, levels: buildBolt(W * 0.96, -6, W * 0.1, H * 0.92), sx: W * 0.96 },
+    { t0: 3.72, big: 1, tone: TONES.warm, levels: (() => {
+      // صاعقه‌ی دوم از سمتِ پایه (نوکِ پایینش) حدود یک سانتی‌متر (۳۸ پیکسل) کوتاه شد
+      const sx2 = W * 0.96, sy2 = -6, ex2 = W * 0.1, ey2 = H * 0.92;
+      const l2 = Math.sqrt((ex2 - sx2) * (ex2 - sx2) + (ey2 - sy2) * (ey2 - sy2));
+      const k2 = (l2 - 38) / l2;
+      return buildBolt(sx2, sy2, sx2 + (ex2 - sx2) * k2, sy2 + (ey2 - sy2) * k2);
+    })(), sx: W * 0.96 },
   ];
   const boltI = (a) => {
     if (a < 0 || a > 0.75) return 0;
