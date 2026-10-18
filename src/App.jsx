@@ -258,6 +258,7 @@ const FONTS = `
   }
   }
   }
+  }
 
 
 
@@ -2373,7 +2374,7 @@ function PuzzleImage({ playKey, src, alt, style }) {
 // از بالای قاب بیرون می‌برد؛ وقتی غبار محو شد، محصول ناگهان سقوط می‌کند و نامتعادل تکان‌تکان می‌خورد تا ثابت شود. =====
 const SMOKE_SEEN = new Set();
 
-function createTornado(back, front) {
+function createTornado(back, front, geo) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const W = back.clientWidth || 360;
   const H = back.clientHeight || 360;
@@ -2415,39 +2416,53 @@ function createTornado(back, front) {
       g.fill();
     }
     let i;
-    for (i = 0; i < 7; i++) { const a = rnd() * TAU, d = rnd() * 40; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d + 10, 36 + rnd() * 26, "78,74,82", 0.34); }
-    for (i = 0; i < 9; i++) { const a = rnd() * TAU, d = rnd() * 44; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d, 30 + rnd() * 30, "132,128,136", 0.5); }
-    for (i = 0; i < 4; i++) { const a = rnd() * TAU, d = rnd() * 36; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d - 12, 24 + rnd() * 20, "196,192,198", 0.45); }
-    for (i = 0; i < 3; i++) { const a = rnd() * TAU, d = rnd() * 40; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d + 8, 22 + rnd() * 18, "150,128,100", 0.3); }
+    for (i = 0; i < 7; i++) { const a = rnd() * TAU, d = rnd() * 40; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d + 10, 36 + rnd() * 26, "96,70,44", 0.42); }
+    for (i = 0; i < 9; i++) { const a = rnd() * TAU, d = rnd() * 44; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d, 30 + rnd() * 30, "164,128,88", 0.56); }
+    for (i = 0; i < 4; i++) { const a = rnd() * TAU, d = rnd() * 36; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d - 12, 24 + rnd() * 20, "218,188,146", 0.5); }
+    for (i = 0; i < 3; i++) { const a = rnd() * TAU, d = rnd() * 40; blob(96 + Math.cos(a) * d, 96 + Math.sin(a) * d + 8, 22 + rnd() * 18, "122,112,106", 0.3); }
     return c;
   }
   const sprites = [makeSprite(), makeSprite(), makeSprite(), makeSprite()];
 
   const x0 = W * 0.5;
-  const y0 = H * 0.95;
+  const y0 = Math.min(H * 0.97, geo.cy + H * 0.02);
   const FALL = 3.95, LAND = 4.4;
-  const smoke = [], specks = [], ground = [], dust = [];
+  const smoke = [], specks = [], ground = [], dust = [], flung = [];
   let i;
-  for (i = 0; i < 280; i++) {
+  for (i = 0; i < 430; i++) {
     const h = rnd();
     smoke.push({
       h: h, ph: h * 11 + (rnd() - 0.5) * 1.3, w: (1.7 + rnd() * 0.5) * (1.3 - 0.75 * h),
-      j: 0.78 + rnd() * 0.36, rs: 0.7 + rnd() * 0.7, sp: Math.floor(rnd() * 4), al: 0.16 + rnd() * 0.17,
+      j: 0.78 + rnd() * 0.36, rs: 0.7 + rnd() * 0.7, sp: Math.floor(rnd() * 4), al: 0.22 + rnd() * 0.18,
     });
   }
-  const cols = ["52,47,44", "74,66,58", "150,126,94", "118,104,88", "34,32,34"];
-  for (i = 0; i < 260; i++) {
+  const cols = ["150,118,80", "184,148,102", "110,84,56", "74,56,40", "208,176,132", "60,48,38"];
+  for (i = 0; i < 520; i++) {
     specks.push({
-      h: rnd(), ph: rnd() * TAU, w: 2.3 + rnd() * 1.4, j: 1.0 + rnd() * 0.85, s: 0.9 + rnd() * 2.4,
+      h: rnd(), ph: rnd() * TAU, w: 2.3 + rnd() * 1.4, j: 1.0 + rnd() * 1.3, s: 0.9 + rnd() * 2.4,
       c: cols[Math.floor(rnd() * cols.length)], al: 0.45 + rnd() * 0.45, dr: rnd() * 0.5,
     });
   }
-  for (i = 0; i < 46; i++) {
-    ground.push({ ph: rnd() * TAU, w: 0.7 + rnd() * 0.5, rho: 0.1 + rnd() * 0.3, rs: 0.8 + rnd() * 0.8, sp: Math.floor(rnd() * 4), al: 0.3 + rnd() * 0.2 });
+  for (i = 0; i < 90; i++) {
+    ground.push({ ph: rnd() * TAU, w: 0.7 + rnd() * 0.5, rho: 0.1 + rnd() * 0.32, rs: 0.8 + rnd() * 1.0, sp: Math.floor(rnd() * 4), al: 0.3 + rnd() * 0.25 });
   }
-  for (i = 0; i < 36; i++) {
-    const dir = i % 2 ? 1 : -1;
-    dust.push({ t0: LAND + rnd() * 0.06, life: 0.85 + rnd() * 0.5, vx: dir * W * (0.12 + rnd() * 0.33), up: H * (0.04 + rnd() * 0.09), sp: Math.floor(rnd() * 4), rot: rnd() * TAU, rs: 0.6 + rnd() * 0.5, al: 0.5 });
+  for (i = 0; i < 200; i++) {
+    flung.push({
+      t0: 0.7 + rnd() * 2.7, life: 0.8 + rnd() * 1.0, dir: rnd() < 0.5 ? -1 : 1, h0: 0.04 + rnd() * 0.7,
+      vx: W * (0.3 + rnd() * 1.1), vy: -H * (0.05 + rnd() * 0.6), s: 1.2 + rnd() * 3.2,
+      c: cols[Math.floor(rnd() * cols.length)], al: 0.55 + rnd() * 0.4, ph: rnd() * TAU,
+    });
+  }
+  // غبارِ برخورد: دقیقاً در خطِ تماسِ محصول با سطح، از چپ تا راستِ پایه
+  const cxm = (geo.x1 + geo.x2) / 2;
+  for (i = 0; i < 80; i++) {
+    const edgeW = rnd() < 0.55;
+    const px = edgeW ? (rnd() < 0.5 ? geo.x1 + rnd() * (geo.x2 - geo.x1) * 0.18 : geo.x2 - rnd() * (geo.x2 - geo.x1) * 0.18) : geo.x1 + rnd() * (geo.x2 - geo.x1);
+    const dir = px < cxm ? -1 : 1;
+    dust.push({
+      t0: LAND + rnd() * 0.05, life: 0.8 + rnd() * 0.6, x: px, vx: dir * W * (0.06 + rnd() * 0.26),
+      up: H * (0.02 + rnd() * 0.07), sp: Math.floor(rnd() * 4), rot: rnd() * TAU, rs: 0.7 + rnd() * 0.7, al: 0.4,
+    });
   }
 
   const axisAt = (h, t) => x0 + W * (0.06 * h * h + 0.035 * h * Math.sin(t * 1.4 + h * 4));
@@ -2484,7 +2499,7 @@ function createTornado(back, front) {
   const squY = [[L, 0.93], [L + 0.22, 1], [L + 0.42, 0.97], [L + 0.55, 1]];
   const rotK = [[L, 0], [L + 0.23, -9], [L + 0.53, 7], [L + 0.82, -5], [L + 1.08, 3.4], [L + 1.35, -1.9], [L + 1.62, 0.8], [L + 1.85, 0]];
   const txK = [[L, 0], [L + 0.23, -0.026 * W], [L + 0.53, 0.02 * W], [L + 0.82, -0.013 * W], [L + 1.08, 0.009 * W], [L + 1.35, -0.004 * W], [L + 1.85, 0]];
-  const comp = (yc, sc) => yc - (0.9 * H - 0.4 * H * sc);
+  const comp = (yc, sc) => yc - (geo.cy - (geo.cy - 0.5 * H) * sc);
 
   function pose(t) {
     if (t < FALL) {
@@ -2513,7 +2528,7 @@ function createTornado(back, front) {
     const al = p.al * ss(0.05, 0.5, t) * decay(hh, t) * edge(hh);
     if (al < 0.004) return;
     const g = Math.sin(th) > 0 ? ctxs[1] : ctxs[0];
-    g.globalAlpha = al;
+    g.globalAlpha = Math.sin(th) > 0 ? al * 0.42 : al;
     g.save();
     g.translate(x, y);
     g.rotate(0.35 * Math.cos(th));
@@ -2538,7 +2553,7 @@ function createTornado(back, front) {
         const r = W * (0.07 + 0.08 * p.rs);
         const g = Math.sin(th) > 0 ? gf : gb;
         g.globalAlpha = al;
-        g.drawImage(sprites[p.sp], x0 + W * p.rho * Math.cos(th) * 1.1 - r, H * 0.93 + W * p.rho * 0.12 * Math.sin(th) - r * 0.7, r * 2, r * 1.4);
+        g.drawImage(sprites[p.sp], x0 + W * p.rho * Math.cos(th) * 1.1 - r, geo.cy + W * p.rho * 0.1 * Math.sin(th) - r * 0.7, r * 2, r * 1.4);
       }
       // ستونِ دود
       for (k = 0; k < smoke.length; k++) {
@@ -2560,15 +2575,33 @@ function createTornado(back, front) {
         g.fillStyle = "rgb(" + p.c + ")";
         g.fillRect(x, y, p.s * 1.7, p.s);
       }
+      // شن و ماسه‌ی پرتاب‌شده به اطراف
+      for (k = 0; k < flung.length; k++) {
+        p = flung[k];
+        const a = (t - p.t0) / p.life;
+        if (a < 0 || a > 1) continue;
+        const aa = a * p.life;
+        const th0 = p.ph + 3 * t;
+        const xs = axisAt(p.h0, p.t0) + rhoAt(p.h0, t) * Math.cos(th0);
+        const ys = y0 - p.h0 * heightNow(p.t0);
+        const x = xs + p.dir * p.vx * aa;
+        const y = ys + p.vy * aa + 0.5 * H * 1.6 * aa * aa;
+        const al = p.al * ss(0, 0.1, a) * (1 - ss(0.65, 1, a)) * decay(0.5, t);
+        if (al < 0.01) continue;
+        const g = Math.sin(th0) > 0 ? gf : gb;
+        g.globalAlpha = al;
+        g.fillStyle = "rgb(" + p.c + ")";
+        g.fillRect(x, y, p.s * 1.6, p.s);
+      }
       // غبارِ فرود
       for (k = 0; k < dust.length; k++) {
         p = dust[k];
         const a = (t - p.t0) / p.life;
         if (a < 0 || a > 1) continue;
         const ee = 1 - Math.pow(1 - a, 2);
-        const x = x0 + p.vx * ee * p.life * 0.9;
-        const y = H * 0.93 - p.up * ee * 1.2;
-        const r = W * (0.05 + 0.08 * ee) * p.rs;
+        const x = p.x + p.vx * ee * p.life * 0.9;
+        const y = geo.cy - p.up * ee * 1.2;
+        const r = W * (0.03 + 0.05 * ee) * p.rs;
         gf.globalAlpha = p.al * ss(0, 0.1, a) * (1 - ss(0.35, 1, a));
         gf.save();
         gf.translate(x, y);
@@ -2582,6 +2615,56 @@ function createTornado(back, front) {
   };
 }
 
+// موقعیتِ واقعیِ پایینِ محصول در عکس (برای اینکه گرد و غبارِ فرود دقیقاً در محلِ برخورد باشد)
+function scanProductBase(im) {
+  try {
+    const iw = im.naturalWidth, ih = im.naturalHeight;
+    if (!iw || !ih) return null;
+    const sc = Math.min(1, 400 / Math.max(iw, ih));
+    const w = Math.max(8, Math.round(iw * sc)), h = Math.max(8, Math.round(ih * sc));
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const g = c.getContext("2d");
+    g.drawImage(im, 0, 0, w, h);
+    const d = g.getImageData(0, 0, w, h).data;
+    const on = (x, y) => { const k = (y * w + x) * 4; return d[k + 3] > 30 && (d[k] < 236 || d[k + 1] < 236 || d[k + 2] < 236); };
+    let bottom = -1, y, x;
+    const runAt = (yy) => {
+      let n = 0, run = 0, best = 0;
+      for (let xx = 0; xx < w; xx++) {
+        if (on(xx, yy)) { n++; run++; if (run > best) best = run; } else run = 0;
+      }
+      return { n: n, run: best };
+    };
+    const minRuns = [w * 0.16, w * 0.03];
+    for (let pass = 0; pass < 2 && bottom < 0; pass++) {
+      for (y = h - 1; y >= 0; y--) {
+        const r = runAt(y);
+        if (r.n > w * 0.8) continue;
+        if (r.run >= Math.max(2, minRuns[pass])) { bottom = y; break; }
+      }
+    }
+    if (bottom < 0) return null;
+    const top = Math.max(0, bottom - Math.round(h * 0.03));
+    const occ = [];
+    for (x = 0; x < w; x++) {
+      let o = false;
+      for (y = top; y <= bottom && !o; y++) if (on(x, y)) o = true;
+      occ.push(o);
+    }
+    let best = [0, 0], cur = -1, gap = 0;
+    for (x = 0; x < w; x++) {
+      if (occ[x]) { if (cur < 0) cur = x; gap = 0; if (x - cur > best[1] - best[0]) best = [cur, x]; }
+      else if (cur >= 0 && ++gap > w * 0.02) cur = -1;
+    }
+    if (best[1] - best[0] < w * 0.05) return null;
+    return { fb: (bottom + 1) / h, fx1: best[0] / w, fx2: (best[1] + 1) / w, iw: iw, ih: ih };
+  } catch (e) {
+    return null;
+  }
+}
+
 function SmokeImage({ playKey, src, alt, style }) {
   const [state, setState] = useState(() => {
     if (typeof window === "undefined" || !src || SMOKE_SEEN.has(playKey)) return "done";
@@ -2592,22 +2675,32 @@ function SmokeImage({ playKey, src, alt, style }) {
   const frontRef = useRef(null);
   const prodRef = useRef(null);
   const rockRef = useRef(null);
+  const shadowRef = useRef(null);
+  const detRef = useRef(null);
 
-  // ۱) عکس را پیش‌بارگذاری می‌کنیم؛ اگر تا ۶۰۰ میلی‌ثانیه نیامد، همان‌جا شروع می‌کنیم.
+  // ۱) عکس را پیش‌بارگذاری می‌کنیم و پایینِ محصول را در آن پیدا می‌کنیم؛ اگر تا ۷۰۰ میلی‌ثانیه آماده نشد، همان‌جا شروع می‌کنیم.
   useEffect(() => {
     if (state !== "wait") return undefined;
     let cancelled = false;
-    const go = (next) => () => {
-      if (cancelled) return;
+    let okImg = false, okDet = false, started = false;
+    const start = () => {
+      if (cancelled || started) return;
+      started = true;
       SMOKE_SEEN.add(playKey);
-      setState(next);
+      setState("playing");
     };
+    const check = () => { if (okImg && okDet) start(); };
     const im = new Image();
-    im.onload = go("playing");
-    im.onerror = go("done");
+    im.onload = () => { okImg = true; check(); };
+    im.onerror = () => { if (cancelled) return; started = true; SMOKE_SEEN.add(playKey); setState("done"); };
     im.src = src;
-    if (im.complete && im.naturalWidth) go("playing")();
-    const t = window.setTimeout(go("playing"), 600);
+    const dm = new Image();
+    dm.crossOrigin = "anonymous";
+    const fin = () => { okDet = true; check(); };
+    dm.onload = () => { detRef.current = scanProductBase(dm); fin(); };
+    dm.onerror = fin;
+    dm.src = src;
+    const t = window.setTimeout(start, 700);
     return () => { cancelled = true; window.clearTimeout(t); };
   }, [state, src, playKey]);
 
@@ -2617,7 +2710,35 @@ function SmokeImage({ playKey, src, alt, style }) {
     const b = backRef.current;
     const f = frontRef.current;
     if (!b || !f) return undefined;
-    const tor = createTornado(b, f);
+    const W = b.clientWidth || 360;
+    const H = b.clientHeight || 360;
+    // محلِ واقعیِ برخورد (پایینِ محصول) را در قاب حساب می‌کنیم
+    let geo = { cy: H * 0.93, x1: W * 0.3, x2: W * 0.7 };
+    const imgEl = prodRef.current ? prodRef.current.querySelector("img") : null;
+    const det = detRef.current;
+    if (imgEl && det) {
+      const iw = det.iw, ih = det.ih;
+      const ow = imgEl.offsetWidth, oh = imgEl.offsetHeight, ox = imgEl.offsetLeft, oy = imgEl.offsetTop;
+      const fit = window.getComputedStyle(imgEl).objectFit;
+      let sx = ow / iw, sy = oh / ih, dx = 0, dy = 0;
+      if (fit === "contain" || fit === "scale-down") {
+        const s = Math.min(sx, sy);
+        sx = s; sy = s; dx = (ow - iw * s) / 2; dy = (oh - ih * s) / 2;
+      }
+      const cy = oy + dy + ih * sy * det.fb;
+      const x1 = ox + dx + iw * sx * det.fx1, x2 = ox + dx + iw * sx * det.fx2;
+      if (cy > H * 0.3 && cy < H && x2 > x1) geo = { cy: cy, x1: x1, x2: x2 };
+    }
+    if (prodRef.current) prodRef.current.style.transformOrigin = "50% " + geo.cy + "px";
+    if (rockRef.current) rockRef.current.style.transformOrigin = "50% " + geo.cy + "px";
+    const sh = shadowRef.current;
+    if (sh) {
+      sh.style.top = geo.cy + "px";
+      sh.style.left = (geo.x1 + geo.x2) / 2 + "px";
+      sh.style.width = (geo.x2 - geo.x1) * 1.1 + "px";
+      sh.style.height = H * 0.05 + "px";
+    }
+    const tor = createTornado(b, f, geo);
     if (!tor) { setState("done"); return undefined; }
     let raf = 0;
     const t0 = performance.now();
@@ -2639,7 +2760,7 @@ function SmokeImage({ playKey, src, alt, style }) {
 
   return (
     <>
-      <div className="smk-shadow" aria-hidden="true" />
+      <div className="smk-shadow" ref={shadowRef} aria-hidden="true" />
       <canvas ref={backRef} className="smk-canvas smk-canvas-back" aria-hidden="true" />
       <div className="smk-product" ref={prodRef} style={{ transform: "translateY(125%)" }}>
         <div className="smk-rock" ref={rockRef}>
