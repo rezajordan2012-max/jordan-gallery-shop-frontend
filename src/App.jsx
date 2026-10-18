@@ -2529,7 +2529,7 @@ function createTornado(back, front, geo) {
       // صاعقه‌ی دوم از سمتِ پایه (نوکِ پایینش) حدود یک سانتی‌متر (۳۸ پیکسل) کوتاه شد
       const sx2 = W * 0.96, sy2 = -6, ex2 = W * 0.1, ey2 = H * 0.92;
       const l2 = Math.sqrt((ex2 - sx2) * (ex2 - sx2) + (ey2 - sy2) * (ey2 - sy2));
-      const k2 = (l2 - 38) / l2;
+      const k2 = (l2 - 76) / l2;
       return buildBolt(sx2, sy2, sx2 + (ex2 - sx2) * k2, sy2 + (ey2 - sy2) * k2);
     })(), sx: W * 0.96 },
   ];
