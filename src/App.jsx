@@ -2458,15 +2458,89 @@ function createTornado(back, front, geo) {
     streaks.push({ h: 0.05 + rnd() * 0.9, ph: rnd() * TAU, w: 2.0 + rnd() * 1.2, j: 0.7 + rnd() * 1.1, al: 0.1 + rnd() * 0.2, lw: 0.7 + rnd() * 1.4, len: 0.22 + rnd() * 0.3 });
   }
   // غبارِ برخورد: دقیقاً در خطِ تماسِ محصول با سطح، از چپ تا راستِ پایه
-  const cxm = (geo.x1 + geo.x2) / 2;
-  for (i = 0; i < 80; i++) {
-    const edgeW = rnd() < 0.55;
-    const px = edgeW ? (rnd() < 0.5 ? geo.x1 + rnd() * (geo.x2 - geo.x1) * 0.18 : geo.x2 - rnd() * (geo.x2 - geo.x1) * 0.18) : geo.x1 + rnd() * (geo.x2 - geo.x1);
-    const dir = px < cxm ? -1 : 1;
+  const segW = geo.segs.reduce((s, q) => s + (q.x2 - q.x1), 0);
+  for (i = 0; i < 90; i++) {
+    // یکی از تکه‌های محصول را (به نسبتِ پهنایش) انتخاب می‌کنیم؛ بیشترِ غبار از لبه‌های چپ و راستِ هر تکه بلند می‌شود
+    let pick = rnd() * segW, sg = geo.segs[0];
+    for (let q = 0; q < geo.segs.length; q++) { sg = geo.segs[q]; pick -= sg.x2 - sg.x1; if (pick <= 0) break; }
+    const sw = sg.x2 - sg.x1;
+    const edgeW = rnd() < 0.78;
+    const px = edgeW ? (rnd() < 0.5 ? sg.x1 + rnd() * sw * 0.16 : sg.x2 - rnd() * sw * 0.16) : sg.x1 + rnd() * sw;
+    const dir = px < (sg.x1 + sg.x2) / 2 ? -1 : 1;
     dust.push({
-      t0: LAND + rnd() * 0.05, life: 0.8 + rnd() * 0.6, x: px, vx: dir * W * (0.06 + rnd() * 0.26),
+      t0: LAND + rnd() * 0.05, life: 0.8 + rnd() * 0.6, x: px, y0: geo.yAt ? geo.yAt(px) : geo.cy, vx: dir * W * (0.05 + rnd() * 0.24),
       up: H * (0.02 + rnd() * 0.07), sp: Math.floor(rnd() * 4), rot: rnd() * TAU, rs: 0.7 + rnd() * 0.7, al: 0.4,
     });
+  }
+
+  // ---- رعد و برق: دو صاعقه هنگامِ شکل‌گرفتنِ گردباد و دو صاعقه هنگامِ پایان (آخری درست قبل از سقوطِ محصول) ----
+  function makeBolt(ax, ay, bx, by, amp) {
+    let pts = [[ax, ay], [bx, by]];
+    for (let d = 0; d < 6; d++) {
+      const nx = [];
+      for (let q = 0; q < pts.length - 1; q++) {
+        const p0 = pts[q], p1 = pts[q + 1];
+        const dx = p1[0] - p0[0], dy = p1[1] - p0[1];
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const off = (rnd() - 0.5) * amp;
+        nx.push(p0, [(p0[0] + p1[0]) / 2 - (dy / len) * off, (p0[1] + p1[1]) / 2 + (dx / len) * off]);
+      }
+      nx.push(pts[pts.length - 1]);
+      pts = nx;
+      amp *= 0.56;
+    }
+    return pts;
+  }
+  const bolts = [];
+  [[0.45, 0.8, -0.12, 0.5], [0.95, 0.55, 0.2, 0.42], [3.55, 0.6, 0.15, 0.46], [3.82, 1, -0.05, 0.64]].forEach((cfg) => {
+    const sx = x0 + W * cfg[2] + (rnd() - 0.5) * W * 0.08;
+    const ex = sx + (rnd() - 0.5) * W * 0.3, ey = H * cfg[3];
+    const main = makeBolt(sx, -4, ex, ey, W * 0.24);
+    const parts = [main];
+    for (let b = 0; b < 3; b++) {
+      const at = main[Math.floor(main.length * (0.2 + rnd() * 0.5))];
+      const dir = rnd() < 0.5 ? -1 : 1;
+      parts.push(makeBolt(at[0], at[1], at[0] + dir * W * (0.1 + rnd() * 0.2), at[1] + H * (0.1 + rnd() * 0.18), W * 0.1));
+    }
+    bolts.push({ t0: cfg[0], big: cfg[1], parts: parts, sx: sx });
+  });
+  const boltI = (a) => {
+    if (a < 0 || a > 0.6) return 0;
+    const m = a < 0.035 ? a / 0.035 : Math.exp(-(a - 0.035) * 11);
+    const r = a > 0.14 ? 0.5 * Math.exp(-(a - 0.14) * 14) : 0;
+    return Math.min(1, m + r);
+  };
+  function drawBolts(g, t) {
+    for (let q = 0; q < bolts.length; q++) {
+      const b = bolts[q];
+      const I = boltI(t - b.t0) * b.big;
+      if (I < 0.02) continue;
+      // درخششِ آسمان: روشن‌شدنِ ملایمِ کلِ قاب و هاله‌ی بالا
+      g.globalAlpha = 1;
+      g.fillStyle = "rgba(196,186,255," + (0.16 * Math.pow(I, 1.6)).toFixed(3) + ")";
+      g.fillRect(0, 0, W, H);
+      const rg = g.createRadialGradient(b.sx, 0, 0, b.sx, 0, H * 0.75);
+      rg.addColorStop(0, "rgba(214,205,255," + (0.5 * Math.pow(I, 1.4)).toFixed(3) + ")");
+      rg.addColorStop(1, "rgba(214,205,255,0)");
+      g.fillStyle = rg;
+      g.fillRect(0, 0, W, H);
+      g.lineCap = "round";
+      g.lineJoin = "round";
+      for (let pass = 0; pass < 3; pass++) {
+        g.beginPath();
+        for (let s = 0; s < b.parts.length; s++) {
+          const pts = b.parts[s];
+          g.moveTo(pts[0][0], pts[0][1]);
+          for (let k2 = 1; k2 < pts.length; k2++) g.lineTo(pts[k2][0], pts[k2][1]);
+        }
+        if (pass === 0) { g.strokeStyle = "rgba(92,70,210," + (0.5 * I).toFixed(3) + ")"; g.lineWidth = 4.2; g.shadowColor = "rgba(150,130,255,0.9)"; g.shadowBlur = 16; }
+        else if (pass === 1) { g.strokeStyle = "rgba(170,150,255," + (0.85 * I).toFixed(3) + ")"; g.lineWidth = 3; g.shadowBlur = 8; }
+        else { g.strokeStyle = "rgba(252,253,255," + Math.min(1, I * 1.2).toFixed(3) + ")"; g.lineWidth = 1.7; g.shadowBlur = 0; }
+        g.stroke();
+      }
+      g.shadowBlur = 0;
+      g.shadowColor = "transparent";
+    }
   }
 
   const axisAt = (h, t) => x0 + W * (0.06 * h * h + 0.035 * h * Math.sin(t * 1.4 + h * 4));
@@ -2627,7 +2701,7 @@ function createTornado(back, front, geo) {
         if (a < 0 || a > 1) continue;
         const ee = 1 - Math.pow(1 - a, 2);
         const x = p.x + p.vx * ee * p.life * 0.9;
-        const y = geo.cy - p.up * ee * 1.2;
+        const y = p.y0 - p.up * ee * 1.2;
         const r = W * (0.03 + 0.05 * ee) * p.rs;
         gf.globalAlpha = p.al * ss(0, 0.1, a) * (1 - ss(0.35, 1, a));
         gf.save();
@@ -2636,6 +2710,7 @@ function createTornado(back, front, geo) {
         gf.drawImage(sprites[p.sp], -r, -r, r * 2, r * 2);
         gf.restore();
       }
+      drawBolts(gf, t);
       gb.globalAlpha = 1;
       gf.globalAlpha = 1;
     },
@@ -2656,37 +2731,45 @@ function scanProductBase(im) {
     g.drawImage(im, 0, 0, w, h);
     const d = g.getImageData(0, 0, w, h).data;
     const on = (x, y) => { const k = (y * w + x) * 4; return d[k + 3] > 30 && (d[k] < 236 || d[k + 1] < 236 || d[k + 2] < 236); };
-    let bottom = -1, y, x;
-    const runAt = (yy) => {
-      let n = 0, run = 0, best = 0;
-      for (let xx = 0; xx < w; xx++) {
-        if (on(xx, yy)) { n++; run++; if (run > best) best = run; } else run = 0;
+    let y, x;
+    const skip = new Uint8Array(h);
+    for (y = 0; y < h; y++) {
+      let n = 0;
+      for (x = 0; x < w; x++) if (on(x, y)) n++;
+      if (n > w * 0.8) skip[y] = 1; // خطِ پهنِ کفِ عکس (نه خودِ محصول)
+    }
+    // پایین‌ترین نقطه‌ی محصول در هر ستون: برای محصولاتِ چندتکه هر تکه کفِ خودش را دارد
+    const colB = new Int16Array(w).fill(-1);
+    for (x = 0; x < w; x++) {
+      for (y = h - 1; y >= 0; y--) if (!skip[y] && on(x, y)) { colB[x] = y; break; }
+    }
+    const segOf = (valid, gapF) => {
+      const out = [];
+      let s = -1, last = -1, gap = 0;
+      for (x = 0; x < w; x++) {
+        if (valid(x)) { if (s < 0) s = x; last = x; gap = 0; }
+        else if (s >= 0 && ++gap > w * gapF) { out.push([s, last]); s = -1; gap = 0; }
       }
-      return { n: n, run: best };
+      if (s >= 0) out.push([s, last]);
+      return out;
     };
-    const minRuns = [w * 0.16, w * 0.03];
-    for (let pass = 0; pass < 2 && bottom < 0; pass++) {
-      for (y = h - 1; y >= 0; y--) {
-        const r = runAt(y);
-        if (r.n > w * 0.8) continue;
-        if (r.run >= Math.max(2, minRuns[pass])) { bottom = y; break; }
-      }
-    }
-    if (bottom < 0) return null;
-    const top = Math.max(0, bottom - Math.round(h * 0.03));
-    const occ = [];
-    for (x = 0; x < w; x++) {
-      let o = false;
-      for (y = top; y <= bottom && !o; y++) if (on(x, y)) o = true;
-      occ.push(o);
-    }
-    let best = [0, 0], cur = -1, gap = 0;
-    for (x = 0; x < w; x++) {
-      if (occ[x]) { if (cur < 0) cur = x; gap = 0; if (x - cur > best[1] - best[0]) best = [cur, x]; }
-      else if (cur >= 0 && ++gap > w * 0.02) cur = -1;
-    }
-    if (best[1] - best[0] < w * 0.05) return null;
-    return { fb: (bottom + 1) / h, fx1: best[0] / w, fx2: (best[1] + 1) / w, iw: iw, ih: ih };
+    const keepWide = (list) => {
+      const mx = list.reduce((m, q) => Math.max(m, q[1] - q[0] + 1), 0);
+      return list.filter((q) => q[1] - q[0] + 1 >= Math.max(w * 0.04, mx * 0.45));
+    };
+    let segs = keepWide(segOf((xx) => colB[xx] >= 0, 0.012));
+    if (!segs.length) return null;
+    let gb = -1;
+    const inSeg = new Uint8Array(w);
+    segs.forEach((q) => { for (let xx = q[0]; xx <= q[1]; xx++) { inSeg[xx] = 1; if (colB[xx] > gb) gb = colB[xx]; } });
+    segs = keepWide(segOf((xx) => inSeg[xx] && colB[xx] >= gb - h * 0.08, 0.03));
+    if (!segs.length) return null;
+    return {
+      fb: (gb + 1) / h,
+      segs: segs.map((q) => [q[0] / w, (q[1] + 1) / w]),
+      prof: Array.from(colB, (v) => (v < 0 ? -1 : (v + 1) / h)),
+      iw: iw, ih: ih,
+    };
   } catch (e) {
     return null;
   }
@@ -2740,7 +2823,7 @@ function SmokeImage({ playKey, src, alt, style }) {
     const W = b.clientWidth || 360;
     const H = b.clientHeight || 360;
     // محلِ واقعیِ برخورد (پایینِ محصول) را در قاب حساب می‌کنیم
-    let geo = { cy: H * 0.93, x1: W * 0.3, x2: W * 0.7 };
+    let geo = { cy: H * 0.93, x1: W * 0.3, x2: W * 0.7, segs: [{ x1: W * 0.3, x2: W * 0.7 }], yAt: null };
     const imgEl = prodRef.current ? prodRef.current.querySelector("img") : null;
     const det = detRef.current;
     if (imgEl && det) {
@@ -2753,8 +2836,15 @@ function SmokeImage({ playKey, src, alt, style }) {
         sx = s; sy = s; dx = (ow - iw * s) / 2; dy = (oh - ih * s) / 2;
       }
       const cy = oy + dy + ih * sy * det.fb;
-      const x1 = ox + dx + iw * sx * det.fx1, x2 = ox + dx + iw * sx * det.fx2;
-      if (cy > H * 0.3 && cy < H && x2 > x1) geo = { cy: cy, x1: x1, x2: x2 };
+      const segs = det.segs.map((q) => ({ x1: ox + dx + iw * sx * q[0], x2: ox + dx + iw * sx * q[1] }));
+      const x1 = segs[0].x1, x2 = segs[segs.length - 1].x2;
+      const nc = det.prof.length;
+      const yAt = (px) => {
+        const c = Math.max(0, Math.min(nc - 1, Math.floor(((px - ox - dx) / (iw * sx)) * nc)));
+        const v = det.prof[c];
+        return v < 0 ? cy : oy + dy + ih * sy * v;
+      };
+      if (cy > H * 0.3 && cy < H && x2 > x1) geo = { cy: cy, x1: x1, x2: x2, segs: segs, yAt: yAt };
     }
     if (prodRef.current) prodRef.current.style.transformOrigin = "50% " + geo.cy + "px";
     if (rockRef.current) rockRef.current.style.transformOrigin = "50% " + geo.cy + "px";
