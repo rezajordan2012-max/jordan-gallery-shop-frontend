@@ -2427,31 +2427,35 @@ function createTornado(back, front, geo) {
   const x0 = W * 0.5;
   const y0 = H * 1.0; // پایه‌ی گردباد روی پایین‌ترین لبه‌ی قاب
   const FALL = 3.95, LAND = 4.4;
+  const streaks = [];
   const smoke = [], specks = [], ground = [], dust = [], flung = [];
   let i;
-  for (i = 0; i < 340; i++) {
+  for (i = 0; i < 560; i++) {
     const h = rnd();
     smoke.push({
       h: h, ph: h * 11 + (rnd() - 0.5) * 1.3, w: (1.7 + rnd() * 0.5) * (1.3 - 0.75 * h),
-      j: 0.78 + rnd() * 0.36, rs: 0.7 + rnd() * 0.7, sp: Math.floor(rnd() * 4), al: 0.15 + rnd() * 0.14,
+      j: 0.78 + rnd() * 0.36, rs: 0.7 + rnd() * 0.7, sp: Math.floor(rnd() * 4), al: 0.2 + rnd() * 0.17,
     });
   }
   const cols = ["150,118,80", "184,148,102", "110,84,56", "74,56,40", "208,176,132", "60,48,38"];
-  for (i = 0; i < 420; i++) {
+  for (i = 0; i < 760; i++) {
     specks.push({
       h: rnd(), ph: rnd() * TAU, w: 2.3 + rnd() * 1.4, j: 1.0 + rnd() * 1.3, s: 0.9 + rnd() * 2.4,
       c: cols[Math.floor(rnd() * cols.length)], al: 0.45 + rnd() * 0.45, dr: rnd() * 0.5,
     });
   }
   for (i = 0; i < 90; i++) {
-    ground.push({ ph: rnd() * TAU, w: 0.7 + rnd() * 0.5, rho: 0.1 + rnd() * 0.32, rs: 0.8 + rnd() * 1.0, sp: Math.floor(rnd() * 4), al: 0.2 + rnd() * 0.17 });
+    ground.push({ ph: rnd() * TAU, w: 0.7 + rnd() * 0.5, rho: 0.1 + rnd() * 0.32, rs: 0.8 + rnd() * 1.0, sp: Math.floor(rnd() * 4), al: 0.26 + rnd() * 0.2 });
   }
-  for (i = 0; i < 200; i++) {
+  for (i = 0; i < 300; i++) {
     flung.push({
       t0: 0.7 + rnd() * 2.7, life: 0.8 + rnd() * 1.0, dir: rnd() < 0.5 ? -1 : 1, h0: 0.04 + rnd() * 0.7,
       vx: W * (0.3 + rnd() * 1.1), vy: -H * (0.05 + rnd() * 0.6), s: 1.2 + rnd() * 3.2,
       c: cols[Math.floor(rnd() * cols.length)], al: 0.55 + rnd() * 0.4, ph: rnd() * TAU,
     });
+  }
+  for (i = 0; i < 110; i++) {
+    streaks.push({ h: 0.05 + rnd() * 0.9, ph: rnd() * TAU, w: 2.0 + rnd() * 1.2, j: 0.7 + rnd() * 1.1, al: 0.1 + rnd() * 0.2, lw: 0.7 + rnd() * 1.4, len: 0.22 + rnd() * 0.3 });
   }
   // غبارِ برخورد: دقیقاً در خطِ تماسِ محصول با سطح، از چپ تا راستِ پایه
   const cxm = (geo.x1 + geo.x2) / 2;
@@ -2504,20 +2508,22 @@ function createTornado(back, front, geo) {
   function pose(t) {
     if (t < FALL) {
       const f = flight(t);
-      const sc = 0.55 * (1 + 0.07 * Math.sin(f.th));
+      const sc = 0.6 * (1 + 0.07 * Math.sin(f.th));
+      const jk = ss(0.5, 1.2, t) * (1 - ss(2.6, 3.0, t));
+      const jx = (Math.sin(t * 41) + Math.sin(t * 23 + 1)) * 0.8 * jk, jy = Math.sin(t * 53) * 0.7 * jk;
       return {
-        ty: comp(f.yc, sc), tx: f.x, sx: sc * (0.72 + 0.28 * Math.abs(Math.cos(f.th * 0.8))), sy: sc,
-        rot: 14 * Math.cos(f.th) + 10 * f.k * Math.sin(f.th * 1.3), rx: 0,
+        ty: comp(f.yc, sc) + jy, tx: f.x + jx, sx: sc * (0.72 + 0.28 * Math.abs(Math.cos(f.th * 0.8))), sy: sc,
+        rot: 14 * Math.cos(f.th) + 10 * f.k * Math.sin(f.th * 1.3), rx: 0, f: ss(0.3, 1.0, t),
       };
     }
     if (t < LAND) {
       const u = (t - FALL) / (LAND - FALL);
       const f = flight(3.0);
-      const sc = lerp(0.55, 1, u);
+      const sc = lerp(0.6, 1, u);
       const yc = lerp(f.yc, 0.5 * H, eIn(u));
-      return { ty: comp(yc, sc), tx: f.x * (1 - u), sx: sc, sy: sc, rot: (14 * Math.cos(f.th) + 10 * Math.sin(f.th * 1.3)) * (1 - u), rx: 0 };
+      return { ty: comp(yc, sc), tx: f.x * (1 - u), sx: sc, sy: sc, rot: (14 * Math.cos(f.th) + 10 * Math.sin(f.th * 1.3)) * (1 - u), rx: 0, f: 0.6 * (1 - u) };
     }
-    return { ty: track(bounceY, t), tx: 0, sx: track(squX, t), sy: track(squY, t), rot: track(rotK, t), rx: track(txK, t) };
+    return { ty: track(bounceY, t), tx: 0, sx: track(squX, t), sy: track(squY, t), rot: track(rotK, t), rx: track(txK, t), f: 0 };
   }
 
   function drawSmoke(p, t, hh, th, ctxs) {
@@ -2527,8 +2533,10 @@ function createTornado(back, front, geo) {
     const r = W * (0.055 + 0.1 * hh) * p.rs;
     const al = p.al * ss(0.05, 0.5, t) * decay(hh, t) * edge(hh);
     if (al < 0.004) return;
-    const g = Math.sin(th) > 0 ? ctxs[1] : ctxs[0];
-    g.globalAlpha = Math.sin(th) > 0 ? al * 0.42 : al;
+    const fr = Math.sin(th) > 0;
+    const g = fr ? ctxs[1] : ctxs[0];
+    // جلوی محصول یک «پنجره‌ی» کم‌رنگ می‌ماند تا محصول درونِ گردباد دیده شود؛ لبه‌های ستون پرپشت می‌ماند
+    g.globalAlpha = fr ? al * (0.04 + 0.6 * Math.pow(Math.abs(Math.cos(th)), 2)) : al;
     g.save();
     g.translate(x, y);
     g.rotate(0.35 * Math.cos(th));
@@ -2560,6 +2568,25 @@ function createTornado(back, front, geo) {
         p = smoke[k];
         drawSmoke(p, t, p.h, p.ph + TAU * p.w * t, ctxs);
       }
+      // رگه‌های باد: خطوطِ نازکِ روشن که مارپیچ دور گردباد می‌پیچند
+      for (k = 0; k < streaks.length; k++) {
+        p = streaks[k];
+        const hh = p.h;
+        const al = p.al * ss(0.2, 0.7, t) * decay(hh, t) * edge(hh);
+        if (al < 0.01) continue;
+        const th = p.ph + TAU * p.w * t;
+        const th2 = th - p.len;
+        const rr = rhoAt(hh, t) * p.j;
+        const ax = axisAt(hh, t), ay = y0 - hh * heightNow(t);
+        const g = Math.sin(th) > 0 ? gf : gb;
+        g.globalAlpha = al;
+        g.strokeStyle = "rgb(236,216,180)";
+        g.lineWidth = p.lw;
+        g.beginPath();
+        g.moveTo(ax + rr * Math.cos(th2), ay + rr * 0.1 * Math.sin(th2));
+        g.lineTo(ax + rr * Math.cos(th), ay + rr * 0.1 * Math.sin(th));
+        g.stroke();
+      }
       // ذراتِ خاک و آوار
       for (k = 0; k < specks.length; k++) {
         p = specks[k];
@@ -2571,9 +2598,9 @@ function createTornado(back, front, geo) {
         const x = axisAt(hh, t) + rho * Math.cos(th);
         const y = y0 - hh * heightNow(t) + rho * 0.1 * Math.sin(th);
         const g = Math.sin(th) > 0 ? gf : gb;
-        g.globalAlpha = al;
+        g.globalAlpha = Math.sin(th) > 0 ? al * 0.7 : al;
         g.fillStyle = "rgb(" + p.c + ")";
-        g.fillRect(x, y, p.s * 1.7, p.s);
+        g.fillRect(x, y, p.s * (Math.sin(th) > 0 ? 2.6 : 1.7), p.s);
       }
       // شن و ماسه‌ی پرتاب‌شده به اطراف
       for (k = 0; k < flung.length; k++) {
@@ -2747,6 +2774,7 @@ function SmokeImage({ playKey, src, alt, style }) {
       tor.render(t);
       const ps = tor.pose(t);
       if (prodRef.current) prodRef.current.style.transform = "translate(" + ps.tx + "px," + ps.ty + "px) scale(" + ps.sx + "," + ps.sy + ")";
+      if (prodRef.current) prodRef.current.style.filter = ps.f > 0.01 ? "sepia(" + (0.32 * ps.f).toFixed(3) + ") saturate(" + (1 - 0.15 * ps.f).toFixed(3) + ")" : "none";
       if (rockRef.current) rockRef.current.style.transform = "rotate(" + ps.rot + "deg) translateX(" + ps.rx + "px)";
       if (t < tor.duration) raf = requestAnimationFrame(loop);
       else setState("done");
