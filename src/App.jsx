@@ -2524,7 +2524,7 @@ function createTornado(back, front, geo) {
     warm: { core: "255,251,238", mid: "255,214,130", glow: "255,140,40", tint: "255,190,96", flash: "255,214,140" },
   };
   const bolts = [
-    { t0: 0.9, big: 1, tone: TONES.warm, levels: buildBolt(W * 0.04, -6, W * 0.9, H * 0.96), sx: W * 0.04 },
+    { t0: 0.28, big: 1, back: true, tone: TONES.warm, levels: buildBolt(W * 0.04, -6, W * 0.9, H * 0.96), sx: W * 0.04 },
     { t0: 3.72, big: 1, tone: TONES.warm, levels: buildBolt(W * 0.96, -6, W * 0.1, H * 0.92), sx: W * 0.96 },
   ];
   const boltI = (a) => {
@@ -2535,6 +2535,47 @@ function createTornado(back, front, geo) {
     return Math.min(1, (m + r1 + r2) * (0.9 + 0.1 * Math.sin(a * 190)));
   };
   const LW = [1, 0.55, 0.33, 0.2];
+  // خودِ رشته‌های صاعقه (شاخه‌ها و نقطه‌های داغ) روی بومِ g کشیده می‌شود
+  function drawBoltStrokes(g, b, t) {
+    const a = t - b.t0;
+    const I = boltI(a) * b.big;
+    if (I < 0.02) return;
+    const tn = b.tone;
+    const f = Math.min(1, a / 0.07) + 0.02;
+      g.lineCap = "round";
+      g.lineJoin = "round";
+      for (let lv = 0; lv < 4; lv++) {
+        const polys = b.levels[lv];
+        if (!polys.length) continue;
+        for (let pass = 0; pass < 3; pass++) {
+          g.beginPath();
+          for (let s = 0; s < polys.length; s++) {
+            const pts = polys[s], pg = pts.pg;
+            g.moveTo(pts[0][0], pts[0][1]);
+            for (let k2 = 1; k2 < pts.length; k2++) { if (pg[k2] > f) break; g.lineTo(pts[k2][0], pts[k2][1]); }
+          }
+          if (pass === 0) { g.strokeStyle = "rgba(" + tn.glow + "," + (0.6 * I).toFixed(3) + ")"; g.lineWidth = 2.2 * LW[lv] + 0.6; g.shadowColor = "rgba(" + tn.glow + ",1)"; g.shadowBlur = lv < 2 ? 30 : 12; }
+          else if (pass === 1) { g.strokeStyle = "rgba(" + tn.mid + "," + (0.9 * I).toFixed(3) + ")"; g.lineWidth = 1.7 * LW[lv] + 0.3; g.shadowBlur = 5; }
+          else { g.strokeStyle = "rgba(" + tn.core + "," + Math.min(1, I * 1.3).toFixed(3) + ")"; g.lineWidth = 1.5 * LW[lv] + 0.4; g.shadowBlur = 0; }
+          g.stroke();
+        }
+      }
+      g.shadowBlur = 0;
+      g.shadowColor = "transparent";
+      // نقطه‌های داغ و درخشان روی شکستگی‌های تنه
+      const mainPts = b.levels[0][0];
+      for (let h2 = 1; h2 <= 6; h2++) {
+        const hp = mainPts[Math.floor((mainPts.length - 1) * (h2 / 7))];
+        if (mainPts.pg[Math.floor((mainPts.length - 1) * (h2 / 7))] > f) continue;
+        const hr = 9 + (h2 % 3) * 7;
+        const hgd = g.createRadialGradient(hp[0], hp[1], 0, hp[0], hp[1], hr);
+        hgd.addColorStop(0, "rgba(" + tn.core + "," + (0.8 * I).toFixed(3) + ")");
+        hgd.addColorStop(1, "rgba(" + tn.glow + ",0)");
+        g.fillStyle = hgd;
+        g.fillRect(hp[0] - hr, hp[1] - hr, hr * 2, hr * 2);
+      }
+  }
+
   function drawBolts(gB, gF, t) {
     let top = 0, strong = null;
     for (let q = 0; q < bolts.length; q++) {
@@ -2567,38 +2608,7 @@ function createTornado(back, front, geo) {
       rg.addColorStop(1, "rgba(" + tn.glow + ",0)");
       gF.fillStyle = rg;
       gF.fillRect(0, 0, W, H);
-      gF.lineCap = "round";
-      gF.lineJoin = "round";
-      for (let lv = 0; lv < 4; lv++) {
-        const polys = b.levels[lv];
-        if (!polys.length) continue;
-        for (let pass = 0; pass < 3; pass++) {
-          gF.beginPath();
-          for (let s = 0; s < polys.length; s++) {
-            const pts = polys[s], pg = pts.pg;
-            gF.moveTo(pts[0][0], pts[0][1]);
-            for (let k2 = 1; k2 < pts.length; k2++) { if (pg[k2] > f) break; gF.lineTo(pts[k2][0], pts[k2][1]); }
-          }
-          if (pass === 0) { gF.strokeStyle = "rgba(" + tn.glow + "," + (0.6 * I).toFixed(3) + ")"; gF.lineWidth = 2.2 * LW[lv] + 0.6; gF.shadowColor = "rgba(" + tn.glow + ",1)"; gF.shadowBlur = lv < 2 ? 30 : 12; }
-          else if (pass === 1) { gF.strokeStyle = "rgba(" + tn.mid + "," + (0.9 * I).toFixed(3) + ")"; gF.lineWidth = 1.7 * LW[lv] + 0.3; gF.shadowBlur = 5; }
-          else { gF.strokeStyle = "rgba(" + tn.core + "," + Math.min(1, I * 1.3).toFixed(3) + ")"; gF.lineWidth = 1.5 * LW[lv] + 0.4; gF.shadowBlur = 0; }
-          gF.stroke();
-        }
-      }
-      gF.shadowBlur = 0;
-      gF.shadowColor = "transparent";
-      // نقطه‌های داغ و درخشان روی شکستگی‌های تنه
-      const mainPts = b.levels[0][0];
-      for (let h2 = 1; h2 <= 6; h2++) {
-        const hp = mainPts[Math.floor((mainPts.length - 1) * (h2 / 7))];
-        if (mainPts.pg[Math.floor((mainPts.length - 1) * (h2 / 7))] > f) continue;
-        const hr = 9 + (h2 % 3) * 7;
-        const hgd = gF.createRadialGradient(hp[0], hp[1], 0, hp[0], hp[1], hr);
-        hgd.addColorStop(0, "rgba(" + tn.core + "," + (0.8 * I).toFixed(3) + ")");
-        hgd.addColorStop(1, "rgba(" + tn.glow + ",0)");
-        gF.fillStyle = hgd;
-        gF.fillRect(hp[0] - hr, hp[1] - hr, hr * 2, hr * 2);
-      }
+      if (!b.back) drawBoltStrokes(gF, b, t);
     }
   }
 
@@ -2685,6 +2695,8 @@ function createTornado(back, front, geo) {
       gf.clearRect(0, 0, W, H);
       const ctxs = [gb, gf];
       let k, p;
+      // صاعقه‌ی اول پشتِ گردباد کشیده می‌شود تا دود و غبار جلوی آن باشد
+      for (k = 0; k < bolts.length; k++) if (bolts[k].back) drawBoltStrokes(gb, bolts[k], t);
       // غبارِ کف
       for (k = 0; k < ground.length; k++) {
         p = ground[k];
