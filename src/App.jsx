@@ -2425,26 +2425,26 @@ function createTornado(back, front, geo) {
   const sprites = [makeSprite(), makeSprite(), makeSprite(), makeSprite()];
 
   const x0 = W * 0.5;
-  const y0 = Math.min(H * 0.97, geo.cy + H * 0.02);
+  const y0 = H * 1.0; // پایه‌ی گردباد روی پایین‌ترین لبه‌ی قاب
   const FALL = 3.95, LAND = 4.4;
   const smoke = [], specks = [], ground = [], dust = [], flung = [];
   let i;
-  for (i = 0; i < 430; i++) {
+  for (i = 0; i < 340; i++) {
     const h = rnd();
     smoke.push({
       h: h, ph: h * 11 + (rnd() - 0.5) * 1.3, w: (1.7 + rnd() * 0.5) * (1.3 - 0.75 * h),
-      j: 0.78 + rnd() * 0.36, rs: 0.7 + rnd() * 0.7, sp: Math.floor(rnd() * 4), al: 0.22 + rnd() * 0.18,
+      j: 0.78 + rnd() * 0.36, rs: 0.7 + rnd() * 0.7, sp: Math.floor(rnd() * 4), al: 0.15 + rnd() * 0.14,
     });
   }
   const cols = ["150,118,80", "184,148,102", "110,84,56", "74,56,40", "208,176,132", "60,48,38"];
-  for (i = 0; i < 520; i++) {
+  for (i = 0; i < 420; i++) {
     specks.push({
       h: rnd(), ph: rnd() * TAU, w: 2.3 + rnd() * 1.4, j: 1.0 + rnd() * 1.3, s: 0.9 + rnd() * 2.4,
       c: cols[Math.floor(rnd() * cols.length)], al: 0.45 + rnd() * 0.45, dr: rnd() * 0.5,
     });
   }
   for (i = 0; i < 90; i++) {
-    ground.push({ ph: rnd() * TAU, w: 0.7 + rnd() * 0.5, rho: 0.1 + rnd() * 0.32, rs: 0.8 + rnd() * 1.0, sp: Math.floor(rnd() * 4), al: 0.3 + rnd() * 0.25 });
+    ground.push({ ph: rnd() * TAU, w: 0.7 + rnd() * 0.5, rho: 0.1 + rnd() * 0.32, rs: 0.8 + rnd() * 1.0, sp: Math.floor(rnd() * 4), al: 0.2 + rnd() * 0.17 });
   }
   for (i = 0; i < 200; i++) {
     flung.push({
@@ -2553,7 +2553,7 @@ function createTornado(back, front, geo) {
         const r = W * (0.07 + 0.08 * p.rs);
         const g = Math.sin(th) > 0 ? gf : gb;
         g.globalAlpha = al;
-        g.drawImage(sprites[p.sp], x0 + W * p.rho * Math.cos(th) * 1.1 - r, geo.cy + W * p.rho * 0.1 * Math.sin(th) - r * 0.7, r * 2, r * 1.4);
+        g.drawImage(sprites[p.sp], x0 + W * p.rho * Math.cos(th) * 1.1 - r, H * 0.985 + W * p.rho * 0.1 * Math.sin(th) - r * 0.7, r * 2, r * 1.4);
       }
       // ستونِ دود
       for (k = 0; k < smoke.length; k++) {
