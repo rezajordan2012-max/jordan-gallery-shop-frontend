@@ -8692,6 +8692,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   const [activeVariantId, setActiveVariantId] = useState("");
   const [newVariantCount, setNewVariantCount] = useState(0);
   const imgRef = useRef(null);
+  const [tapMark, setTapMark] = useState(null);
 
   const isMain = target === "main";
   const fields = isMain
@@ -8849,6 +8850,10 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     if (suppressTapRef.current) return;
     if (busy || !sid || sendingRef.current || Math.abs(offRef.current) > 1) return;
     const { x, y } = coords(e);
+    // بازخوردِ فوری: نقطه‌ی لمس همان لحظه نشان داده می‌شود تا کاربر منتظرِ پاسخ سرور نماند
+    const rr = imgRef.current.getBoundingClientRect();
+    setTapMark({ x: e.clientX - rr.left, y: e.clientY - rr.top, k: Date.now() });
+    window.setTimeout(() => setTapMark(null), 900);
     setDone("");
     if (mode === "nav") {
       run(async () => {
@@ -8983,7 +8988,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
           </p>
           {curUrl && <p className="text-muted" style={{ fontSize: 10, direction: "ltr", textAlign: "left", wordBreak: "break-all" }}>{curUrl}</p>}
 
-          <div style={{ overflow: "hidden", borderRadius: 8, background: "#fff", touchAction: "none", overscrollBehavior: "contain", margin: "0 auto", width: "min(100%, " + (58 * vp.width / vp.height).toFixed(2) + "vh)", border: mode === "pick" ? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)" }}>
+          <div style={{ overflow: "hidden", borderRadius: 8, background: "#fff", touchAction: "none", overscrollBehavior: "contain", position: "relative", margin: "0 auto", width: "min(100%, " + (58 * vp.width / vp.height).toFixed(2) + "vh)", border: mode === "pick" ? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)" }}>
             <img
               ref={imgRef}
               src={shot}
@@ -9000,6 +9005,9 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
                 willChange: "transform",
               }}
             />
+            {tapMark && (
+              <span key={tapMark.k} style={{ position: "absolute", left: tapMark.x - 14, top: tapMark.y - 14, width: 28, height: 28, borderRadius: "50%", pointerEvents: "none", border: "2px solid " + (mode === "pick" ? "#0EA5A4" : "#FF3E8E"), background: "rgba(255,255,255,0.35)", boxShadow: "0 0 0 4px rgba(255,62,142,0.12)" }} />
+            )}
           </div>
 
           {mode === "pick" && (
