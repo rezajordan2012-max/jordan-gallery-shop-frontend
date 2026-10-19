@@ -8680,6 +8680,15 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   const [sid, setSid] = useState("");
   const sidRef = useRef("");
   const [shot, setShot] = useState("");
+  const padRef = useRef({ top: 0, bottom: 0 });
+  const wrapRef = useRef(null);
+  const [padState, setPadState] = useState({ top: 0, bottom: 0 });
+  function applyShotData(d) {
+    const p = d && d.pad ? { top: d.pad.top || 0, bottom: d.pad.bottom || 0 } : { top: 0, bottom: 0 };
+    padRef.current = p;
+    setPadState(p);
+    setShot(d.shot);
+  }
   const [vp, setVp] = useState({ width: 412, height: 760 });
   const [curUrl, setCurUrl] = useState("");
   const [mode, setMode] = useState("nav"); // nav = ناوبری | pick = انتخاب عکس
@@ -8742,14 +8751,14 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
       const d = await api("/api/browse/open", { url });
       sidRef.current = d.sid;
       setSid(d.sid);
-      setShot(d.shot);
+      applyShotData(d);
       setCurUrl(d.url);
       setVp({ width: d.width || 412, height: d.height || 760 });
     });
   }
 
   function coords(e) {
-    const r = imgRef.current.getBoundingClientRect();
+    const r = wrapRef.current.getBoundingClientRect();
     return { x: Math.round(((e.clientX - r.left) / r.width) * vp.width), y: Math.round(((e.clientY - r.top) / r.height) * vp.height) };
   }
 
@@ -8763,12 +8772,19 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   const trackRef = useRef(null);
   const suppressTapRef = useRef(false);
 
+  // محدودیتِ جابه‌جایی به همان مقدارِ حاشیه‌ای که در اسکرین‌شات داریم تا جای خالی/سفید دیده نشود
+  function clampOffset() {
+    const sc = pageScale();
+    const lo = -padRef.current.top / sc, hi = padRef.current.bottom / sc;
+    if (offRef.current < lo) offRef.current = lo;
+    if (offRef.current > hi) offRef.current = hi;
+  }
   function applyOffset() {
     const el = imgRef.current;
     if (el) el.style.transform = offRef.current ? "translate3d(0," + (-offRef.current).toFixed(1) + "px,0)" : "";
   }
   function pageScale() {
-    const r = imgRef.current ? imgRef.current.getBoundingClientRect() : null;
+    const r = wrapRef.current ? wrapRef.current.getBoundingClientRect() : null;
     return r && r.height ? vp.height / r.height : 1;
   }
   async function sendScroll() {
@@ -8785,7 +8801,9 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
       await new Promise((res) => { const im = new Image(); im.onload = res; im.onerror = res; im.src = d.shot; });
       offRef.current -= inflightRef.current;
       inflightRef.current = 0;
-      if (imgRef.current) imgRef.current.src = d.shot;
+      padRef.current = d.pad ? { top: d.pad.top || 0, bottom: d.pad.bottom || 0 } : { top: 0, bottom: 0 };
+      if (imgRef.current) { imgRef.current.src = d.shot; imgRef.current.style.top = "-" + (padRef.current.top / vp.height * 100).toFixed(3) + "%"; }
+      setPadState(padRef.current);
       applyOffset();
       setShot(d.shot);
     } catch (e) {
@@ -8821,7 +8839,10 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     d.y = t.clientY;
     d.t = now;
     offRef.current += dyS;
+    clampOffset();
     applyOffset();
+    // وسطِ کشیدن هم درخواستِ اسکرول می‌رود تا محتوای تازه زودتر برسد (مثل مرورگر)
+    if (!sendingRef.current && Math.abs(offRef.current - inflightRef.current) > 60) sendScroll();
   }
   function onDragEnd() {
     const d = trackRef.current;
@@ -8839,7 +8860,9 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
       last = now;
       offRef.current += v * dt;
       v *= Math.pow(0.95, dt / 16);
+      clampOffset();
       applyOffset();
+      if (!sendingRef.current && Math.abs(offRef.current - inflightRef.current) > 60) sendScroll();
       if (Math.abs(v) > 0.06) flingRef.current = requestAnimationFrame(step);
       else { flingRef.current = 0; sendScroll(); }
     };
@@ -8851,14 +8874,14 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     if (busy || !sid || sendingRef.current || Math.abs(offRef.current) > 1) return;
     const { x, y } = coords(e);
     // بازخوردِ فوری: نقطه‌ی لمس همان لحظه نشان داده می‌شود تا کاربر منتظرِ پاسخ سرور نماند
-    const rr = imgRef.current.getBoundingClientRect();
+    const rr = wrapRef.current.getBoundingClientRect();
     setTapMark({ x: e.clientX - rr.left, y: e.clientY - rr.top, k: Date.now() });
     window.setTimeout(() => setTapMark(null), 900);
     setDone("");
     if (mode === "nav") {
       run(async () => {
         const d = await api("/api/browse/action", { sid, type: "click", x, y });
-        setShot(d.shot);
+        applyShotData(d);
         setCurUrl(d.url);
         setPicked(null);
       });
@@ -8884,7 +8907,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     if (busy || !sid) return;
     run(async () => {
       const d = await api("/api/browse/action", { sid, type: "back" });
-      setShot(d.shot);
+      applyShotData(d);
       setCurUrl(d.url);
       setPicked(null);
     });
@@ -8900,7 +8923,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     // یک اسکرین‌شات تازه می‌گیریم تا مطمئن شویم نشست هنوز زنده است
     if (sidRef.current) {
       api("/api/browse/action", { sid: sidRef.current, type: "scroll", dy: 0 })
-        .then((d) => { setShot(d.shot); setCurUrl(d.url); })
+        .then((d) => { applyShotData(d); setCurUrl(d.url); })
         .catch((e) => {
           setErr(e.message || "نشست بسته شده");
         });
@@ -8988,26 +9011,29 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
           </p>
           {curUrl && <p className="text-muted" style={{ fontSize: 10, direction: "ltr", textAlign: "left", wordBreak: "break-all" }}>{curUrl}</p>}
 
-          <div style={{ overflow: "hidden", borderRadius: 8, background: "#fff", touchAction: "none", overscrollBehavior: "contain", position: "relative", margin: "0 auto", width: "min(100%, " + (58 * vp.width / vp.height).toFixed(2) + "vh)", border: mode === "pick" ? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)" }}>
-            <img
-              ref={imgRef}
-              src={shot}
-              alt="صفحه‌ی سایت مبدأ"
-              draggable={false}
-              onClick={handleTap}
-              onTouchStart={onDragStart}
-              onTouchMove={onDragMove}
-              onTouchEnd={onDragEnd}
-              onTouchCancel={onDragEnd}
-              style={{
-                touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none",
-                width: "100%", cursor: "pointer", opacity: busy ? 0.6 : 1, background: "#fff", display: "block",
-                willChange: "transform",
-              }}
-            />
-            {tapMark && (
-              <span key={tapMark.k} style={{ position: "absolute", left: tapMark.x - 14, top: tapMark.y - 14, width: 28, height: 28, borderRadius: "50%", pointerEvents: "none", border: "2px solid " + (mode === "pick" ? "#0EA5A4" : "#FF3E8E"), background: "rgba(255,255,255,0.35)", boxShadow: "0 0 0 4px rgba(255,62,142,0.12)" }} />
-            )}
+          <div style={{ overflow: "hidden", borderRadius: 8, background: "#fff", touchAction: "none", overscrollBehavior: "contain", margin: "0 auto", width: "min(100%, " + (58 * vp.width / vp.height).toFixed(2) + "vh)", border: mode === "pick" ? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)" }}>
+            <div ref={wrapRef} style={{ position: "relative", overflow: "hidden", width: "100%", aspectRatio: vp.width + " / " + vp.height, background: "#fff" }}>
+              <img
+                ref={imgRef}
+                src={shot}
+                alt="صفحه‌ی سایت مبدأ"
+                draggable={false}
+                onClick={handleTap}
+                onTouchStart={onDragStart}
+                onTouchMove={onDragMove}
+                onTouchEnd={onDragEnd}
+                onTouchCancel={onDragEnd}
+                style={{
+                  position: "absolute", left: 0, top: "-" + (padState.top / vp.height * 100).toFixed(3) + "%",
+                  touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none",
+                  width: "100%", height: "auto", cursor: "pointer", opacity: busy ? 0.6 : 1, background: "#fff", display: "block",
+                  willChange: "transform",
+                }}
+              />
+              {tapMark && (
+                <span key={tapMark.k} style={{ position: "absolute", left: tapMark.x - 14, top: tapMark.y - 14, width: 28, height: 28, borderRadius: "50%", pointerEvents: "none", border: "2px solid " + (mode === "pick" ? "#0EA5A4" : "#FF3E8E"), background: "rgba(255,255,255,0.35)", boxShadow: "0 0 0 4px rgba(255,62,142,0.12)" }} />
+              )}
+            </div>
           </div>
 
           {mode === "pick" && (
