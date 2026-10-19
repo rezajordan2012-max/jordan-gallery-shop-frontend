@@ -8704,6 +8704,8 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
 
   useEffect(() => {
     return () => {
+      if (flingRef.current) cancelAnimationFrame(flingRef.current);
+      clearTimeout(sendTimerRef.current);
       if (sidRef.current) api("/api/browse/close", { sid: sidRef.current }).catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -8750,34 +8752,102 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     return { x: Math.round(((e.clientX - r.left) / r.width) * vp.width), y: Math.round(((e.clientY - r.top) / r.height) * vp.height) };
   }
 
-  const dragRef = useRef(null);
+  // ---- اسکرول مثل مرورگر: تصویر هم‌زمان با انگشت و بدون تأخیر حرکت می‌کند (محلی)، بعد از رها کردن
+  // فقط یک درخواست به سرور می‌رود و اسکرین‌شاتِ تازه بی‌پرش جایگزین می‌شود. ----
+  const offRef = useRef(0);        // پیکسلِ صفحه‌ی نمایش که هنوز در اسکرین‌شات اعمال نشده (مثبت = محتوا بالا رفته)
+  const inflightRef = useRef(0);   // بخشی از آن که به سرور فرستاده شده
+  const sendingRef = useRef(false);
+  const sendTimerRef = useRef(null);
+  const flingRef = useRef(0);
+  const trackRef = useRef(null);
+  const suppressTapRef = useRef(false);
+
+  function applyOffset() {
+    const el = imgRef.current;
+    if (el) el.style.transform = offRef.current ? "translate3d(0," + (-offRef.current).toFixed(1) + "px,0)" : "";
+  }
+  function pageScale() {
+    const r = imgRef.current ? imgRef.current.getBoundingClientRect() : null;
+    return r && r.height ? vp.height / r.height : 1;
+  }
+  async function sendScroll() {
+    if (sendingRef.current || !sidRef.current) return;
+    const toSend = offRef.current - inflightRef.current;
+    const sc = pageScale();
+    const dy = Math.max(-4000, Math.min(4000, Math.round(toSend * sc)));
+    if (!dy) { if (Math.abs(offRef.current) < 1) { offRef.current = 0; applyOffset(); } return; }
+    sendingRef.current = true;
+    inflightRef.current = dy / sc;
+    try {
+      const d = await api("/api/browse/action", { sid: sidRef.current, type: "scroll", dy });
+      // اول عکس را کامل بارگذاری می‌کنیم تا هنگام جایگزینی هیچ سوسو/پرشی دیده نشود
+      await new Promise((res) => { const im = new Image(); im.onload = res; im.onerror = res; im.src = d.shot; });
+      offRef.current -= inflightRef.current;
+      inflightRef.current = 0;
+      if (imgRef.current) imgRef.current.src = d.shot;
+      applyOffset();
+      setShot(d.shot);
+    } catch (e) {
+      offRef.current = 0;
+      inflightRef.current = 0;
+      applyOffset();
+      const msg = e.message || "خطا";
+      setErr(/نشست مرورگر بسته/.test(msg) ? "نشست بسته شد. دکمه‌ی «باز کن» را بزن." : msg);
+    } finally {
+      sendingRef.current = false;
+    }
+    if (Math.abs(offRef.current * sc) >= 1 && sidRef.current) sendScroll();
+  }
+  function stopFling() {
+    if (flingRef.current) { cancelAnimationFrame(flingRef.current); flingRef.current = 0; }
+  }
   function onDragStart(e) {
     const t = e.touches && e.touches[0];
     if (!t) return;
-    dragRef.current = { y: t.clientY, x: t.clientX, moved: false };
+    stopFling();
+    trackRef.current = { y: t.clientY, startY: t.clientY, t: performance.now(), v: 0, moved: false };
   }
-  function onDragEnd(e) {
-    const d = dragRef.current;
-    dragRef.current = null;
-    if (!d) return;
-    const t = e.changedTouches && e.changedTouches[0];
-    if (!t) return;
-    const dy = d.y - t.clientY;
-    if (Math.abs(dy) > 18 && sidRef.current) {
-      // کشیدنِ انگشت به بالا = رفتن به پایینِ صفحه؛ مقدار را به مقیاسِ صفحه‌ی سایت تبدیل می‌کنیم
-      const r = imgRef.current ? imgRef.current.getBoundingClientRect() : null;
-      const scale = r ? vp.height / r.height : 1;
-      d.moved = true;
-      suppressTapRef.current = true;
-      window.setTimeout(() => { suppressTapRef.current = false; }, 400);
-      doScroll(Math.round(dy * scale * 1.4));
-    }
+  function onDragMove(e) {
+    const d = trackRef.current;
+    const t = e.touches && e.touches[0];
+    if (!d || !t || !sidRef.current) return;
+    if (!d.moved && Math.abs(t.clientY - d.startY) < 6) return;
+    d.moved = true;
+    const now = performance.now();
+    const dyS = d.y - t.clientY;
+    const dt = Math.max(1, now - d.t);
+    d.v = 0.7 * (dyS / dt) + 0.3 * d.v;
+    d.y = t.clientY;
+    d.t = now;
+    offRef.current += dyS;
+    applyOffset();
   }
-  const suppressTapRef = useRef(false);
+  function onDragEnd() {
+    const d = trackRef.current;
+    trackRef.current = null;
+    if (!d || !d.moved) return;
+    suppressTapRef.current = true;
+    window.setTimeout(() => { suppressTapRef.current = false; }, 350);
+    // اگر انگشت قبل از رها شدن مکث کرده باشد، شتابی وجود ندارد
+    let v = performance.now() - d.t > 80 ? 0 : Math.max(-3.5, Math.min(3.5, d.v));
+    if (Math.abs(v) < 0.25) { sendScroll(); return; }
+    // لغزشِ ادامه‌دار (inertia) مثل مرورگر
+    let last = performance.now();
+    const step = (now) => {
+      const dt = Math.min(40, now - last);
+      last = now;
+      offRef.current += v * dt;
+      v *= Math.pow(0.95, dt / 16);
+      applyOffset();
+      if (Math.abs(v) > 0.06) flingRef.current = requestAnimationFrame(step);
+      else { flingRef.current = 0; sendScroll(); }
+    };
+    flingRef.current = requestAnimationFrame(step);
+  }
 
   function handleTap(e) {
     if (suppressTapRef.current) return;
-    if (busy || !sid) return;
+    if (busy || !sid || sendingRef.current || Math.abs(offRef.current) > 1) return;
     const { x, y } = coords(e);
     setDone("");
     if (mode === "nav") {
@@ -8795,36 +8865,14 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
       });
     }
   }
-  const scrollAccRef = useRef(0);
-  const scrollTimerRef = useRef(null);
-  const scrollingRef = useRef(false);
-
-  async function flushScroll() {
-    if (scrollingRef.current) { scrollTimerRef.current = setTimeout(flushScroll, 200); return; }
-    const dy = Math.max(-4000, Math.min(4000, scrollAccRef.current));
-    scrollAccRef.current = 0;
-    if (!dy || !sidRef.current) return;
-    scrollingRef.current = true;
-    setBusy(true);
-    setErr("");
-    try {
-      const d = await api("/api/browse/action", { sid: sidRef.current, type: "scroll", dy });
-      setShot(d.shot);
-    } catch (e) {
-      const msg = e.message || "خطا";
-      setErr(/نشست مرورگر بسته/.test(msg) ? "نشست بسته شد. دکمه‌ی «باز کن» را بزن." : msg);
-    } finally {
-      scrollingRef.current = false;
-      setBusy(false);
-    }
-  }
-
-  // ضربه‌های پشت‌سرهم جمع می‌شوند و با یک درخواست اجرا می‌شوند (هیچ ضربه‌ای نادیده گرفته نمی‌شود)
+  // دکمه‌های ▲▼: همان مسیر اسکرولِ نرم (تصویر فوراً جابه‌جا می‌شود، بعد سرور هماهنگ می‌کند)
   function doScroll(dy) {
     if (!sidRef.current) return;
-    scrollAccRef.current += dy;
-    clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = setTimeout(flushScroll, 180);
+    stopFling();
+    offRef.current += dy / pageScale();
+    applyOffset();
+    clearTimeout(sendTimerRef.current);
+    sendTimerRef.current = setTimeout(sendScroll, 60);
   }
 
   function doBack() {
@@ -8935,19 +8983,24 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
           </p>
           {curUrl && <p className="text-muted" style={{ fontSize: 10, direction: "ltr", textAlign: "left", wordBreak: "break-all" }}>{curUrl}</p>}
 
-          <img
-            ref={imgRef}
-            src={shot}
-            alt="صفحه‌ی سایت مبدأ"
-                onClick={handleTap}
-            onTouchStart={onDragStart}
-            onTouchEnd={onDragEnd}
-            style={{
-              touchAction: "none",
-              width: "100%", borderRadius: 8, border: mode === "pick"? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)",
-              cursor: "pointer", opacity: busy ? 0.6 : 1, background: "#fff", display: "block",
-            }}
-          />
+          <div style={{ overflow: "hidden", borderRadius: 8, background: "#fff", touchAction: "none", border: mode === "pick" ? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)" }}>
+            <img
+              ref={imgRef}
+              src={shot}
+              alt="صفحه‌ی سایت مبدأ"
+              draggable={false}
+              onClick={handleTap}
+              onTouchStart={onDragStart}
+              onTouchMove={onDragMove}
+              onTouchEnd={onDragEnd}
+              onTouchCancel={onDragEnd}
+              style={{
+                touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none",
+                width: "100%", cursor: "pointer", opacity: busy ? 0.6 : 1, background: "#fff", display: "block",
+                willChange: "transform",
+              }}
+            />
+          </div>
 
           {mode === "pick" && (
             <label className="flex items-center gap-2" style={{ fontSize: 11 }}>
