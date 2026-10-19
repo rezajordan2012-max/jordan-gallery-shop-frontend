@@ -8748,7 +8748,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     setPicked(null);
     setDone("");
     run(async () => {
-      const d = await api("/api/browse/open", { url });
+      const d = await api("/api/browse/open", { url, pad: true });
       sidRef.current = d.sid;
       setSid(d.sid);
       applyShotData(d);
@@ -8796,7 +8796,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     sendingRef.current = true;
     inflightRef.current = dy / sc;
     try {
-      const d = await api("/api/browse/action", { sid: sidRef.current, type: "scroll", dy });
+      const d = await api("/api/browse/action", { sid: sidRef.current, type: "scroll", dy, pad: true });
       // اول عکس را کامل بارگذاری می‌کنیم تا هنگام جایگزینی هیچ سوسو/پرشی دیده نشود
       await new Promise((res) => { const im = new Image(); im.onload = res; im.onerror = res; im.src = d.shot; });
       offRef.current -= inflightRef.current;
@@ -8830,7 +8830,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     const d = trackRef.current;
     const t = e.touches && e.touches[0];
     if (!d || !t || !sidRef.current) return;
-    if (!d.moved && Math.abs(t.clientY - d.startY) < 6) return;
+    if (!d.moved && Math.abs(t.clientY - d.startY) < 10) return; // لرزشِ طبیعیِ انگشت هنگام ضربه نباید اسکرول حساب شود
     d.moved = true;
     const now = performance.now();
     const dyS = d.y - t.clientY;
@@ -8871,7 +8871,12 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
 
   function handleTap(e) {
     if (suppressTapRef.current) return;
-    if (busy || !sid || sendingRef.current || Math.abs(offRef.current) > 1) return;
+    if (busy || !sid) return;
+    if (sendingRef.current || Math.abs(offRef.current) > 1) {
+      // اسکرول هنوز هماهنگ نشده؛ به‌جای از دست رفتنِ ضربه، هماهنگی را کامل می‌کنیم و کاربر دوباره ضربه می‌زند
+      if (!sendingRef.current) sendScroll();
+      return;
+    }
     const { x, y } = coords(e);
     // بازخوردِ فوری: نقطه‌ی لمس همان لحظه نشان داده می‌شود تا کاربر منتظرِ پاسخ سرور نماند
     const rr = wrapRef.current.getBoundingClientRect();
@@ -8880,7 +8885,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     setDone("");
     if (mode === "nav") {
       run(async () => {
-        const d = await api("/api/browse/action", { sid, type: "click", x, y });
+        const d = await api("/api/browse/action", { sid, type: "click", x, y, pad: true });
         applyShotData(d);
         setCurUrl(d.url);
         setPicked(null);
@@ -8906,7 +8911,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   function doBack() {
     if (busy || !sid) return;
     run(async () => {
-      const d = await api("/api/browse/action", { sid, type: "back" });
+      const d = await api("/api/browse/action", { sid, type: "back", pad: true });
       applyShotData(d);
       setCurUrl(d.url);
       setPicked(null);
@@ -8922,7 +8927,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     setDone(message);
     // یک اسکرین‌شات تازه می‌گیریم تا مطمئن شویم نشست هنوز زنده است
     if (sidRef.current) {
-      api("/api/browse/action", { sid: sidRef.current, type: "scroll", dy: 0 })
+      api("/api/browse/action", { sid: sidRef.current, type: "scroll", dy: 0, pad: true })
         .then((d) => { applyShotData(d); setCurUrl(d.url); })
         .catch((e) => {
           setErr(e.message || "نشست بسته شده");
