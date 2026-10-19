@@ -8983,7 +8983,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
           </p>
           {curUrl && <p className="text-muted" style={{ fontSize: 10, direction: "ltr", textAlign: "left", wordBreak: "break-all" }}>{curUrl}</p>}
 
-          <div style={{ overflow: "hidden", borderRadius: 8, background: "#fff", touchAction: "none", border: mode === "pick" ? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)" }}>
+          <div style={{ overflow: "hidden", borderRadius: 8, background: "#fff", touchAction: "none", overscrollBehavior: "contain", margin: "0 auto", width: "min(100%, " + (58 * vp.width / vp.height).toFixed(2) + "vh)", border: mode === "pick" ? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)" }}>
             <img
               ref={imgRef}
               src={shot}
