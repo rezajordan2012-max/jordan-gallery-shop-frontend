@@ -4149,6 +4149,13 @@ const [paymentResult, setPaymentResult] = useState(null); // null | { status, re
     if (!res.ok) throw new Error(data.error || "خطا در مرورگر راه‌دور");
     return data;
   }
+  // جریانِ زنده‌ی فریم‌های مرورگرِ راه‌دور (پاسخِ استریم؛ با AbortController قطع می‌شود)
+  browseApi.stream = (path, body, signal) => fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body || {}),
+    signal,
+  });
 
   async function updateHeroBanners(banners) {
     const res = await fetch(`${API_BASE_URL}/api/settings`, {
@@ -8703,6 +8710,17 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   const imgRef = useRef(null);
   const [tapMark, setTapMark] = useState(null);
   const [selectChoice, setSelectChoice] = useState(null); // گزینه‌های یک منوی کشوییِ سایت مبدأ
+  const [textChoice, setTextChoice] = useState(null); // فیلدِ متنِ سایت مبدأ که کاربر رویش ضربه زده
+  const [textValue, setTextValue] = useState("");
+  const [live, setLive] = useState(false);
+  const liveRef = useRef(false);
+  const streamAbortRef = useRef(null);
+  const curUrlRef = useRef("");
+  const wheelAccRef = useRef(0);
+  const wheelBusyRef = useRef(false);
+  const wheelTimerRef = useRef(null);
+  const wheelPosRef = useRef({ x: 206, y: 380 });
+  const BLANK_GIF = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 
   const isMain = target === "main";
   const fields = isMain
@@ -8719,6 +8737,8 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     return () => {
       if (flingRef.current) cancelAnimationFrame(flingRef.current);
       clearTimeout(sendTimerRef.current);
+      clearTimeout(wheelTimerRef.current);
+      if (streamAbortRef.current) { try { streamAbortRef.current.abort(); } catch (e) {} }
       if (sidRef.current) api("/api/browse/close", { sid: sidRef.current }).catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -8745,15 +8765,113 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     setDone("ردیف رنگِ جدید ساخته شد ✓ — حالا رنگ را در سایت انتخاب کن، نامش را بنویس و در عکس ۱ و ۲ و ۳ ثبت کن");
   }
 
+  // ---- پخش زنده ----
+  function stopStream() {
+    if (streamAbortRef.current) { try { streamAbortRef.current.abort(); } catch (e) {} streamAbortRef.current = null; }
+    liveRef.current = false;
+    setLive(false);
+  }
+  function paintFrame(f) {
+    const el = imgRef.current;
+    if (!el) return;
+    el.src = "data:image/jpeg;base64," + f.d;
+    el.style.top = "0";
+    el.style.transform = "";
+    if (f.u && f.u !== curUrlRef.current) { curUrlRef.current = f.u; setCurUrl(f.u); }
+  }
+  async function startStream(sidv, attempt) {
+    stopStream();
+    const ac = new AbortController();
+    streamAbortRef.current = ac;
+    let gotFrame = false;
+    try {
+      const res = await api.stream("/api/browse/stream", { sid: sidv }, ac.signal);
+      if (!res.ok || !res.body) throw new Error("stream-unavailable");
+      liveRef.current = true;
+      setLive(true);
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf("\n\n")) >= 0) {
+          const chunk = buf.slice(0, i);
+          buf = buf.slice(i + 2);
+          if (chunk.indexOf("event: fail") === 0) throw new Error("stream-fail");
+          const line = chunk.split("\n").find((l) => l.indexOf("data: ") === 0);
+          if (!line) continue;
+          let fr = null;
+          try { fr = JSON.parse(line.slice(6)); } catch (e) { fr = null; }
+          if (fr && fr.d) { gotFrame = true; paintFrame(fr); }
+        }
+      }
+    } catch (e) {
+      if (ac.signal.aborted) return;
+    }
+    if (streamAbortRef.current === ac) {
+      streamAbortRef.current = null;
+      liveRef.current = false;
+      setLive(false);
+      if (sidRef.current === sidv && (attempt || 0) < 3) {
+        setTimeout(() => { if (sidRef.current === sidv && !streamAbortRef.current) startStream(sidv, gotFrame ? 0 : (attempt || 0) + 1); }, 800);
+      } else if (sidRef.current === sidv) {
+        setErr("اتصال زنده قطع شد؛ دکمه‌ی «باز کن» را بزن.");
+      }
+    }
+  }
+  // اسکرول در حالتِ زنده: تغییراتِ پشت‌سرهم جمع می‌شوند و با یک درخواستِ «چرخِ ماوس» به سرور می‌روند
+  function queueWheel(dy, x, y) {
+    wheelAccRef.current += dy;
+    wheelPosRef.current = { x, y };
+    if (!wheelTimerRef.current) wheelTimerRef.current = setTimeout(flushWheel, 0);
+  }
+  async function flushWheel() {
+    wheelTimerRef.current = null;
+    if (wheelBusyRef.current) { wheelTimerRef.current = setTimeout(flushWheel, 16); return; }
+    const dy = Math.round(wheelAccRef.current);
+    if (!dy || !sidRef.current) return;
+    wheelAccRef.current -= dy;
+    wheelBusyRef.current = true;
+    try {
+      await api("/api/browse/input", { sid: sidRef.current, kind: "wheel", dy, x: Math.round(wheelPosRef.current.x), y: Math.round(wheelPosRef.current.y) });
+    } catch (e) {
+      const msg = e.message || "خطا";
+      if (/نشست مرورگر بسته/.test(msg)) setErr("نشست بسته شد. دکمه‌ی «باز کن» را بزن.");
+    } finally {
+      wheelBusyRef.current = false;
+      if (Math.abs(wheelAccRef.current) >= 1 && !wheelTimerRef.current) wheelTimerRef.current = setTimeout(flushWheel, 0);
+    }
+  }
+  function liveInput(body) {
+    return api("/api/browse/input", { sid: sidRef.current, ...body });
+  }
+
   function openSite() {
     const url = addr.trim();
     if (!/^https?:\/\//i.test(url)) { setErr("لینک را کامل با https:// وارد کن"); return; }
     setPicked(null);
     setDone("");
     run(async () => {
-      const d = await api("/api/browse/open", { url, pad: true });
+      if (liveRef.current && sidRef.current) {
+        // مثلِ نوارِ آدرسِ مرورگر: همان نشستِ باز، فقط به آدرسِ تازه می‌رود
+        await liveInput({ kind: "goto", url });
+        return;
+      }
+      stopStream();
+      const d = await api("/api/browse/open", { url, pad: true, live: true });
       sidRef.current = d.sid;
       setSid(d.sid);
+      if (!d.shot) {
+        applyShotData({ shot: BLANK_GIF });
+        curUrlRef.current = d.url || "";
+        setCurUrl(d.url || "");
+        setVp({ width: d.width || 412, height: d.height || 760 });
+        startStream(d.sid, 0);
+        return;
+      }
       applyShotData(d);
       setCurUrl(d.url);
       setVp({ width: d.width || 412, height: d.height || 760 });
@@ -8843,6 +8961,13 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     d.v = 0.7 * (dyS / dt) + 0.3 * d.v;
     d.y = t.clientY;
     d.t = now;
+    if (liveRef.current) {
+      const rr = wrapRef.current ? wrapRef.current.getBoundingClientRect() : null;
+      const vx = rr && rr.width ? ((t.clientX - rr.left) / rr.width) * vp.width : 206;
+      const vy = rr && rr.height ? ((t.clientY - rr.top) / rr.height) * vp.height : 380;
+      queueWheel(dyS * pageScale(), vx, vy);
+      return;
+    }
     offRef.current += dyS;
     clampOffset();
     applyOffset();
@@ -8857,6 +8982,23 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     window.setTimeout(() => { suppressTapRef.current = false; }, 350);
     // اگر انگشت قبل از رها شدن مکث کرده باشد، شتابی وجود ندارد
     let v = performance.now() - d.t > 80 ? 0 : Math.max(-3.5, Math.min(3.5, d.v));
+    if (liveRef.current) {
+      // لغزشِ ادامه‌دار (inertia) در حالتِ زنده
+      if (Math.abs(v) < 0.25) return;
+      const sc = pageScale();
+      const pos = wheelPosRef.current;
+      let lastT = performance.now();
+      const stepLive = (now) => {
+        const dt = Math.min(40, now - lastT);
+        lastT = now;
+        queueWheel(v * dt * sc, pos.x, pos.y);
+        v *= Math.pow(0.95, dt / 16);
+        if (Math.abs(v) > 0.06) flingRef.current = requestAnimationFrame(stepLive);
+        else flingRef.current = 0;
+      };
+      flingRef.current = requestAnimationFrame(stepLive);
+      return;
+    }
     if (Math.abs(v) < 0.25) { sendScroll(); return; }
     // لغزشِ ادامه‌دار (inertia) مثل مرورگر
     let last = performance.now();
@@ -8888,6 +9030,18 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     setTapMark({ x: e.clientX - rr.left, y: e.clientY - rr.top, k: Date.now() });
     window.setTimeout(() => setTapMark(null), 900);
     setDone("");
+    if (mode === "nav" && liveRef.current) {
+      setSelectChoice(null);
+      setTextChoice(null);
+      liveInput({ kind: "tap", x, y })
+        .then((d) => {
+          if (d.select) setSelectChoice(d.select);
+          else if (d.input) { setTextChoice(d.input); setTextValue(d.input.value || ""); }
+          setPicked(null);
+        })
+        .catch((e2) => setErr(e2.message || "خطا"));
+      return;
+    }
     if (mode === "nav") {
       run(async () => {
         const d = await api("/api/browse/action", { sid, type: "click", x, y });
@@ -8908,6 +9062,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   function doScroll(dy) {
     if (!sidRef.current) return;
     stopFling();
+    if (liveRef.current) { queueWheel(dy, 206, 380); return; }
     offRef.current += dy / pageScale();
     applyOffset();
     clearTimeout(sendTimerRef.current);
@@ -8916,6 +9071,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
 
   function chooseSelect(idx) {
     setSelectChoice(null);
+    if (liveRef.current) { liveInput({ kind: "select", idx }).catch((e) => setErr(e.message || "خطا")); return; }
     run(async () => {
       const d = await api("/api/browse/action", { sid, type: "select", idx });
       applyShotData(d);
@@ -8924,7 +9080,18 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     });
   }
 
+  function submitText(submit) {
+    const v = textValue;
+    setTextChoice(null);
+    liveInput({ kind: "text", value: v, submit: !!submit }).catch((e) => setErr(e.message || "خطا"));
+  }
+  function liveNav(kind) {
+    if (!sidRef.current) return;
+    liveInput({ kind }).catch((e) => setErr(e.message || "خطا"));
+  }
+
   function doBack() {
+    if (liveRef.current) { liveNav("back"); return; }
     if (busy || !sid) return;
     run(async () => {
       const d = await api("/api/browse/action", { sid, type: "back", pad: true });
@@ -8942,7 +9109,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     setErr("");
     setDone(message);
     // یک اسکرین‌شات تازه می‌گیریم تا مطمئن شویم نشست هنوز زنده است
-    if (sidRef.current) {
+    if (sidRef.current && !liveRef.current) {
       api("/api/browse/action", { sid: sidRef.current, type: "scroll", dy: 0, pad: true })
         .then((d) => { applyShotData(d); setCurUrl(d.url); })
         .catch((e) => {
@@ -9020,7 +9187,10 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
               style={mode === "pick" ? { borderColor: "#0EA5A4", color: "#0EA5A4", background: "rgba(14,165,164,0.12)" } : undefined}>
               انتخاب عکس / رنگ
             </button>
-               <button type="button" onClick={() => doScroll(-500)} className="btn-ghost rounded px-3 py-1 text-xs">▲ بالا</button>
+            <button type="button" onClick={doBack} className="btn-ghost rounded px-3 py-1 text-xs">◀ برگشت</button>
+            {live && <button type="button" onClick={() => liveNav("reload")} className="btn-ghost rounded px-3 py-1 text-xs">⟳ بارگذاری مجدد</button>}
+            {live && <span style={{ fontSize: 10.5, color: "#0EA5A4", fontWeight: 700 }}>● زنده</span>}
+            <button type="button" onClick={() => doScroll(-500)} className="btn-ghost rounded px-3 py-1 text-xs">▲ بالا</button>
             <button type="button" onClick={() => doScroll(500)} className="btn-ghost rounded px-3 py-1 text-xs">▼ پایین</button>
             <button type="button" onClick={() => doScroll(-2000)} className="btn-ghost rounded px-3 py-1 text-xs">⇈ پرش بالا</button>
             <button type="button" onClick={() => doScroll(2000)} className="btn-ghost rounded px-3 py-1 text-xs">⇊ پرش پایین</button>
@@ -9047,7 +9217,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
                 style={{
                   position: "absolute", left: 0, top: "-" + (padState.top / vp.height * 100).toFixed(3) + "%",
                   touchAction: "none", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none",
-                  width: "100%", height: "auto", cursor: "pointer", opacity: busy ? 0.6 : 1, background: "#fff", display: "block",
+                  width: "100%", height: "auto", cursor: "pointer", opacity: busy && !live ? 0.6 : 1, background: "#fff", display: "block",
                   willChange: "transform",
                 }}
               />
@@ -9056,6 +9226,21 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
               )}
             </div>
           </div>
+
+          {textChoice && (
+            <div className="bg-panel border border-hair rounded-lg p-2 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: "#7B5CF6" }}>متن را بنویس (فیلدِ سایت مبدأ){textChoice.placeholder ? " — " + textChoice.placeholder : ""}</span>
+                <button type="button" onClick={() => setTextChoice(null)}><X size={16} color="#241E3D" /></button>
+              </div>
+              <input autoFocus value={textValue} onChange={(e) => setTextValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitText(true); } }}
+                className="bg-panel-2 border border-hair rounded px-2 py-1.5 text-sm" style={{ color: "#241E3D" }} dir="ltr" type={textChoice.type === "password" ? "password" : "text"} />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => submitText(false)} className="btn-ghost rounded px-3 py-1.5 text-xs">ثبت</button>
+                <button type="button" onClick={() => submitText(true)} className="btn-gold rounded px-3 py-1.5 text-xs">ثبت و Enter (جستجو)</button>
+              </div>
+            </div>
+          )}
 
           {selectChoice && (
             <div className="bg-panel border border-hair rounded-lg p-2 flex flex-col gap-1" style={{ maxHeight: "34vh", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -9094,6 +9279,11 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
                     dir="ltr"
                   />
                 </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn-ghost rounded px-3 py-1.5 text-xs"
+                  onClick={() => { try { navigator.clipboard.writeText(picked.url); setDone("لینک عکس کپی شد ✓"); } catch (e) { setDone("کپی ممکن نشد؛ لینک: " + picked.url); } }}>کپی لینک عکس</button>
+                <a href={picked.url} download target="_blank" rel="noreferrer" className="btn-ghost rounded px-3 py-1.5 text-xs" style={{ display: "inline-block" }}>دانلود عکس</a>
               </div>
               <div className="flex flex-wrap gap-2">
                 {fields.map((f) => (
