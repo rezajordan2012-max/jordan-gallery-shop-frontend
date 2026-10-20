@@ -8713,6 +8713,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   const [textChoice, setTextChoice] = useState(null); // فیلدِ متنِ سایت مبدأ که کاربر رویش ضربه زده
   const [textValue, setTextValue] = useState("");
   const [live, setLive] = useState(false);
+  const [liveStatus, setLiveStatus] = useState(null);
   const liveRef = useRef(false);
   const streamAbortRef = useRef(null);
   const curUrlRef = useRef("");
@@ -8806,6 +8807,11 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
           const chunk = buf.slice(0, i);
           buf = buf.slice(i + 2);
           if (chunk.indexOf("event: fail") === 0) throw new Error("stream-fail");
+          if (chunk.indexOf("event: st") === 0) {
+            const sl = chunk.split("\n").find((l) => l.indexOf("data: ") === 0);
+            try { if (sl) setLiveStatus(JSON.parse(sl.slice(6))); } catch (e) { /* بی‌اهمیت */ }
+            continue;
+          }
           const line = chunk.split("\n").find((l) => l.indexOf("data: ") === 0);
           if (!line) continue;
           let fr = null;
@@ -9220,6 +9226,11 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
               ? "حالت ناوبری: روی منو، دسته‌بندی، محصول و شماره‌ی رنگ (مثلاً NC25) بزن تا صفحه عوض شود."
               : "حالت انتخاب: روی خودِ عکسِ محصول یا دایره‌ی رنگ بزن؛ عکس همان نقطه آپلود می‌شود."}
           </p>
+          {live && liveStatus && (
+            <p className="text-muted" style={{ fontSize: 10.5, direction: "ltr", textAlign: "left" }}>
+              {liveStatus.err ? "خطا: " + liveStatus.err : liveStatus.rs === "busy" ? "صفحه در حال پردازش است…" : (liveStatus.rs === "complete" ? "لود کامل" : "در حال لود") + (liveStatus.t ? " — " + liveStatus.t : "") + (liveStatus.len >= 0 ? " (" + liveStatus.len + " chars)" : "")}
+            </p>
+          )}
           {curUrl && <p className="text-muted" style={{ fontSize: 10, direction: "ltr", textAlign: "left", wordBreak: "break-all" }}>{curUrl}</p>}
 
           <div style={{ overflow: "hidden", borderRadius: 8, background: "#fff", touchAction: "none", overscrollBehavior: "contain", margin: "0 auto", width: "min(100%, " + (58 * vp.width / vp.height).toFixed(2) + "vh)", border: mode === "pick" ? "2px solid #0EA5A4" : "1px solid rgba(123,92,246,0.3)" }}>
