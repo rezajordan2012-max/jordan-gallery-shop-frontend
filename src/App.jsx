@@ -8715,6 +8715,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   const [live, setLive] = useState(false);
   const [liveStatus, setLiveStatus] = useState(null);
   const liveRef = useRef(false);
+  const kickRef = useRef(null);
   const streamAbortRef = useRef(null);
   const curUrlRef = useRef("");
   const wheelAccRef = useRef(0);
@@ -8785,53 +8786,38 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     el.style.transform = "";
     if (f.u && f.u !== curUrlRef.current) { curUrlRef.current = f.u; setCurUrl(f.u); }
   }
-  async function startStream(sidv, attempt) {
+  // «زنده» با پرسشِ پیاپی (polling): هر بار یک اسکرین‌شاتِ ساده؛ اگر چند بار پشت‌سرهم خطا شد، پیام می‌دهد. بدونِ اتصالِ استریم.
+  async function startStream(sidv) {
     stopStream();
     const ac = new AbortController();
     streamAbortRef.current = ac;
-    let gotFrame = false;
-    try {
-      const res = await api.stream("/api/browse/stream", { sid: sidv }, ac.signal);
-      if (!res.ok || !res.body) throw new Error("stream-unavailable");
-      liveRef.current = true;
-      setLive(true);
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      let buf = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        let i;
-        while ((i = buf.indexOf("\n\n")) >= 0) {
-          const chunk = buf.slice(0, i);
-          buf = buf.slice(i + 2);
-          if (chunk.indexOf("event: fail") === 0) throw new Error("stream-fail");
-          if (chunk.indexOf("event: st") === 0) {
-            const sl = chunk.split("\n").find((l) => l.indexOf("data: ") === 0);
-            try { if (sl) setLiveStatus(JSON.parse(sl.slice(6))); } catch (e) { /* بی‌اهمیت */ }
-            continue;
-          }
-          const line = chunk.split("\n").find((l) => l.indexOf("data: ") === 0);
-          if (!line) continue;
-          let fr = null;
-          try { fr = JSON.parse(line.slice(6)); } catch (e) { fr = null; }
-          if (fr && fr.d) { gotFrame = true; paintFrame(fr); }
-        }
+    liveRef.current = true;
+    setLive(true);
+    let etag = "";
+    let fails = 0;
+    let calm = 0;
+    while (!ac.signal.aborted && sidRef.current === sidv) {
+      let changed = false;
+      try {
+        const d = await api("/api/browse/frame", { sid: sidv, etag });
+        fails = 0;
+        if (d.st) setLiveStatus(d.st);
+        if (!d.same && d.d) { etag = d.etag; changed = true; paintFrame({ d: d.d, u: d.u }); }
+      } catch (e) {
+        if (ac.signal.aborted) return;
+        const msg = e.message || "";
+        if (/نشست مرورگر بسته/.test(msg)) { setErr("نشست بسته شد. دکمه‌ی «باز کن» را بزن."); break; }
+        fails++;
+        if (fails >= 8) { setErr("به سرور وصل نمی‌شود (" + msg + "). دکمه‌ی «باز کن» را بزن."); break; }
       }
-    } catch (e) {
-      if (ac.signal.aborted) return;
+      calm = changed ? 0 : Math.min(calm + 1, 6);
+      // وقتی صفحه در حال تغییر است سریع‌تر می‌پرسیم؛ وقتی ثابت است آرام‌تر
+      await new Promise((resolve) => {
+        const t = setTimeout(resolve, fails ? 1200 : changed ? 120 : 250 + calm * 100);
+        kickRef.current = () => { clearTimeout(t); resolve(); };
+      });
     }
-    if (streamAbortRef.current === ac) {
-      streamAbortRef.current = null;
-      liveRef.current = false;
-      setLive(false);
-      if (sidRef.current === sidv && (attempt || 0) < 3) {
-        setTimeout(() => { if (sidRef.current === sidv && !streamAbortRef.current) startStream(sidv, gotFrame ? 0 : (attempt || 0) + 1); }, 800);
-      } else if (sidRef.current === sidv) {
-        setErr("اتصال زنده قطع شد؛ دکمه‌ی «باز کن» را بزن.");
-      }
-    }
+    if (streamAbortRef.current === ac) { streamAbortRef.current = null; liveRef.current = false; setLive(false); }
   }
   // اسکرول در حالتِ زنده: تغییراتِ پشت‌سرهم جمع می‌شوند و با یک درخواستِ «چرخِ ماوس» به سرور می‌روند
   function queueWheel(dy, x, y, dx) {
@@ -8851,6 +8837,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     wheelBusyRef.current = true;
     try {
       await api("/api/browse/input", { sid: sidRef.current, kind: "wheel", dy, dx, x: Math.round(wheelPosRef.current.x), y: Math.round(wheelPosRef.current.y) });
+      if (kickRef.current) kickRef.current();
     } catch (e) {
       const msg = e.message || "خطا";
       if (/نشست مرورگر بسته/.test(msg)) setErr("نشست بسته شد. دکمه‌ی «باز کن» را بزن.");
@@ -8860,7 +8847,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     }
   }
   function liveInput(body) {
-    return api("/api/browse/input", { sid: sidRef.current, ...body });
+    return api("/api/browse/input", { sid: sidRef.current, ...body }).then((r) => { setTimeout(() => { if (kickRef.current) kickRef.current(); }, 250); return r; });
   }
 
   function openSite() {
