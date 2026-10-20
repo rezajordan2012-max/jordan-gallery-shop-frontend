@@ -8702,6 +8702,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   const [newVariantCount, setNewVariantCount] = useState(0);
   const imgRef = useRef(null);
   const [tapMark, setTapMark] = useState(null);
+  const [selectChoice, setSelectChoice] = useState(null); // گزینه‌های یک منوی کشوییِ سایت مبدأ
 
   const isMain = target === "main";
   const fields = isMain
@@ -8886,6 +8887,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     if (mode === "nav") {
       run(async () => {
         const d = await api("/api/browse/action", { sid, type: "click", x, y, pad: true });
+        if (d.select) { setSelectChoice(d.select); return; }
         applyShotData(d);
         setCurUrl(d.url);
         setPicked(null);
@@ -8906,6 +8908,16 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     applyOffset();
     clearTimeout(sendTimerRef.current);
     sendTimerRef.current = setTimeout(sendScroll, 60);
+  }
+
+  function chooseSelect(idx) {
+    setSelectChoice(null);
+    run(async () => {
+      const d = await api("/api/browse/action", { sid, type: "select", idx, pad: true });
+      applyShotData(d);
+      setCurUrl(d.url);
+      setPicked(null);
+    });
   }
 
   function doBack() {
@@ -9040,6 +9052,21 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
               )}
             </div>
           </div>
+
+          {selectChoice && (
+            <div className="bg-panel border border-hair rounded-lg p-2 flex flex-col gap-1" style={{ maxHeight: "34vh", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+              <div className="flex items-center justify-between">
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: "#7B5CF6" }}>یک گزینه انتخاب کن (منوی سایت مبدأ)</span>
+                <button type="button" onClick={() => setSelectChoice(null)}><X size={16} color="#241E3D" /></button>
+              </div>
+              {selectChoice.options.map((o) => (
+                <button key={o.i} type="button" disabled={o.disabled} onClick={() => chooseSelect(o.i)} className="btn-ghost rounded px-3 py-2 text-xs"
+                  style={{ textAlign: "left", direction: "ltr", opacity: o.disabled ? 0.4 : 1, ...(o.selected ? { borderColor: "#FF3E8E", color: "#FF3E8E", background: "rgba(255,62,142,0.1)" } : null) }}>
+                  {o.label || "—"}
+                </button>
+              ))}
+            </div>
+          )}
 
           {mode === "pick" && (
             <label className="flex items-center gap-2" style={{ fontSize: 11 }}>
