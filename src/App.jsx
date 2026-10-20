@@ -8886,7 +8886,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     setDone("");
     if (mode === "nav") {
       run(async () => {
-        const d = await api("/api/browse/action", { sid, type: "click", x, y, pad: true });
+        const d = await api("/api/browse/action", { sid, type: "click", x, y });
         if (d.select) { setSelectChoice(d.select); return; }
         applyShotData(d);
         setCurUrl(d.url);
@@ -8913,7 +8913,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   function chooseSelect(idx) {
     setSelectChoice(null);
     run(async () => {
-      const d = await api("/api/browse/action", { sid, type: "select", idx, pad: true });
+      const d = await api("/api/browse/action", { sid, type: "select", idx });
       applyShotData(d);
       setCurUrl(d.url);
       setPicked(null);
