@@ -8778,6 +8778,8 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   // محدودیتِ جابه‌جایی به همان مقدارِ حاشیه‌ای که در اسکرین‌شات داریم تا جای خالی/سفید دیده نشود
   function clampOffset() {
     const sc = pageScale();
+    // اگر سرور حاشیه نفرستاده باشد، جابه‌جایی آزاد است (وگرنه هیچ اسکرولی ثبت نمی‌شد)
+    if (!padRef.current.top && !padRef.current.bottom) return;
     const lo = -padRef.current.top / sc, hi = padRef.current.bottom / sc;
     if (offRef.current < lo) offRef.current = lo;
     if (offRef.current > hi) offRef.current = hi;
