@@ -8750,7 +8750,11 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     setErr("");
     try { await fn(); } catch (e) {
       const msg = e.message || "خطا";
-      setErr(/نشست مرورگر بسته/.test(msg) ? "نشست بسته شد (احتمالاً بی‌کاری یا کمبود حافظه سرور). دکمه‌ی «باز کن» را بزن؛ آدرس همان است." : msg);
+      setErr(/نشست مرورگر بسته/.test(msg)
+        ? "نشست بسته شد (احتمالاً بی‌کاری یا کمبود حافظه سرور). دکمه‌ی «باز کن» را بزن؛ آدرس همان است."
+        : /failed to fetch|networkerror|load failed/i.test(msg)
+          ? "به سرور وصل نشد (احتمالاً سرور در حال دیپلوی یا بیدار شدن است). چند ثانیه صبر کن و دوباره «باز کن» را بزن."
+          : msg);
     } finally { setBusy(false); }
   }
 
@@ -8865,7 +8869,15 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
         return;
       }
       stopStream();
-      const d = await api("/api/browse/open", { url, pad: true, live: true });
+      let d = null;
+      for (let tryNo = 0; tryNo < 3 && !d; tryNo++) {
+        try { d = await api("/api/browse/open", { url, pad: true, live: true }); }
+        catch (e) {
+          // سرورِ رایگان گاهی تازه بیدار می‌شود؛ دو بار با فاصله دوباره تلاش می‌کنیم
+          if (tryNo < 2 && /failed to fetch|networkerror|load failed/i.test(e.message || "")) await new Promise((r) => setTimeout(r, 4000));
+          else throw e;
+        }
+      }
       sidRef.current = d.sid;
       setSid(d.sid);
       if (!d.shot) {
