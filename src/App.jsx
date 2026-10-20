@@ -8714,6 +8714,8 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
       ];
 
   useEffect(() => {
+    // مرورگرِ سرور را از قبل بالا می‌آوریم تا با «باز کن» منتظرِ راه‌اندازی نمانیم
+    api("/api/browse/warm", {}).catch(() => {});
     return () => {
       if (flingRef.current) cancelAnimationFrame(flingRef.current);
       clearTimeout(sendTimerRef.current);
@@ -9003,7 +9005,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
       </div>
 
       {err && <p style={{ fontSize: 11.5, color: "#D6336C" }}>{err}</p>}
-      {busy && <p className="text-muted" style={{ fontSize: 11 }}>در حال انجام… چند ثانیه صبر کن.</p>}
+      {busy && <p className="text-muted" style={{ fontSize: 11 }}>{shot ? "در حال انجام…" : "در حال باز کردن صفحه… بار اول چند ثانیه بیشتر طول می‌کشد."}</p>}
 
       {shot && (
         <>
