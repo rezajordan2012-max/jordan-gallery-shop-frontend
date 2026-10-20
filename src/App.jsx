@@ -8717,6 +8717,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   const streamAbortRef = useRef(null);
   const curUrlRef = useRef("");
   const wheelAccRef = useRef(0);
+  const wheelAccXRef = useRef(0);
   const wheelBusyRef = useRef(false);
   const wheelTimerRef = useRef(null);
   const wheelPosRef = useRef({ x: 206, y: 380 });
@@ -8823,8 +8824,9 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     }
   }
   // اسکرول در حالتِ زنده: تغییراتِ پشت‌سرهم جمع می‌شوند و با یک درخواستِ «چرخِ ماوس» به سرور می‌روند
-  function queueWheel(dy, x, y) {
+  function queueWheel(dy, x, y, dx) {
     wheelAccRef.current += dy;
+    wheelAccXRef.current += dx || 0;
     wheelPosRef.current = { x, y };
     if (!wheelTimerRef.current) wheelTimerRef.current = setTimeout(flushWheel, 0);
   }
@@ -8832,17 +8834,19 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     wheelTimerRef.current = null;
     if (wheelBusyRef.current) { wheelTimerRef.current = setTimeout(flushWheel, 16); return; }
     const dy = Math.round(wheelAccRef.current);
-    if (!dy || !sidRef.current) return;
+    const dx = Math.round(wheelAccXRef.current);
+    if ((!dy && !dx) || !sidRef.current) return;
     wheelAccRef.current -= dy;
+    wheelAccXRef.current -= dx;
     wheelBusyRef.current = true;
     try {
-      await api("/api/browse/input", { sid: sidRef.current, kind: "wheel", dy, x: Math.round(wheelPosRef.current.x), y: Math.round(wheelPosRef.current.y) });
+      await api("/api/browse/input", { sid: sidRef.current, kind: "wheel", dy, dx, x: Math.round(wheelPosRef.current.x), y: Math.round(wheelPosRef.current.y) });
     } catch (e) {
       const msg = e.message || "خطا";
       if (/نشست مرورگر بسته/.test(msg)) setErr("نشست بسته شد. دکمه‌ی «باز کن» را بزن.");
     } finally {
       wheelBusyRef.current = false;
-      if (Math.abs(wheelAccRef.current) >= 1 && !wheelTimerRef.current) wheelTimerRef.current = setTimeout(flushWheel, 0);
+      if ((Math.abs(wheelAccRef.current) >= 1 || Math.abs(wheelAccXRef.current) >= 1) && !wheelTimerRef.current) wheelTimerRef.current = setTimeout(flushWheel, 0);
     }
   }
   function liveInput(body) {
@@ -8947,15 +8951,18 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     const t = e.touches && e.touches[0];
     if (!t) return;
     stopFling();
-    trackRef.current = { y: t.clientY, startY: t.clientY, t: performance.now(), v: 0, moved: false };
+    trackRef.current = { y: t.clientY, startY: t.clientY, x: t.clientX, startX: t.clientX, axis: "y", t: performance.now(), v: 0, moved: false };
   }
   function onDragMove(e) {
     const d = trackRef.current;
     const t = e.touches && e.touches[0];
     if (!d || !t || !sidRef.current) return;
     if (!d.moved && Math.abs(t.clientY - d.startY) < 10) return; // لرزشِ طبیعیِ انگشت هنگام ضربه نباید اسکرول حساب شود
+    if (!d.moved) { d.axis = Math.abs(t.clientX - (d.startX == null ? t.clientX : d.startX)) > Math.abs(t.clientY - d.startY) ? "x" : "y"; }
     d.moved = true;
     const now = performance.now();
+    const dxS = (d.x == null ? t.clientX : d.x) - t.clientX;
+    d.x = t.clientX;
     const dyS = d.y - t.clientY;
     const dt = Math.max(1, now - d.t);
     d.v = 0.7 * (dyS / dt) + 0.3 * d.v;
@@ -8965,7 +8972,8 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
       const rr = wrapRef.current ? wrapRef.current.getBoundingClientRect() : null;
       const vx = rr && rr.width ? ((t.clientX - rr.left) / rr.width) * vp.width : 206;
       const vy = rr && rr.height ? ((t.clientY - rr.top) / rr.height) * vp.height : 380;
-      queueWheel(dyS * pageScale(), vx, vy);
+      if (d.axis === "x") queueWheel(0, vx, vy, dxS * pageScale());
+      else queueWheel(dyS * pageScale(), vx, vy);
       return;
     }
     offRef.current += dyS;
@@ -8984,7 +8992,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     let v = performance.now() - d.t > 80 ? 0 : Math.max(-3.5, Math.min(3.5, d.v));
     if (liveRef.current) {
       // لغزشِ ادامه‌دار (inertia) در حالتِ زنده
-      if (Math.abs(v) < 0.25) return;
+      if (d.axis === "x" || Math.abs(v) < 0.25) return;
       const sc = pageScale();
       const pos = wheelPosRef.current;
       let lastT = performance.now();
