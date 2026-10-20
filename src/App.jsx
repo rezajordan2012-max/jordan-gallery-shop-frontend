@@ -8716,6 +8716,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
   const [liveStatus, setLiveStatus] = useState(null);
   const liveRef = useRef(false);
   const kickRef = useRef(null);
+  const burstUntilRef = useRef(0); // بعد از هر لمس/اسکرول چند ثانیه سریع‌تر تصویر می‌گیریم
   const streamAbortRef = useRef(null);
   const curUrlRef = useRef("");
   const wheelAccRef = useRef(0);
@@ -8813,7 +8814,8 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
       calm = changed ? 0 : Math.min(calm + 1, 6);
       // وقتی صفحه در حال تغییر است سریع‌تر می‌پرسیم؛ وقتی ثابت است آرام‌تر
       await new Promise((resolve) => {
-        const t = setTimeout(resolve, fails ? 1200 : changed ? 120 : 250 + calm * 100);
+        const burst = Date.now() < burstUntilRef.current;
+        const t = setTimeout(resolve, fails ? 1200 : burst ? 60 : changed ? 60 : 220 + calm * 100);
         kickRef.current = () => { clearTimeout(t); resolve(); };
       });
     }
@@ -8837,6 +8839,7 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     wheelBusyRef.current = true;
     try {
       await api("/api/browse/input", { sid: sidRef.current, kind: "wheel", dy, dx, x: Math.round(wheelPosRef.current.x), y: Math.round(wheelPosRef.current.y) });
+      burstUntilRef.current = Date.now() + 2500;
       if (kickRef.current) kickRef.current();
     } catch (e) {
       const msg = e.message || "خطا";
@@ -8847,7 +8850,8 @@ function BrowseImagePicker({ target, onApply, onAddVariant, onAddEmptyVariant, a
     }
   }
   function liveInput(body) {
-    return api("/api/browse/input", { sid: sidRef.current, ...body }).then((r) => { setTimeout(() => { if (kickRef.current) kickRef.current(); }, 250); return r; });
+    burstUntilRef.current = Date.now() + 3000;
+    return api("/api/browse/input", { sid: sidRef.current, ...body }).then((r) => { if (kickRef.current) kickRef.current(); setTimeout(() => { if (kickRef.current) kickRef.current(); }, 120); return r; });
   }
 
   function openSite() {
