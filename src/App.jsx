@@ -2523,7 +2523,7 @@ function createTornado(back, front, geo) {
     cool: { core: "255,255,255", mid: "186,212,255", glow: "96,140,255", tint: "170,198,255", flash: "205,222,255" },
     warm: { core: "255,251,238", mid: "255,214,130", glow: "255,140,40", tint: "255,190,96", flash: "255,214,140" },
     // صاعقه‌ی سینمایی: هسته‌ی سفیدِ درخشان، هاله‌ی آبی-بنفش و لبه‌ی صورتی-بنفش (مثل تصویر مرجع)
-    storm: { core: "255,255,255", mid: "238,242,255", glow: "86,124,255", halo: "206,140,255", tint: "180,198,255", flash: "168,190,255" },
+    storm: { core: "255,255,255", mid: "238,242,255", glow: "70,118,255", halo: "220,120,255", tint: "178,196,255", flash: "160,186,255" },
   };
   const bolts = [
     { t0: 0.28, big: 1, back: true, tone: TONES.storm, levels: buildBolt(W * 0.04, -6, W * 0.9, H * 0.96), sx: W * 0.04 },
@@ -2558,8 +2558,8 @@ function createTornado(back, front, geo) {
             g.moveTo(pts[0][0], pts[0][1]);
             for (let k2 = 1; k2 < pts.length; k2++) { if (pg[k2] > f) break; g.lineTo(pts[k2][0], pts[k2][1]); }
           }
-          if (pass === 0) { g.strokeStyle = "rgba(" + (tn.halo || tn.glow) + "," + (0.17 * I).toFixed(3) + ")"; g.lineWidth = 7 * LW[lv] + 2; g.shadowColor = "rgba(" + (tn.halo || tn.glow) + ",1)"; g.shadowBlur = lv < 2 ? 34 : 14; }
-          else if (pass === 1) { g.strokeStyle = "rgba(" + tn.glow + "," + (0.9 * I).toFixed(3) + ")"; g.lineWidth = 3.4 * LW[lv] + 0.9; g.shadowColor = "rgba(" + tn.glow + ",1)"; g.shadowBlur = lv < 2 ? 18 : 8; }
+          if (pass === 0) { g.strokeStyle = "rgba(" + (tn.halo || tn.glow) + "," + (0.3 * I).toFixed(3) + ")"; g.lineWidth = 9 * LW[lv] + 2.5; g.shadowColor = "rgba(" + (tn.halo || tn.glow) + ",1)"; g.shadowBlur = lv < 2 ? 40 : 16; }
+          else if (pass === 1) { g.strokeStyle = "rgba(" + tn.glow + "," + (1.0 * I).toFixed(3) + ")"; g.lineWidth = 4.2 * LW[lv] + 1; g.shadowColor = "rgba(" + tn.glow + ",1)"; g.shadowBlur = lv < 2 ? 22 : 9; }
           else if (pass === 2) { g.strokeStyle = "rgba(" + tn.mid + "," + (0.95 * I).toFixed(3) + ")"; g.lineWidth = 2.8 * LW[lv] + 0.6; g.shadowColor = "rgba(255,255,255,0.95)"; g.shadowBlur = 12; }
           else { g.strokeStyle = "rgba(" + tn.core + "," + Math.min(1, I * 1.7).toFixed(3) + ")"; g.lineWidth = 2.3 * LW[lv] + 0.7; g.shadowColor = "rgba(255,255,255,1)"; g.shadowBlur = 6; }
           g.stroke();
@@ -2606,11 +2606,11 @@ function createTornado(back, front, geo) {
       const tn = b.tone;
       const f = Math.min(1, a / 0.07) + 0.02;
       gF.globalAlpha = 1;
-      gF.fillStyle = "rgba(" + tn.flash + "," + (0.3 * Math.pow(I, 1.3)).toFixed(3) + ")";
+      gF.fillStyle = "rgba(" + tn.flash + "," + (0.34 * Math.pow(I, 1.3)).toFixed(3) + ")";
       gF.fillRect(0, 0, W, H);
       const rg = gF.createRadialGradient(b.sx, 0, 0, b.sx, 0, H * 1.0);
       rg.addColorStop(0, "rgba(" + tn.core + "," + (0.85 * Math.pow(I, 1.1)).toFixed(3) + ")");
-      rg.addColorStop(0.3, "rgba(" + tn.mid + "," + (0.4 * Math.pow(I, 1.2)).toFixed(3) + ")");
+      rg.addColorStop(0.3, "rgba(" + tn.mid + "," + (0.5 * Math.pow(I, 1.2)).toFixed(3) + ")");
       rg.addColorStop(1, "rgba(" + tn.glow + ",0)");
       gF.fillStyle = rg;
       gF.fillRect(0, 0, W, H);
@@ -2855,7 +2855,7 @@ function scanProductBase(im) {
 
 // ===== باران روی شیشه (سینمایی): همزمان با اولین رعد و برق، قطره‌ها ناگهان روی «شیشه‌ی» صفحه پاشیده می‌شوند،
 // بزرگ‌ترها با مکث و شتاب سُر می‌خورند، ردِ خیس می‌گذارند، به هم می‌پیوندند و در پایانِ انیمیشن شیشه محو می‌شود. =====
-function createRainGlass() {
+function createRainGlass(prodImg) {
   if (typeof document === "undefined") return null;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const W = Math.max(200, window.innerWidth || 360);
@@ -2880,6 +2880,17 @@ function createRainGlass() {
     return Math.min(1, (m + r1 + r2) * (0.9 + 0.1 * Math.sin(a * 190)));
   };
   const area = W * H;
+  // نسخه‌ی کوچکِ عکسِ محصول: داخلِ قطره‌های بزرگ، وارونه و کوچک‌شده دیده می‌شود (مثل شکستِ نور در قطره‌ی واقعی)
+  let prodC = null;
+  try {
+    if (prodImg && prodImg.naturalWidth > 0) {
+      const m = 160 / Math.max(prodImg.naturalWidth, prodImg.naturalHeight);
+      prodC = document.createElement("canvas");
+      prodC.width = Math.max(8, Math.round(prodImg.naturalWidth * m));
+      prodC.height = Math.max(8, Math.round(prodImg.naturalHeight * m));
+      prodC.getContext("2d").drawImage(prodImg, 0, 0, prodC.width, prodC.height);
+    }
+  } catch (e) { prodC = null; }
   const mk = (x, y, r, born, big) => ({
     x: x, y: y, r: r, born: born, big: big || 0, crit: rnd(3.4, 5.8), delay: rnd(0.08, 0.7), moving: false, vy: 0,
     phase: 0, timer: rnd(0.1, 0.4), trail: [], seed: Math.random() * 6.283, lobes: [], sat: [], since: 0,
@@ -2894,7 +2905,7 @@ function createRainGlass() {
   const burst = (at, n, bigP) => {
     for (let i = 0; i < n; i++) {
       const big = Math.random() < bigP;
-      const r = big ? rnd(5.5, 9) : Math.pow(Math.random(), 2.4) * 5 + 1.1;
+      const r = big ? rnd(6.5, 11) : Math.pow(Math.random(), 2.4) * 5 + 1.1;
       const d = mk(rnd(0, W), rnd(0, H * 0.98), r, at + rnd(0.02, 0.16), big);
       addSplat(d);
       drops.push(d);
@@ -2905,7 +2916,7 @@ function createRainGlass() {
 
   const step = (dt) => {
     t += dt;
-    if (!fired1 && t >= T1) { fired1 = true; burst(t, Math.round(Math.max(90, Math.min(200, area / 2300))), 0.07); }
+    if (!fired1 && t >= T1) { fired1 = true; burst(t, Math.round(Math.max(90, Math.min(200, area / 2300))), 0.1); }
     if (!fired2 && t >= T2) { fired2 = true; burst(t, Math.round(Math.max(30, Math.min(70, area / 7000))), 0.06); }
     if (t > T1 + 0.3 && t < T2 + 0.4 && drops.length < 330) {
       rainAcc += dt * 14;
@@ -3024,6 +3035,16 @@ function createRainGlass() {
     ctx.fillStyle = "rgba(0,0,0,0.26)"; path(x + rx * 0.14, y + ry * 0.26, rx * 1.12, ry * 1.1); ctx.fill();
     ctx.save();
     path(x, y, rx, ry); ctx.clip();
+    if (prodC && rx >= 4.2) {
+      // محصول داخلِ قطره: وارونه (مثل عدسی) و همراهِ قطره که سُر می‌خورد
+      ctx.fillStyle = "rgba(240,244,255,0.5)"; ctx.fillRect(x - rx, y - ry, 2 * rx, 2 * ry);
+      const sc = Math.min((2 * rx * 1.12) / prodC.width, (2 * ry * 1.12) / prodC.height);
+      ctx.save();
+      ctx.translate(x, y); ctx.scale(1, -1);
+      ctx.globalAlpha *= 0.95;
+      ctx.drawImage(prodC, -prodC.width * sc / 2, -prodC.height * sc / 2, prodC.width * sc, prodC.height * sc);
+      ctx.restore();
+    }
     const gr = ctx.createRadialGradient(x - rx * 0.2, y - ry * 0.3, Math.min(rx, ry) * 0.2, x, y, Math.max(rx, ry) * 1.05);
     gr.addColorStop(0, "rgba(210,222,255,0.14)");
     gr.addColorStop(0.62, "rgba(30,40,85,0.20)");
@@ -3158,7 +3179,7 @@ function SmokeImage({ playKey, src, alt, style }) {
     const tor = createTornado(b, f, geo);
     if (!tor) { setState("done"); return undefined; }
     if (rainRef.current) { rainRef.current.destroy(); rainRef.current = null; }
-    try { rainRef.current = createRainGlass(); } catch (e) { rainRef.current = null; }
+    try { rainRef.current = createRainGlass(prodRef.current ? prodRef.current.querySelector("img") : null); } catch (e) { rainRef.current = null; }
     let raf = 0;
     const t0 = performance.now();
     const loop = (now) => {
