@@ -2869,7 +2869,7 @@ function createRainGlass() {
   if (!ctx) return null;
   document.body.appendChild(cv);
 
-  const DUR = 7.0, FADE = 1.0, T1 = 0.28, T2 = 3.72;
+  const DUR = 5.7, FADE = 0.9, T1 = 0.28, T2 = 3.72; // همه‌چیز دو ثانیه بعد از رعد و برقِ دوم تمام می‌شود
   const rnd = (a, b) => a + Math.random() * (b - a);
   const ease = (x) => { x = Math.max(0, Math.min(1, x)); return 1 - Math.pow(1 - x, 3); };
   const boltI = (a) => {
@@ -2881,7 +2881,7 @@ function createRainGlass() {
   };
   const area = W * H;
   const mk = (x, y, r, born, big) => ({
-    x: x, y: y, r: r, born: born, big: big || 0, crit: rnd(5.2, 8.8), delay: rnd(0.25, 1.3), moving: false, vy: 0,
+    x: x, y: y, r: r, born: born, big: big || 0, crit: rnd(3.4, 5.8), delay: rnd(0.08, 0.7), moving: false, vy: 0,
     phase: 0, timer: rnd(0.1, 0.4), trail: [], seed: Math.random() * 6.283, lobes: [], sat: [], since: 0,
   });
   const addSplat = (d) => {
@@ -2894,7 +2894,7 @@ function createRainGlass() {
   const burst = (at, n, bigP) => {
     for (let i = 0; i < n; i++) {
       const big = Math.random() < bigP;
-      const r = big ? rnd(9, 15) : Math.pow(Math.random(), 2.6) * 8.5 + 1.5;
+      const r = big ? rnd(5.5, 9) : Math.pow(Math.random(), 2.4) * 5 + 1.1;
       const d = mk(rnd(0, W), rnd(0, H * 0.98), r, at + rnd(0.02, 0.16), big);
       addSplat(d);
       drops.push(d);
@@ -2907,11 +2907,11 @@ function createRainGlass() {
     t += dt;
     if (!fired1 && t >= T1) { fired1 = true; burst(t, Math.round(Math.max(90, Math.min(200, area / 2300))), 0.07); }
     if (!fired2 && t >= T2) { fired2 = true; burst(t, Math.round(Math.max(30, Math.min(70, area / 7000))), 0.06); }
-    if (t > T1 + 0.3 && t < DUR - 1.8 && drops.length < 330) {
-      rainAcc += dt * 16;
+    if (t > T1 + 0.3 && t < T2 + 0.4 && drops.length < 330) {
+      rainAcc += dt * 14;
       while (rainAcc >= 1) {
         rainAcc -= 1;
-        const d = mk(rnd(0, W), rnd(0, H * 0.9), rnd(1.3, 3.2), t);
+        const d = mk(rnd(0, W), rnd(0, H * 0.9), rnd(1.0, 2.4), t);
         addSplat(d);
         drops.push(d);
       }
@@ -2923,24 +2923,24 @@ function createRainGlass() {
       if (!d.moving && d.r >= d.crit && t - d.born > d.delay) d.moving = true;
       if (d.moving) {
         d.timer -= dt;
-        if (d.timer <= 0) { d.phase = d.phase ? 0 : 1; d.timer = d.phase ? rnd(0.25, 0.7) : rnd(0.04, 0.35); }
-        const target = d.phase ? 38 + d.r * 15 : 0;
-        d.vy += (target - d.vy) * Math.min(1, dt * (d.phase ? 5 : 9));
+        if (d.timer <= 0) { d.phase = d.phase ? 0 : 1; d.timer = d.phase ? rnd(0.3, 0.8) : rnd(0.03, 0.18); }
+        const target = d.phase ? 95 + d.r * 38 : 0;
+        d.vy += (target - d.vy) * Math.min(1, dt * (d.phase ? 7 : 11));
         const dy = d.vy * dt;
         d.y += dy;
         d.x += Math.sin(d.y * 0.045 + d.seed) * 0.12;
         d.since += dy;
         if (dy > 0) {
-          d.trail.push({ x: d.x, y: d.y - d.r * 0.6, w: Math.max(1, d.r * 0.42), t: t });
-          d.r -= dt * 0.05 * d.r * (d.vy / 90) + dy * 0.0014;
+          d.trail.push({ x: d.x, y: d.y - d.r * 0.6, w: Math.max(0.8, d.r * 0.38), t: t });
+          d.r -= dt * 0.05 * d.r * (d.vy / 90) + dy * 0.0016;
           if (d.since > 16 && Math.random() < 0.6 && drops.length < 380) {
             d.since = 0;
-            drops.push(mk(d.x + rnd(-1, 1), d.y - d.r * 1.1, rnd(0.9, 1.7), t));
+            drops.push(mk(d.x + rnd(-1, 1), d.y - d.r * 1.1, rnd(0.7, 1.3), t));
           }
         }
-        if (d.r < 2.8) { d.moving = false; d.vy = 0; d.crit = 99; }
+        if (d.r < 2.0) { d.moving = false; d.vy = 0; d.crit = 99; }
       }
-      while (d.trail.length && t - d.trail[0].t > 2.6) d.trail.shift();
+      while (d.trail.length && t - d.trail[0].t > 1.5) d.trail.shift();
     }
     for (i = 0; i < drops.length; i++) {
       d = drops[i];
@@ -2972,7 +2972,7 @@ function createRainGlass() {
       const tr = drops[i].trail;
       if (tr.length < 2) continue;
       for (let j = 1; j < tr.length; j++) {
-        const a = tr[j - 1], b = tr[j], life = 1 - (t - b.t) / 2.6;
+        const a = tr[j - 1], b = tr[j], life = 1 - (t - b.t) / 1.5;
         if (life <= 0 || b.y - a.y > 14) continue;
         ctx.strokeStyle = "rgba(20,28,60," + (0.07 * life).toFixed(3) + ")";
         ctx.lineWidth = b.w * 1.2 + 0.8;
@@ -3011,11 +3011,11 @@ function createRainGlass() {
     const s = age < 0.2 ? 1.5 - 0.5 * ease(age / 0.2) : 1;
     const al = Math.min(1, age / 0.05);
     const rx = Math.max(0.6, d.r) * s;
-    const ry = rx * (1.04 + (d.moving ? 0.26 * Math.min(1, d.vy / 60) : 0.06));
+    const ry = rx * (1.04 + (d.moving ? 0.3 * Math.min(1, d.vy / 90) : 0.05));
     const x = d.x, y = d.y;
     ctx.save();
     ctx.globalAlpha *= al;
-    if (rx < 2.4) {
+    if (rx < 2.2) {
       ctx.fillStyle = "rgba(20,30,60,0.38)"; path(x, y, rx * 1.15, ry * 1.15); ctx.fill();
       ctx.fillStyle = "rgba(255,255,255," + (0.82 + 0.18 * flash).toFixed(2) + ")"; path(x - rx * 0.25, y - ry * 0.25, rx * 0.65, ry * 0.65); ctx.fill();
       ctx.restore();
