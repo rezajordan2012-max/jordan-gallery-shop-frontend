@@ -2855,7 +2855,7 @@ function scanProductBase(im) {
 
 // ===== باران روی شیشه (سینمایی): همزمان با اولین رعد و برق، قطره‌ها ناگهان روی «شیشه‌ی» صفحه پاشیده می‌شوند،
 // بزرگ‌ترها با مکث و شتاب سُر می‌خورند، ردِ خیس می‌گذارند، به هم می‌پیوندند و در پایانِ انیمیشن شیشه محو می‌شود. =====
-function createRainGlass(prodImg) {
+function createRainGlass(prodImg, src) {
   if (typeof document === "undefined") return null;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const W = Math.max(200, window.innerWidth || 360);
@@ -2882,15 +2882,20 @@ function createRainGlass(prodImg) {
   const area = W * H;
   // نسخه‌ی کوچکِ عکسِ محصول: داخلِ قطره‌های بزرگ، وارونه و کوچک‌شده دیده می‌شود (مثل شکستِ نور در قطره‌ی واقعی)
   let prodC = null;
-  try {
-    if (prodImg && prodImg.naturalWidth > 0) {
-      const m = 160 / Math.max(prodImg.naturalWidth, prodImg.naturalHeight);
-      prodC = document.createElement("canvas");
-      prodC.width = Math.max(8, Math.round(prodImg.naturalWidth * m));
-      prodC.height = Math.max(8, Math.round(prodImg.naturalHeight * m));
-      prodC.getContext("2d").drawImage(prodImg, 0, 0, prodC.width, prodC.height);
-    }
-  } catch (e) { prodC = null; }
+  const buildProd = (im) => {
+    try {
+      if (prodC || !im || !im.naturalWidth) return;
+      const m = 160 / Math.max(im.naturalWidth, im.naturalHeight);
+      const c = document.createElement("canvas");
+      c.width = Math.max(8, Math.round(im.naturalWidth * m));
+      c.height = Math.max(8, Math.round(im.naturalHeight * m));
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      prodC = c;
+    } catch (e) { /* عکس قابل استفاده نیست؛ قطره‌ها بدونِ محصول می‌مانند */ }
+  };
+  // عکسِ همین لحظه‌ی صفحه؛ اگر هنوز کامل نشده بود، منتظرش می‌مانیم و برای اطمینان خودمان هم یک نسخه از src می‌گیریم
+  if (prodImg) { buildProd(prodImg); if (!prodC) prodImg.addEventListener("load", () => buildProd(prodImg)); }
+  if (!prodC && src) { const im2 = new Image(); im2.onload = () => buildProd(im2); im2.src = src; }
   const mk = (x, y, r, born, big) => ({
     x: x, y: y, r: r, born: born, big: big || 0, crit: rnd(3.4, 5.8), delay: rnd(0.08, 0.7), moving: false, vy: 0,
     phase: 0, timer: rnd(0.1, 0.4), trail: [], seed: Math.random() * 6.283, lobes: [], sat: [], since: 0,
@@ -2905,7 +2910,7 @@ function createRainGlass(prodImg) {
   const burst = (at, n, bigP) => {
     for (let i = 0; i < n; i++) {
       const big = Math.random() < bigP;
-      const r = big ? rnd(6.5, 11) : Math.pow(Math.random(), 2.4) * 5 + 1.1;
+      const r = big ? rnd(8, 13) : Math.pow(Math.random(), 2.4) * 5 + 1.1;
       const d = mk(rnd(0, W), rnd(0, H * 0.98), r, at + rnd(0.02, 0.16), big);
       addSplat(d);
       drops.push(d);
@@ -2916,7 +2921,7 @@ function createRainGlass(prodImg) {
 
   const step = (dt) => {
     t += dt;
-    if (!fired1 && t >= T1) { fired1 = true; burst(t, Math.round(Math.max(90, Math.min(200, area / 2300))), 0.1); }
+    if (!fired1 && t >= T1) { fired1 = true; burst(t, Math.round(Math.max(90, Math.min(200, area / 2300))), 0.14); }
     if (!fired2 && t >= T2) { fired2 = true; burst(t, Math.round(Math.max(30, Math.min(70, area / 7000))), 0.06); }
     if (t > T1 + 0.3 && t < T2 + 0.4 && drops.length < 330) {
       rainAcc += dt * 14;
@@ -3035,7 +3040,7 @@ function createRainGlass(prodImg) {
     ctx.fillStyle = "rgba(0,0,0,0.26)"; path(x + rx * 0.14, y + ry * 0.26, rx * 1.12, ry * 1.1); ctx.fill();
     ctx.save();
     path(x, y, rx, ry); ctx.clip();
-    if (prodC && rx >= 4.2) {
+    if (prodC && rx >= 3.8) {
       // محصول داخلِ قطره: وارونه (مثل عدسی) و همراهِ قطره که سُر می‌خورد
       ctx.fillStyle = "rgba(240,244,255,0.5)"; ctx.fillRect(x - rx, y - ry, 2 * rx, 2 * ry);
       const sc = Math.min((2 * rx * 1.12) / prodC.width, (2 * ry * 1.12) / prodC.height);
@@ -3179,7 +3184,7 @@ function SmokeImage({ playKey, src, alt, style }) {
     const tor = createTornado(b, f, geo);
     if (!tor) { setState("done"); return undefined; }
     if (rainRef.current) { rainRef.current.destroy(); rainRef.current = null; }
-    try { rainRef.current = createRainGlass(prodRef.current ? prodRef.current.querySelector("img") : null); } catch (e) { rainRef.current = null; }
+    try { rainRef.current = createRainGlass(prodRef.current ? prodRef.current.querySelector("img") : null, src); } catch (e) { rainRef.current = null; }
     let raf = 0;
     const t0 = performance.now();
     const loop = (now) => {
