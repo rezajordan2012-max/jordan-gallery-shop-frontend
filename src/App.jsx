@@ -4610,13 +4610,14 @@ async function handleCheckout() {
     setActiveCategory("all");
     setActiveSubcategory("all");
     setActiveType("all");
+    setActiveFacets({});
     setActiveBrand(brand);
     setView("store");
-    setCategoryPageOpen(false);
+    setCategoryPageOpen(true); // صفحه‌ی فهرستِ محصولات باز می‌شود (نه صفحه‌ی اصلی) تا فقط محصولاتِ همین برند دیده شوند
     setOpenProductId(null);
     setBrandMenuOpen(false);
     setMenuOpen(false);
-    replaceNav({ activeBrand: brand });
+    replaceNav({ activeBrand: brand, categoryPageOpen: true });
     setTimeout(() => document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" }), 50);
   }
 
@@ -5383,8 +5384,8 @@ async function handleCheckout() {
             const categoryBanner = currentCategoryBanner;
             const breadcrumbContent = (
               <>
-                <span>{CATEGORY_LABEL[activeCategory]}</span>
-                {activeSubcategory !== "all" && (
+                <span>{activeCategory === "all" ? (activeBrand !== "all" ? "برند: " + activeBrand : "همه‌ی محصولات") : CATEGORY_LABEL[activeCategory]}</span>
+                {activeCategory !== "all" && activeSubcategory !== "all" && (
                   <>
                     <span style={{ opacity: 0.6 }}> / </span>
                     <span>{subcategoryLabel(activeCategory, activeSubcategory)}</span>
@@ -5399,6 +5400,7 @@ async function handleCheckout() {
               </>
             );
             const destinationLabel =
+              (activeCategory === "all" && activeBrand !== "all" && activeBrand) ||
               (activeCategory !== "perfume" && activeType !== "all" && typeLabel(activeCategory, activeSubcategory, activeType)) ||
               subcategoryLabel(activeCategory, activeSubcategory) ||
               CATEGORY_LABEL[activeCategory];
