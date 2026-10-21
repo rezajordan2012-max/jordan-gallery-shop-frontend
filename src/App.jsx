@@ -768,12 +768,84 @@ const BRAND_FA_MAP = {
   "afnan": "افنان", ajmal: "اجمل", "al haramain": "الحرمین",
 };
 
+// برندهای آرایشی، مراقبت پوست و عطر (علاوه بر لیست بالا) — برای تبدیلِ خودکارِ نامِ برند به فارسی
+Object.assign(BRAND_FA_MAP, {
+  mac: "مک", "m a c": "مک", maybelline: "میبلین", "maybelline new york": "میبلین", loreal: "لورال", "l oreal": "لورال", "l oreal paris": "لورال",
+  nivea: "نیوا", vichy: "ویشی", "la roche posay": "لاروش پوزای", eucerin: "اوسرین", avene: "آون", "eau thermale avene": "آون",
+  garnier: "گارنیر", neutrogena: "نیتروژینا", "the ordinary": "اوردینری", ordinary: "اوردینری", cetaphil: "ستافیل",
+  bioderma: "بایودرما", cerave: "سراوی", cosrx: "کازآرایکس", "beauty of joseon": "بیوتی آف چوسان", anua: "آنوا",
+  skin1004: "اسکین ۱۰۰۴", innisfree: "اینیسفری", laneige: "لانژ", missha: "میشا", "etude house": "اتود هاوس", etude: "اتود",
+  "tony moly": "تونی مولی", tonymoly: "تونی مولی", "nature republic": "نیچر ریپابلیک", "too faced": "تو فیسد", toofaced: "تو فیسد",
+  "urban decay": "اربن دکی", "huda beauty": "هدا بیوتی", "fenty beauty": "فنتی بیوتی", fenty: "فنتی", "rare beauty": "ریر بیوتی",
+  "charlotte tilbury": "شارلوت تیلبری", nars: "نارس", benefit: "بنفیت", "benefit cosmetics": "بنفیت", clinique: "کلینیک",
+  "estee lauder": "استی لادر", shiseido: "شیسیدو", kiko: "کیکو", "kiko milano": "کیکو", essence: "اسنس", catrice: "کاتریس",
+  nyx: "نیکس", "nyx professional makeup": "نیکس", revlon: "رولون", rimmel: "ریمل", "rimmel london": "ریمل", "max factor": "مکس فاکتور",
+  bourjois: "بورژوا", flormar: "فلورمار", pastel: "پاستل", "golden rose": "گلدن رز", sheglam: "شیگلم", "she glam": "شیگلم",
+  "forever living": "فوراور لیوینگ", forever: "فوراور", kemei: "کیمی", rasasi: "رصاصی", armaf: "آرماف", afnan: "افنان",
+  "swiss arabian": "سوئیس عربین", "ard al zaafaran": "ارض الزعفران", nabeel: "نبیل", "al rehab": "الرحاب", "maison alhambra": "میزون الهامبرا",
+  "fragrance world": "فرگرنس ورد", "paris corner": "پاریس کورنر", emper: "امپر", lattafa: "لطافه", "arabian oud": "عربین عود",
+  dumont: "دومونت", jacomo: "ژاکومو", nishane: "نیشان", "tiziana terenzi": "تیزیانا ترنزی", roja: "روژا", kayali: "کایالی",
+  "bath and body works": "باث اند بادی ورکس", "victoria s secret": "ویکتوریا سکرت", "sol de janeiro": "سول د ژانیرو", rhode: "رود",
+  "kylie cosmetics": "کایلی کازمتیکس", kylie: "کایلی", "dr jart": "دکتر جارت", "some by mi": "سام بای می", isntree: "ایزنتری",
+  "round lab": "راند لب", torriden: "توریدن", medicube: "مدیکیوب", numbuzin: "نامبوزین", haruharu: "هارو هارو", mediheal: "مدیهیل",
+  "hada labo": "هادا لابو", biore: "بیوره", bioaqua: "بیوآکوا", images: "ایمیجز", kiss: "کیس", vaseline: "وازلین", dove: "داو",
+  pantene: "پنتن", "head and shoulders": "هد اند شولدرز", olay: "اولی", aveeno: "اوینو", simple: "سیمپل", uriage: "اوریاژ",
+  ducray: "دوکری", bioxcin: "بایوکسین", sebamed: "سبامد", mixa: "میکسا", himalaya: "هیمالیا", farmasi: "فارماسی", oriflame: "اوریفلیم",
+  avon: "آوون", jordan: "جردن", bioderma: "بایودرما", "la prairie": "لا پرایری", sisley: "سیسلی", "kerastase": "کراستاس",
+  wella: "ولا", schwarzkopf: "شوارتسکف", "tresemme": "ترزمه", elseve: "السو", "revolution": "رولوشن", "makeup revolution": "میکاپ رولوشن",
+  "morphe": "مورف", "anastasia beverly hills": "آناستازیا بورلی هیلز", "bobbi brown": "بابی براون", "laura mercier": "لورا مرسیه",
+  "givenchy beauty": "ژیوانشی", "dior beauty": "دیور", "chanel beauty": "شنل", "ysl beauty": "ایو سن لوران", "tom ford beauty": "تام فورد",
+  "sephora": "سفورا", "the body shop": "د بادی شاپ", "l occitane": "لوکسیتان", "yardley": "یاردلی", "hugo": "هوگو", "boss": "باس",
+  "jean paul gaultier": "ژان پل گوتیه", "issey miyake": "ایسی میاکه", "kenzo": "کنزو", "nina ricci": "نینا ریچی", "mugler": "موگلر",
+  "thierry mugler": "تیری موگلر", "viktor and rolf": "ویکتور اند رالف", "narciso rodriguez": "نارسیسو رودریگز", "ralph lauren": "رالف لورن",
+  "ferrari": "فراری", "bentley": "بنتلی", "jaguar": "جگوار", "playboy": "پلی‌بوی", "adidas": "آدیداس", "nike": "نایک",
+});
+const BRAND_FA_NORM = {};
+const normBrandKey = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/&/g, " and ").replace(/['’`´.]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+Object.keys(BRAND_FA_MAP).forEach((k) => { BRAND_FA_NORM[normBrandKey(k)] = BRAND_FA_MAP[k]; });
+
+// آوانویسیِ تقریبیِ حروف لاتین به فارسی — فقط برای برندهایی که در فهرستِ بالا نیستند تا نامِ برند همیشه فارسی باشد.
+function latinToFa(str) {
+  const words = String(str || "").toLowerCase().replace(/[^a-z\s]/g, " ").trim().split(/\s+/).filter(Boolean);
+  const di = [["sch", "ش"], ["tch", "چ"], ["sh", "ش"], ["ch", "چ"], ["kh", "خ"], ["gh", "ق"], ["zh", "ژ"], ["ph", "ف"], ["th", "ت"], ["ck", "ک"], ["qu", "کو"], ["oo", "و"], ["ee", "ی"], ["ou", "و"], ["ai", "ای"], ["ay", "ی"], ["ie", "ی"], ["ea", "ی"]];
+  const one = { a: "ا", b: "ب", c: "ک", d: "د", e: "", f: "ف", g: "گ", h: "ه", i: "ی", j: "ج", k: "ک", l: "ل", m: "م", n: "ن", o: "و", p: "پ", q: "ک", r: "ر", s: "س", t: "ت", u: "و", v: "و", w: "و", x: "کس", y: "ی", z: "ز" };
+  return words.map((w) => {
+    w = w.replace(/(.)\1+/g, "$1");
+    let out = "", i = 0;
+    while (i < w.length) {
+      let hit = null;
+      for (let d = 0; d < di.length; d++) if (w.startsWith(di[d][0], i)) { hit = di[d]; break; }
+      if (hit) { out += hit[1]; i += hit[0].length; continue; }
+      const ch = w[i];
+      if (i === 0 && "aeiou".includes(ch)) out += ch === "i" ? "ای" : "ا";
+      else if (ch === "c" && "eiy".includes(w[i + 1] || "")) out += "س";
+      else out += one[ch] != null ? one[ch] : "";
+      i++;
+    }
+    return out;
+  }).filter(Boolean).join(" ");
+}
+const BRAND_GENERIC_TAIL = /\s(perfumes?|parfums?|paris|cosmetics?|beauty|skincare|professional|laboratoires?|laboratory|london|korea|official|official store|makeup|new york|milano|usa|uk)$/;
+
+// نامِ برند را همیشه فارسی برمی‌گرداند: اگر از قبل فارسی بود همان؛ اگر در فهرست بود معادلِ فارسی؛ وگرنه آوانویسی.
+function brandToFa(brand) {
+  const b = String(brand == null ? "" : brand).trim();
+  if (!b) return "";
+  if (/[؀-ۿ]/.test(b)) return b;
+  let key = normBrandKey(b);
+  if (BRAND_FA_NORM[key]) return BRAND_FA_NORM[key];
+  let k2 = key;
+  while (BRAND_GENERIC_TAIL.test(k2)) { k2 = k2.replace(BRAND_GENERIC_TAIL, ""); if (BRAND_FA_NORM[k2]) return BRAND_FA_NORM[k2]; }
+  const sq = key.replace(/\s/g, "");
+  const hit = Object.keys(BRAND_FA_NORM).find((k) => k.replace(/\s/g, "") === sq);
+  if (hit) return BRAND_FA_NORM[hit];
+  return latinToFa(b) || b;
+}
+
 // نام برند انگلیسی که از fraganty.ai می‌آید را در صورت وجود در لیست بالا، به فارسی برمی‌گرداند؛
 // وگرنه همان نام اصلی را نگه می‌دارد (بهتر از خالی‌گذاشتن است، مدیر خودش دستی اصلاح می‌کند).
 function translateBrandToFa(brandEn) {
-  if (!brandEn) return "";
-  const key = brandEn.trim().toLowerCase();
-  return BRAND_FA_MAP[key] || brandEn;
+  return brandToFa(brandEn);
 }
 
 // نام یک نت که از fraganty.ai به انگلیسی می‌آید را با پایگاه‌دانش نت‌های خودمان (NOTE_ALIAS_MAP)
@@ -3425,7 +3497,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
 
         <div className="lg:flex-1 lg:min-w-0">
           <div className="flex items-center mb-1">
-            <span className="text-gold" style={{ fontSize: 13, fontWeight: 700 }}>{product.brand}</span>
+            <span className="text-gold" style={{ fontSize: 13, fontWeight: 700 }}>{brandToFa(product.brand)}</span>
           </div>
           <h1 className="font-display" style={{ fontSize: 26, lineHeight: 1.3, color: "#1D1733", marginBottom: product.nameEn ? 3 : 8 }}>{product.name}</h1>
           {product.nameEn && (
@@ -3541,7 +3613,7 @@ function ProductDetailPage({ product, onBack, onAdd, globalDiscountPercent, cate
             // می‌شود؛ بقیه‌ی مشخصاتِ تخصصیِ عطر (غلظت، نت، عطار و...) همچنان فقط مخصوصِ ادکلن است.
             const specsBlock = (() => {
               const specs = [
-                { label: "برند", value: product.brand },
+                { label: "برند", value: brandToFa(product.brand) },
                { label: product.volumeUnit === "g" ? "وزن" : "حجم", value: formatVolumeText(product.volume, product.volumeUnit) },
               ];
               if (product.category === "perfume") {
@@ -4603,7 +4675,7 @@ async function handleCheckout() {
   const cartTotal = cartItems.reduce((s, i) => s + i.qty * i.price, 0);
 
   const allBrands = useMemo(() => {
-    return Array.from(new Set(products.map((p) => p.brand).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fa"));
+    return Array.from(new Set(products.map((p) => brandToFa(p.brand)).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fa"));
   }, [products]);
 
   function selectBrand(brand) {
@@ -4623,7 +4695,7 @@ async function handleCheckout() {
 
   const brandsInCategory = useMemo(() => {
     const scoped = activeCategory === "all" ? products : products.filter((p) => p.category === activeCategory);
-    return Array.from(new Set(scoped.map((p) => p.brand).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fa"));
+    return Array.from(new Set(scoped.map((p) => brandToFa(p.brand)).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fa"));
   }, [products, activeCategory]);
 
   const filteredProducts = products.filter((p) => {
@@ -4632,6 +4704,7 @@ async function handleCheckout() {
       return (
         (p.name || "").toLowerCase().includes(q) ||
         (p.brand || "").toLowerCase().includes(q) ||
+        brandToFa(p.brand).toLowerCase().includes(q) ||
         (p.description || "").toLowerCase().includes(q)
       );
     }
@@ -4645,7 +4718,7 @@ async function handleCheckout() {
         if (!hasOverlap) return false;
       }
     }
-    if (activeBrand !== "all" && p.brand !== activeBrand) return false;
+    if (activeBrand !== "all" && brandToFa(p.brand) !== activeBrand) return false;
     return true;
   });
 
@@ -6173,7 +6246,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           ...f,
           name: f.name || info.name || f.name,
           nameEn: f.nameEn || info.nameEn || f.nameEn,
-          brand: f.brand || info.brand || f.brand,
+          brand: brandToFa(f.brand || info.brand),
           description: f.description || info.description || f.description,
           properties: f.properties || info.properties || f.properties,
           ingredients: f.ingredients || info.ingredients || f.ingredients,
@@ -6221,7 +6294,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
 
       setExtractResult({
         name: info.name || info.nameEn || "این محصول",
-        brand: info.brand || "",
+        brand: brandToFa(info.brand || ""),
         priceApplied: !form.price && !!info.priceToman,
         referencePriceNote: info.referencePriceNote || "",
         categoryApplied,
@@ -6252,7 +6325,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
         ...f,
         name: info.name || info.nameEn || f.name,
         nameEn: info.nameEn || f.nameEn,
-        brand: info.brand || f.brand,
+        brand: brandToFa(info.brand || f.brand),
         description: info.description || f.description,
         properties: info.properties || f.properties,
         ingredients: info.ingredients || f.ingredients,
@@ -6420,7 +6493,7 @@ function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storag
           ...f,
           name: f.name || ext.name || f.name,
           nameEn: f.nameEn || ext.title || f.nameEn,
-          brand: f.brand || ext.brand || f.brand,
+          brand: brandToFa(f.brand || ext.brand),
           image: f.image || ext.image || f.image,
           description: f.description || ext.description || f.description,
           properties: f.properties || ext.properties || f.properties,
@@ -7262,6 +7335,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
     const { variantsList, id, ...rest } = form;
     const payload = {
       ...rest,
+      brand: brandToFa(form.brand), // نامِ برند همیشه فارسی ذخیره می‌شود
       price: priceNum,
       discountPercent: discountPercentNum,
       facets: form.category === "perfume" ? form.facets : {},
@@ -8019,6 +8093,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
           placeholder="برند"
           value={form.brand}
           onChange={(e) => setForm({ ...form, brand: e.target.value })}
+          onBlur={() => { const fa = brandToFa(form.brand); if (fa && fa !== form.brand) setForm((f) => ({ ...f, brand: fa })); }}
           className="bg-panel-2 border border-hair rounded px-3 py-2 text-sm"
           style={{ color: "#241E3D" }}
         />
@@ -8774,7 +8849,7 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
               </div>
             </div>
             <div className="flex-1">
-              <p style={{ fontSize: 14 }}>{p.name} <span className="text-muted" style={{ fontSize: 11 }}>— {p.brand}</span></p>
+              <p style={{ fontSize: 14 }}>{p.name} <span className="text-muted" style={{ fontSize: 11 }}>— {brandToFa(p.brand)}</span></p>
               <p className="text-muted" style={{ fontSize: 11 }}>
                 {CATEGORY_LABEL[p.category]}
                 {subcategoryLabel(p.category, p.subcategory) && ` (${subcategoryLabel(p.category, p.subcategory)}${p.type ? " - " + typeLabel(p.category, p.subcategory, p.type) : ""}${p.facets && facetsSummary(p.category, p.subcategory, p.facets) ? " - " + facetsSummary(p.category, p.subcategory, p.facets) : ""})`} · {fmtPrice(p.price)}
