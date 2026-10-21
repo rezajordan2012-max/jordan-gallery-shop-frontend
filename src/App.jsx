@@ -2523,7 +2523,7 @@ function createTornado(back, front, geo) {
     cool: { core: "255,255,255", mid: "186,212,255", glow: "96,140,255", tint: "170,198,255", flash: "205,222,255" },
     warm: { core: "255,251,238", mid: "255,214,130", glow: "255,140,40", tint: "255,190,96", flash: "255,214,140" },
     // صاعقه‌ی سینمایی: هسته‌ی سفیدِ درخشان، هاله‌ی آبی-بنفش و لبه‌ی صورتی-بنفش (مثل تصویر مرجع)
-    storm: { core: "255,255,255", mid: "232,224,255", glow: "96,78,255", halo: "170,90,255", tint: "150,138,255", flash: "112,100,255" },
+    storm: { core: "255,255,255", mid: "238,242,255", glow: "86,124,255", halo: "206,140,255", tint: "180,198,255", flash: "168,190,255" },
   };
   const bolts = [
     { t0: 0.28, big: 1, back: true, tone: TONES.storm, levels: buildBolt(W * 0.04, -6, W * 0.9, H * 0.96), sx: W * 0.04 },
@@ -2558,10 +2558,10 @@ function createTornado(back, front, geo) {
             g.moveTo(pts[0][0], pts[0][1]);
             for (let k2 = 1; k2 < pts.length; k2++) { if (pg[k2] > f) break; g.lineTo(pts[k2][0], pts[k2][1]); }
           }
-          if (pass === 0) { g.strokeStyle = "rgba(" + (tn.halo || tn.glow) + "," + (0.3 * I).toFixed(3) + ")"; g.lineWidth = 9 * LW[lv] + 2; g.shadowColor = "rgba(" + (tn.halo || tn.glow) + ",1)"; g.shadowBlur = lv < 2 ? 46 : 16; }
-          else if (pass === 1) { g.strokeStyle = "rgba(" + tn.glow + "," + (0.75 * I).toFixed(3) + ")"; g.lineWidth = 3.6 * LW[lv] + 0.8; g.shadowColor = "rgba(" + tn.glow + ",1)"; g.shadowBlur = lv < 2 ? 30 : 12; }
-          else if (pass === 2) { g.strokeStyle = "rgba(" + tn.mid + "," + (0.95 * I).toFixed(3) + ")"; g.lineWidth = 2.4 * LW[lv] + 0.5; g.shadowBlur = 8; }
-          else { g.strokeStyle = "rgba(" + tn.core + "," + Math.min(1, I * 1.4).toFixed(3) + ")"; g.lineWidth = 1.9 * LW[lv] + 0.6; g.shadowBlur = 0; }
+          if (pass === 0) { g.strokeStyle = "rgba(" + (tn.halo || tn.glow) + "," + (0.17 * I).toFixed(3) + ")"; g.lineWidth = 7 * LW[lv] + 2; g.shadowColor = "rgba(" + (tn.halo || tn.glow) + ",1)"; g.shadowBlur = lv < 2 ? 34 : 14; }
+          else if (pass === 1) { g.strokeStyle = "rgba(" + tn.glow + "," + (0.9 * I).toFixed(3) + ")"; g.lineWidth = 3.4 * LW[lv] + 0.9; g.shadowColor = "rgba(" + tn.glow + ",1)"; g.shadowBlur = lv < 2 ? 18 : 8; }
+          else if (pass === 2) { g.strokeStyle = "rgba(" + tn.mid + "," + (0.95 * I).toFixed(3) + ")"; g.lineWidth = 2.8 * LW[lv] + 0.6; g.shadowColor = "rgba(255,255,255,0.95)"; g.shadowBlur = 12; }
+          else { g.strokeStyle = "rgba(" + tn.core + "," + Math.min(1, I * 1.7).toFixed(3) + ")"; g.lineWidth = 2.3 * LW[lv] + 0.7; g.shadowColor = "rgba(255,255,255,1)"; g.shadowBlur = 6; }
           g.stroke();
         }
       }
@@ -2593,7 +2593,7 @@ function createTornado(back, front, geo) {
       [gB, gF].forEach((g) => {
         g.globalCompositeOperation = "source-atop";
         g.globalAlpha = 1;
-        g.fillStyle = "rgba(" + strong.tone.tint + "," + (0.62 * Math.pow(top, 1.1)).toFixed(3) + ")";
+        g.fillStyle = "rgba(" + strong.tone.tint + "," + (0.4 * Math.pow(top, 1.1)).toFixed(3) + ")";
         g.fillRect(0, 0, W, H);
         g.globalCompositeOperation = "source-over";
       });
@@ -2606,11 +2606,11 @@ function createTornado(back, front, geo) {
       const tn = b.tone;
       const f = Math.min(1, a / 0.07) + 0.02;
       gF.globalAlpha = 1;
-      gF.fillStyle = "rgba(" + tn.flash + "," + (0.5 * Math.pow(I, 1.3)).toFixed(3) + ")";
+      gF.fillStyle = "rgba(" + tn.flash + "," + (0.3 * Math.pow(I, 1.3)).toFixed(3) + ")";
       gF.fillRect(0, 0, W, H);
       const rg = gF.createRadialGradient(b.sx, 0, 0, b.sx, 0, H * 1.0);
-      rg.addColorStop(0, "rgba(" + tn.core + "," + (0.95 * Math.pow(I, 1.1)).toFixed(3) + ")");
-      rg.addColorStop(0.3, "rgba(" + tn.mid + "," + (0.6 * Math.pow(I, 1.2)).toFixed(3) + ")");
+      rg.addColorStop(0, "rgba(" + tn.core + "," + (0.85 * Math.pow(I, 1.1)).toFixed(3) + ")");
+      rg.addColorStop(0.3, "rgba(" + tn.mid + "," + (0.4 * Math.pow(I, 1.2)).toFixed(3) + ")");
       rg.addColorStop(1, "rgba(" + tn.glow + ",0)");
       gF.fillStyle = rg;
       gF.fillRect(0, 0, W, H);
@@ -3033,7 +3033,7 @@ function createRainGlass() {
     cg.addColorStop(0, "rgba(255,255,255," + (0.42 + 0.3 * flash).toFixed(3) + ")");
     cg.addColorStop(1, "rgba(255,255,255,0)");
     ctx.fillStyle = cg; ctx.fillRect(x - rx, y - ry, 2 * rx, 2 * ry);
-    if (flash > 0.02) { ctx.fillStyle = "rgba(170,150,255," + (0.4 * flash).toFixed(3) + ")"; ctx.fillRect(x - rx, y - ry, 2 * rx, 2 * ry); }
+    if (flash > 0.02) { ctx.fillStyle = "rgba(185,205,255," + (0.28 * flash).toFixed(3) + ")"; ctx.fillRect(x - rx, y - ry, 2 * rx, 2 * ry); }
     ctx.restore();
     ctx.strokeStyle = "rgba(15,22,55,0.45)"; ctx.lineWidth = 0.9; path(x, y, rx, ry); ctx.stroke();
     ctx.fillStyle = "rgba(255,255,255," + Math.min(1, 0.85 + 0.15 * flash).toFixed(3) + ")";
@@ -3060,9 +3060,9 @@ function createRainGlass() {
     ctx.globalAlpha = 1;
     ctx.clearRect(0, 0, W, H);
     // نورِ بنفش-آبیِ صاعقه روی کلِ شیشه و کمی تیرگیِ طوفانی
-    const tint = (t < T1 ? 0.12 * (t / T1) : 0.12) * gl;
-    if (tint > 0.002) { ctx.fillStyle = "rgba(14,16,46," + tint.toFixed(3) + ")"; ctx.fillRect(0, 0, W, H); }
-    if (flash > 0.01) { ctx.fillStyle = "rgba(185,172,255," + (0.22 * flash * gl).toFixed(3) + ")"; ctx.fillRect(0, 0, W, H); }
+    const tint = (t < T1 ? 0.08 * (t / T1) : 0.08) * gl;
+    if (tint > 0.002) { ctx.fillStyle = "rgba(12,16,38," + tint.toFixed(3) + ")"; ctx.fillRect(0, 0, W, H); }
+    if (flash > 0.01) { ctx.fillStyle = "rgba(205,216,255," + (0.11 * flash * gl).toFixed(3) + ")"; ctx.fillRect(0, 0, W, H); }
     ctx.globalAlpha = gl;
     drawTrails(flash);
     for (let i = 0; i < drops.length; i++) drawDrop(drops[i], flash);
