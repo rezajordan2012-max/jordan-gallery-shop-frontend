@@ -2522,10 +2522,12 @@ function createTornado(back, front, geo) {
   const TONES = {
     cool: { core: "255,255,255", mid: "186,212,255", glow: "96,140,255", tint: "170,198,255", flash: "205,222,255" },
     warm: { core: "255,251,238", mid: "255,214,130", glow: "255,140,40", tint: "255,190,96", flash: "255,214,140" },
+    // صاعقه‌ی سینمایی: هسته‌ی سفیدِ درخشان، هاله‌ی آبی-بنفش و لبه‌ی صورتی-بنفش (مثل تصویر مرجع)
+    storm: { core: "255,255,255", mid: "232,224,255", glow: "96,78,255", halo: "170,90,255", tint: "150,138,255", flash: "112,100,255" },
   };
   const bolts = [
-    { t0: 0.28, big: 1, back: true, tone: TONES.warm, levels: buildBolt(W * 0.04, -6, W * 0.9, H * 0.96), sx: W * 0.04 },
-    { t0: 3.72, big: 1, back: true, tone: TONES.warm, levels: null, sx: W * 0.96 },
+    { t0: 0.28, big: 1, back: true, tone: TONES.storm, levels: buildBolt(W * 0.04, -6, W * 0.9, H * 0.96), sx: W * 0.04 },
+    { t0: 3.72, big: 1, back: true, tone: TONES.storm, levels: null, sx: W * 0.96 },
   ];
   // صاعقه‌ی دوم دقیقاً آینه‌ی صاعقه‌ی اول است (همان شکل، شاخه‌ها، طول و ضخامت) و از گوشه‌ی بالا-راست می‌زند
   bolts[1].levels = bolts[0].levels.map((lv) => lv.map((poly) => { const m = poly.map((pt) => [W - pt[0], pt[1]]); m.pg = poly.pg; return m; }));
@@ -2538,7 +2540,7 @@ function createTornado(back, front, geo) {
   };
   const LW = [1, 0.55, 0.33, 0.2];
   // خودِ رشته‌های صاعقه (شاخه‌ها و نقطه‌های داغ) روی بومِ g کشیده می‌شود
-  function drawBoltStrokes(g, b, t) {
+  function drawBoltStrokes(g, b, t, coreOnly) {
     const a = t - b.t0;
     const I = boltI(a) * b.big;
     if (I < 0.02) return;
@@ -2549,16 +2551,17 @@ function createTornado(back, front, geo) {
       for (let lv = 0; lv < 4; lv++) {
         const polys = b.levels[lv];
         if (!polys.length) continue;
-        for (let pass = 0; pass < 3; pass++) {
+        for (let pass = coreOnly ? 2 : 0; pass < 4; pass++) {
           g.beginPath();
           for (let s = 0; s < polys.length; s++) {
             const pts = polys[s], pg = pts.pg;
             g.moveTo(pts[0][0], pts[0][1]);
             for (let k2 = 1; k2 < pts.length; k2++) { if (pg[k2] > f) break; g.lineTo(pts[k2][0], pts[k2][1]); }
           }
-          if (pass === 0) { g.strokeStyle = "rgba(" + tn.glow + "," + (0.6 * I).toFixed(3) + ")"; g.lineWidth = 2.2 * LW[lv] + 0.6; g.shadowColor = "rgba(" + tn.glow + ",1)"; g.shadowBlur = lv < 2 ? 30 : 12; }
-          else if (pass === 1) { g.strokeStyle = "rgba(" + tn.mid + "," + (0.9 * I).toFixed(3) + ")"; g.lineWidth = 1.7 * LW[lv] + 0.3; g.shadowBlur = 5; }
-          else { g.strokeStyle = "rgba(" + tn.core + "," + Math.min(1, I * 1.3).toFixed(3) + ")"; g.lineWidth = 1.5 * LW[lv] + 0.4; g.shadowBlur = 0; }
+          if (pass === 0) { g.strokeStyle = "rgba(" + (tn.halo || tn.glow) + "," + (0.3 * I).toFixed(3) + ")"; g.lineWidth = 9 * LW[lv] + 2; g.shadowColor = "rgba(" + (tn.halo || tn.glow) + ",1)"; g.shadowBlur = lv < 2 ? 46 : 16; }
+          else if (pass === 1) { g.strokeStyle = "rgba(" + tn.glow + "," + (0.75 * I).toFixed(3) + ")"; g.lineWidth = 3.6 * LW[lv] + 0.8; g.shadowColor = "rgba(" + tn.glow + ",1)"; g.shadowBlur = lv < 2 ? 30 : 12; }
+          else if (pass === 2) { g.strokeStyle = "rgba(" + tn.mid + "," + (0.95 * I).toFixed(3) + ")"; g.lineWidth = 2.4 * LW[lv] + 0.5; g.shadowBlur = 8; }
+          else { g.strokeStyle = "rgba(" + tn.core + "," + Math.min(1, I * 1.4).toFixed(3) + ")"; g.lineWidth = 1.9 * LW[lv] + 0.6; g.shadowBlur = 0; }
           g.stroke();
         }
       }
@@ -2569,10 +2572,11 @@ function createTornado(back, front, geo) {
       for (let h2 = 1; h2 <= 6; h2++) {
         const hp = mainPts[Math.floor((mainPts.length - 1) * (h2 / 7))];
         if (mainPts.pg[Math.floor((mainPts.length - 1) * (h2 / 7))] > f) continue;
-        const hr = 9 + (h2 % 3) * 7;
+        const hr = 14 + (h2 % 3) * 9;
         const hgd = g.createRadialGradient(hp[0], hp[1], 0, hp[0], hp[1], hr);
-        hgd.addColorStop(0, "rgba(" + tn.core + "," + (0.8 * I).toFixed(3) + ")");
-        hgd.addColorStop(1, "rgba(" + tn.glow + ",0)");
+        hgd.addColorStop(0, "rgba(" + tn.core + "," + (0.9 * I).toFixed(3) + ")");
+        hgd.addColorStop(0.35, "rgba(" + tn.mid + "," + (0.42 * I).toFixed(3) + ")");
+        hgd.addColorStop(1, "rgba(" + tn.mid + ",0)");
         g.fillStyle = hgd;
         g.fillRect(hp[0] - hr, hp[1] - hr, hr * 2, hr * 2);
       }
@@ -2589,7 +2593,7 @@ function createTornado(back, front, geo) {
       [gB, gF].forEach((g) => {
         g.globalCompositeOperation = "source-atop";
         g.globalAlpha = 1;
-        g.fillStyle = "rgba(" + strong.tone.tint + "," + (0.55 * Math.pow(top, 1.1)).toFixed(3) + ")";
+        g.fillStyle = "rgba(" + strong.tone.tint + "," + (0.62 * Math.pow(top, 1.1)).toFixed(3) + ")";
         g.fillRect(0, 0, W, H);
         g.globalCompositeOperation = "source-over";
       });
@@ -2602,15 +2606,16 @@ function createTornado(back, front, geo) {
       const tn = b.tone;
       const f = Math.min(1, a / 0.07) + 0.02;
       gF.globalAlpha = 1;
-      gF.fillStyle = "rgba(" + tn.flash + "," + (0.32 * Math.pow(I, 1.4)).toFixed(3) + ")";
+      gF.fillStyle = "rgba(" + tn.flash + "," + (0.5 * Math.pow(I, 1.3)).toFixed(3) + ")";
       gF.fillRect(0, 0, W, H);
       const rg = gF.createRadialGradient(b.sx, 0, 0, b.sx, 0, H * 1.0);
       rg.addColorStop(0, "rgba(" + tn.core + "," + (0.95 * Math.pow(I, 1.1)).toFixed(3) + ")");
-      rg.addColorStop(0.3, "rgba(" + tn.mid + "," + (0.45 * Math.pow(I, 1.2)).toFixed(3) + ")");
+      rg.addColorStop(0.3, "rgba(" + tn.mid + "," + (0.6 * Math.pow(I, 1.2)).toFixed(3) + ")");
       rg.addColorStop(1, "rgba(" + tn.glow + ",0)");
       gF.fillStyle = rg;
       gF.fillRect(0, 0, W, H);
       if (!b.back) drawBoltStrokes(gF, b, t);
+      else drawBoltStrokes(gF, b, t, true); // هسته‌ی سفید و داغِ صاعقه از زیرِ نورِ فلاش نمی‌افتد
     }
   }
 
@@ -2848,6 +2853,226 @@ function scanProductBase(im) {
   }
 }
 
+// ===== باران روی شیشه (سینمایی): همزمان با اولین رعد و برق، قطره‌ها ناگهان روی «شیشه‌ی» صفحه پاشیده می‌شوند،
+// بزرگ‌ترها با مکث و شتاب سُر می‌خورند، ردِ خیس می‌گذارند، به هم می‌پیوندند و در پایانِ انیمیشن شیشه محو می‌شود. =====
+function createRainGlass() {
+  if (typeof document === "undefined") return null;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = Math.max(200, window.innerWidth || 360);
+  const H = Math.max(300, window.innerHeight || 640);
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(W * dpr);
+  cv.height = Math.round(H * dpr);
+  cv.setAttribute("aria-hidden", "true");
+  cv.style.cssText = "position:fixed;left:0;top:0;width:" + W + "px;height:" + H + "px;pointer-events:none;z-index:55;";
+  const ctx = cv.getContext("2d");
+  if (!ctx) return null;
+  document.body.appendChild(cv);
+
+  const DUR = 7.0, FADE = 1.0, T1 = 0.28, T2 = 3.72;
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const ease = (x) => { x = Math.max(0, Math.min(1, x)); return 1 - Math.pow(1 - x, 3); };
+  const boltI = (a) => {
+    if (a < 0 || a > 0.75) return 0;
+    const m = a < 0.02 ? a / 0.02 : Math.exp(-(a - 0.02) * 10);
+    const r1 = a > 0.1 ? 0.6 * Math.exp(-(a - 0.1) * 14) : 0;
+    const r2 = a > 0.2 ? 0.4 * Math.exp(-(a - 0.2) * 12) : 0;
+    return Math.min(1, (m + r1 + r2) * (0.9 + 0.1 * Math.sin(a * 190)));
+  };
+  const area = W * H;
+  const mk = (x, y, r, born, big) => ({
+    x: x, y: y, r: r, born: born, big: big || 0, crit: rnd(5.2, 8.8), delay: rnd(0.25, 1.3), moving: false, vy: 0,
+    phase: 0, timer: rnd(0.1, 0.4), trail: [], seed: Math.random() * 6.283, lobes: [], sat: [], since: 0,
+  });
+  const addSplat = (d) => {
+    const n = d.big ? 10 : 6;
+    for (let i = 0; i < n; i++) d.lobes.push({ a: Math.random() * 6.283, l: rnd(0.7, 1.4) });
+    const s = d.big ? 8 : 2;
+    for (let i = 0; i < s; i++) d.sat.push({ a: Math.random() * 6.283, l: rnd(1.8, 4.2), s: rnd(0.5, 1.4) });
+  };
+  let drops = [];
+  const burst = (at, n, bigP) => {
+    for (let i = 0; i < n; i++) {
+      const big = Math.random() < bigP;
+      const r = big ? rnd(9, 15) : Math.pow(Math.random(), 2.6) * 8.5 + 1.5;
+      const d = mk(rnd(0, W), rnd(0, H * 0.98), r, at + rnd(0.02, 0.16), big);
+      addSplat(d);
+      drops.push(d);
+    }
+  };
+
+  let t = 0, last = performance.now(), raf = 0, dead = false, fired1 = false, fired2 = false, rainAcc = 0;
+
+  const step = (dt) => {
+    t += dt;
+    if (!fired1 && t >= T1) { fired1 = true; burst(t, Math.round(Math.max(90, Math.min(200, area / 2300))), 0.07); }
+    if (!fired2 && t >= T2) { fired2 = true; burst(t, Math.round(Math.max(30, Math.min(70, area / 7000))), 0.06); }
+    if (t > T1 + 0.3 && t < DUR - 1.8 && drops.length < 330) {
+      rainAcc += dt * 16;
+      while (rainAcc >= 1) {
+        rainAcc -= 1;
+        const d = mk(rnd(0, W), rnd(0, H * 0.9), rnd(1.3, 3.2), t);
+        addSplat(d);
+        drops.push(d);
+      }
+    }
+    let i, j, d, e;
+    for (i = 0; i < drops.length; i++) {
+      d = drops[i];
+      if (t < d.born) continue;
+      if (!d.moving && d.r >= d.crit && t - d.born > d.delay) d.moving = true;
+      if (d.moving) {
+        d.timer -= dt;
+        if (d.timer <= 0) { d.phase = d.phase ? 0 : 1; d.timer = d.phase ? rnd(0.25, 0.7) : rnd(0.04, 0.35); }
+        const target = d.phase ? 38 + d.r * 15 : 0;
+        d.vy += (target - d.vy) * Math.min(1, dt * (d.phase ? 5 : 9));
+        const dy = d.vy * dt;
+        d.y += dy;
+        d.x += Math.sin(d.y * 0.045 + d.seed) * 0.12;
+        d.since += dy;
+        if (dy > 0) {
+          d.trail.push({ x: d.x, y: d.y - d.r * 0.6, w: Math.max(1, d.r * 0.42), t: t });
+          d.r -= dt * 0.05 * d.r * (d.vy / 90) + dy * 0.0014;
+          if (d.since > 16 && Math.random() < 0.6 && drops.length < 380) {
+            d.since = 0;
+            drops.push(mk(d.x + rnd(-1, 1), d.y - d.r * 1.1, rnd(0.9, 1.7), t));
+          }
+        }
+        if (d.r < 2.8) { d.moving = false; d.vy = 0; d.crit = 99; }
+      }
+      while (d.trail.length && t - d.trail[0].t > 2.6) d.trail.shift();
+    }
+    for (i = 0; i < drops.length; i++) {
+      d = drops[i];
+      if (!d || t < d.born) continue;
+      for (j = i + 1; j < drops.length; j++) {
+        e = drops[j];
+        if (!e || t < e.born) continue;
+        const dx = d.x - e.x, dyy = d.y - e.y, rr = (d.r + e.r) * 0.78;
+        if (dx * dx + dyy * dyy < rr * rr) {
+          const big = d.r >= e.r ? d : e, sm = big === d ? e : d, a1 = big.r * big.r, a2 = sm.r * sm.r;
+          big.x = (big.x * a1 + sm.x * a2) / (a1 + a2);
+          big.y = (big.y * a1 + sm.y * a2) / (a1 + a2);
+          big.r = Math.sqrt(a1 + a2 * 0.92);
+          if (big.r >= big.crit && !big.moving) { big.moving = true; big.delay = 0; }
+          if (sm.trail.length > big.trail.length) big.trail = sm.trail;
+          drops[drops.indexOf(sm)] = null;
+          if (sm === d) break;
+        }
+      }
+    }
+    drops = drops.filter((q) => q && q.y < H + q.r * 2);
+  };
+
+  const path = (x, y, rx, ry) => { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 6.2832); };
+  const drawTrails = (flash) => {
+    ctx.save();
+    ctx.lineCap = "round";
+    for (let i = 0; i < drops.length; i++) {
+      const tr = drops[i].trail;
+      if (tr.length < 2) continue;
+      for (let j = 1; j < tr.length; j++) {
+        const a = tr[j - 1], b = tr[j], life = 1 - (t - b.t) / 2.6;
+        if (life <= 0 || b.y - a.y > 14) continue;
+        ctx.strokeStyle = "rgba(20,28,60," + (0.07 * life).toFixed(3) + ")";
+        ctx.lineWidth = b.w * 1.2 + 0.8;
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        ctx.strokeStyle = "rgba(225,232,255," + (0.17 * life + 0.12 * flash * life).toFixed(3) + ")";
+        ctx.lineWidth = Math.max(0.7, b.w * 0.8);
+        ctx.beginPath(); ctx.moveTo(a.x - 0.4, a.y); ctx.lineTo(b.x - 0.4, b.y); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  };
+  const drawDrop = (d, flash) => {
+    const age = t - d.born;
+    if (age < 0) return;
+    const sA = 0.16;
+    if (age < sA) {
+      const p = age / sA, e = ease(p);
+      ctx.save();
+      ctx.lineCap = "round";
+      for (let i = 0; i < d.lobes.length; i++) {
+        const L = d.lobes[i], len = d.r * (0.6 + (2.0 + d.big * 1.8) * e) * L.l, st = d.r * (0.3 + 0.8 * e);
+        ctx.strokeStyle = "rgba(225,230,255," + (0.7 * (1 - p)).toFixed(3) + ")";
+        ctx.lineWidth = Math.max(0.6, d.r * 0.38 * (1 - p));
+        ctx.beginPath(); ctx.moveTo(d.x + Math.cos(L.a) * st, d.y + Math.sin(L.a) * st); ctx.lineTo(d.x + Math.cos(L.a) * len, d.y + Math.sin(L.a) * len); ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(225,230,255," + (0.75 * (1 - p)).toFixed(3) + ")";
+      for (let i = 0; i < d.sat.length; i++) {
+        const S = d.sat[i], ds = d.r * S.l * e;
+        ctx.beginPath(); ctx.arc(d.x + Math.cos(S.a) * ds, d.y + Math.sin(S.a) * ds + e * e * d.r * 0.8, Math.max(0.4, S.s * (1 - p) * (d.big ? 1.6 : 0.9)), 0, 6.2832); ctx.fill();
+      }
+      ctx.strokeStyle = "rgba(225,230,255," + (0.42 * (1 - p)).toFixed(3) + ")";
+      ctx.lineWidth = 1;
+      path(d.x, d.y, d.r * (1 + 3 * e), d.r * (1 + 3 * e) * 0.8); ctx.stroke();
+      ctx.restore();
+    }
+    const s = age < 0.2 ? 1.5 - 0.5 * ease(age / 0.2) : 1;
+    const al = Math.min(1, age / 0.05);
+    const rx = Math.max(0.6, d.r) * s;
+    const ry = rx * (1.04 + (d.moving ? 0.26 * Math.min(1, d.vy / 60) : 0.06));
+    const x = d.x, y = d.y;
+    ctx.save();
+    ctx.globalAlpha *= al;
+    if (rx < 2.4) {
+      ctx.fillStyle = "rgba(20,30,60,0.38)"; path(x, y, rx * 1.15, ry * 1.15); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255," + (0.82 + 0.18 * flash).toFixed(2) + ")"; path(x - rx * 0.25, y - ry * 0.25, rx * 0.65, ry * 0.65); ctx.fill();
+      ctx.restore();
+      return;
+    }
+    ctx.fillStyle = "rgba(0,0,0,0.26)"; path(x + rx * 0.14, y + ry * 0.26, rx * 1.12, ry * 1.1); ctx.fill();
+    ctx.save();
+    path(x, y, rx, ry); ctx.clip();
+    const gr = ctx.createRadialGradient(x - rx * 0.2, y - ry * 0.3, Math.min(rx, ry) * 0.2, x, y, Math.max(rx, ry) * 1.05);
+    gr.addColorStop(0, "rgba(210,222,255,0.14)");
+    gr.addColorStop(0.62, "rgba(30,40,85,0.20)");
+    gr.addColorStop(1, "rgba(6,10,28,0.66)");
+    ctx.fillStyle = gr; ctx.fillRect(x - rx - 1, y - ry - 1, 2 * rx + 2, 2 * ry + 2);
+    const cg = ctx.createRadialGradient(x + rx * 0.3, y + ry * 0.45, 0, x + rx * 0.3, y + ry * 0.45, rx * 0.9);
+    cg.addColorStop(0, "rgba(255,255,255," + (0.42 + 0.3 * flash).toFixed(3) + ")");
+    cg.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = cg; ctx.fillRect(x - rx, y - ry, 2 * rx, 2 * ry);
+    if (flash > 0.02) { ctx.fillStyle = "rgba(170,150,255," + (0.4 * flash).toFixed(3) + ")"; ctx.fillRect(x - rx, y - ry, 2 * rx, 2 * ry); }
+    ctx.restore();
+    ctx.strokeStyle = "rgba(15,22,55,0.45)"; ctx.lineWidth = 0.9; path(x, y, rx, ry); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255," + Math.min(1, 0.85 + 0.15 * flash).toFixed(3) + ")";
+    ctx.beginPath(); ctx.ellipse(x - rx * 0.34, y - ry * 0.42, rx * 0.22, ry * 0.15, -0.6, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.beginPath(); ctx.arc(x + rx * 0.4, y + ry * 0.5, Math.max(0.5, rx * 0.08), 0, 6.2832); ctx.fill();
+    ctx.restore();
+  };
+
+  const destroy = () => {
+    dead = true;
+    cancelAnimationFrame(raf);
+    if (cv.parentNode) cv.parentNode.removeChild(cv);
+  };
+  const frame = (now) => {
+    if (dead) return;
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    step(dt);
+    if (t >= DUR) { destroy(); return; }
+    const flash = Math.max(boltI(t - T1), boltI(t - T2));
+    const gl = t > DUR - FADE ? Math.max(0, (DUR - t) / FADE) : 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.clearRect(0, 0, W, H);
+    // نورِ بنفش-آبیِ صاعقه روی کلِ شیشه و کمی تیرگیِ طوفانی
+    const tint = (t < T1 ? 0.12 * (t / T1) : 0.12) * gl;
+    if (tint > 0.002) { ctx.fillStyle = "rgba(14,16,46," + tint.toFixed(3) + ")"; ctx.fillRect(0, 0, W, H); }
+    if (flash > 0.01) { ctx.fillStyle = "rgba(185,172,255," + (0.22 * flash * gl).toFixed(3) + ")"; ctx.fillRect(0, 0, W, H); }
+    ctx.globalAlpha = gl;
+    drawTrails(flash);
+    for (let i = 0; i < drops.length; i++) drawDrop(drops[i], flash);
+    ctx.globalAlpha = 1;
+    raf = requestAnimationFrame(frame);
+  };
+  raf = requestAnimationFrame(frame);
+  return { destroy: destroy };
+}
+
 function SmokeImage({ playKey, src, alt, style }) {
   const [state, setState] = useState(() => {
     if (typeof window === "undefined" || !src || SMOKE_SEEN.has(playKey)) return "done";
@@ -2860,6 +3085,8 @@ function SmokeImage({ playKey, src, alt, style }) {
   const rockRef = useRef(null);
   const shadowRef = useRef(null);
   const detRef = useRef(null);
+  const rainRef = useRef(null);
+  useEffect(() => () => { if (rainRef.current) { rainRef.current.destroy(); rainRef.current = null; } }, []);
 
   // ۱) عکس را پیش‌بارگذاری می‌کنیم و پایینِ محصول را در آن پیدا می‌کنیم؛ اگر تا ۷۰۰ میلی‌ثانیه آماده نشد، همان‌جا شروع می‌کنیم.
   useEffect(() => {
@@ -2930,6 +3157,8 @@ function SmokeImage({ playKey, src, alt, style }) {
     }
     const tor = createTornado(b, f, geo);
     if (!tor) { setState("done"); return undefined; }
+    if (rainRef.current) { rainRef.current.destroy(); rainRef.current = null; }
+    try { rainRef.current = createRainGlass(); } catch (e) { rainRef.current = null; }
     let raf = 0;
     const t0 = performance.now();
     const loop = (now) => {
