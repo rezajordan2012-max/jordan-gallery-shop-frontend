@@ -10,7 +10,7 @@ import { BrowserMultiFormatReader } from "@zxing/browser";
 
 // آدرس بک‌اندی که راه‌اندازی کردی را اینجا جایگزین کن
 // (بعد از دیپلوی سرور در پوشه‌ی backend، مثلاً: "https://jordan-gallery-shop-backend.onrender.com")
-const API_BASE_URL = "https:/jordan-gallery-shop-backend.onrender.com";
+const API_BASE_URL = "https://jordan-gallery-shop-backend.onrender.com";
 
 
 // فقط کاربری با همین ایمیل اجازه‌ی دسترسی به پنل مدیریت را دارد.
@@ -21,21 +21,28 @@ const ADMIN_EMAIL = "rezajordan2012@gmail.com";
 // به‌جای شکست فوری، چند بار با فاصله دوباره تلاش می‌کند تا مشتری با محصولات fake گمراه نشود.
 // همچنین کش را کاملاً غیرفعال می‌کند — هم کش خود مرورگر و هم هر پراکسی/کش شبکه‌ای بین راه (مثلاً برخی
 // اپراتورهای موبایل) — چون این دقیقاً دلیل اصلیِ «توی گوشی خودم می‌بینم ولی گوشیِ بقیه نه» بود.
-async function fetchWithRetry(url, options = {}, { retries = 6, delayMs = 4000 } = {}) {
+// سرورِ رایگانِ Render بعد از مدتی بی‌کاری می‌خوابد و بیدار شدنش تا ~یک دقیقه طول می‌کشد؛ پس هر تلاش سقفِ زمان دارد
+// (تا درخواستِ معلق راه را نبندد) و تعدادِ تلاش‌ها آن‌قدر هست که بیدار شدنِ سرور را پوشش دهد.
+async function fetchWithRetry(url, options = {}, { retries = 14, delayMs = 4000, timeoutMs = 20000 } = {}) {
   let lastErr;
-  const bustUrl = url.includes("?") ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
   for (let attempt = 0; attempt <= retries; attempt++) {
+    const bustUrl = url.includes("?") ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = ctrl && timeoutMs ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
     try {
-      const res = await fetch(bustUrl, { ...options, cache: "no-store" });
+      const res = await fetch(bustUrl, { ...options, cache: "no-store", ...(ctrl ? { signal: ctrl.signal } : {}) });
+      if (timer) clearTimeout(timer);
       if (!res.ok) throw new Error("bad response");
       return res;
     } catch (e) {
+      if (timer) clearTimeout(timer);
       lastErr = e;
       if (attempt < retries) await new Promise((r) => setTimeout(r, delayMs));
     }
   }
   throw lastErr;
 }
+const PRODUCTS_CACHE_KEY = "jordan_products_cache_v1";
 
 const FONTS = `
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Baloo+2:wght@500;600;700;800&family=Lalezar&family=Great+Vibes&display=swap');
@@ -4103,17 +4110,30 @@ const [paymentResult, setPaymentResult] = useState(null); // null | { status, re
     } catch (e) {}
   }, [user]);
 
+  const [slowLoad, setSlowLoad] = useState(false);
   const loadProducts = async () => {
     setLoading(true);
+    setSlowLoad(false);
+    const slowTimer = setTimeout(() => setSlowLoad(true), 6000);
+    // آخرین فهرستِ ذخیره‌شده را فوراً نشان می‌دهیم تا اگر سرور خواب بود، صفحه خالی نماند
+    let shownCache = false;
+    try {
+      const c = JSON.parse(localStorage.getItem(PRODUCTS_CACHE_KEY) || "null");
+      if (Array.isArray(c) && c.length > 0) { setProducts(c); shownCache = true; setLoading(false); }
+    } catch (e) {}
     try {
       const res = await fetchWithRetry(`${API_BASE_URL}/api/products`);
       const data = await res.json();
-      setProducts(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setProducts(list);
       setStorageError(false);
+      try { localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(list)); } catch (e) {}
     } catch (e) {
-      setProducts([]);
-      setStorageError(true);
+      if (!shownCache) setProducts([]);
+      setStorageError(!shownCache);
     } finally {
+      clearTimeout(slowTimer);
+      setSlowLoad(false);
       setLoading(false);
     }
   };
@@ -4138,6 +4158,8 @@ const [paymentResult, setPaymentResult] = useState(null); // null | { status, re
   };
 
   useEffect(() => {
+    // سرور را هرچه زودتر بیدار می‌کنیم (Render رایگان بعد از بی‌کاری می‌خوابد)
+    try { fetch(API_BASE_URL + "/", { mode: "no-cors", cache: "no-store" }).catch(() => {}); } catch (e) {}
     loadProducts();
     loadSettings();
   }, []);
@@ -5524,7 +5546,8 @@ async function handleCheckout() {
           <section id="catalog" className="px-4 sm:px-8 lg:px-12 max-w-6xl xl:max-w-7xl mx-auto pb-20">
             {storageError && !loading && (
               <p className="mb-4 rounded p-3" style={{ fontSize: 13, background: "rgba(214,51,108,0.12)", color: "#D6336C" }}>
-                اتصال به سرور فروشگاه برقرار نشد. لطفاً چند لحظه صبر کن و صفحه را رفرش کن.
+                اتصال به سرور فروشگاه برقرار نشد. ممکن است سرور تازه در حال بیدار شدن باشد.{" "}
+                <button type="button" onClick={() => { loadProducts(); loadSettings(); }} style={{ textDecoration: "underline", fontWeight: 700 }}>تلاش دوباره</button>
               </p>
             )}
             {!categoryPageOpen && (
@@ -5575,6 +5598,9 @@ async function handleCheckout() {
               </div>
             )}
 
+            {loading && slowLoad && (
+              <p className="text-muted mb-3" style={{ fontSize: 12 }}>سرور در حال بیدار شدن است؛ چند لحظه صبر کن، خودکار بارگذاری می‌شود…</p>
+            )}
             {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
