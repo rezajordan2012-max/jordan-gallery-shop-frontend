@@ -10,7 +10,7 @@ import { BrowserMultiFormatReader } from "@zxing/browser";
 
 // آدرس بک‌اندی که راه‌اندازی کردی را اینجا جایگزین کن
 // (بعد از دیپلوی سرور در پوشه‌ی backend، مثلاً: "https://jordan-gallery-shop-backend.onrender.com")
-const API_BASE_URL = "https://jordan-gallery-shop-backend.onrender.com";
+const API_BASE_URL = "https:/jordan-gallery-shop-backend.onrender.com";
 
 
 // فقط کاربری با همین ایمیل اجازه‌ی دسترسی به پنل مدیریت را دارد.
@@ -6167,6 +6167,269 @@ async function pickProductPhotosForVariants(variants, results) {
   return { photos, matched, blocked, total: list.length };
 }
 
+// ===== ابزارِ برش و پاک‌کردنِ نوشته‌های پس‌زمینه‌ی عکسِ محصول (پنل ادمین) =====
+// عکس را با fetch به‌صورت blob می‌خوانیم تا بوم (canvas) «آلوده» نشود و بتوانیم پیکسل‌ها را پردازش کنیم.
+function loadImageViaBlob(url) {
+  return fetch(url, { mode: "cors", cache: "reload" })
+    .then((r) => { if (!r.ok) throw new Error("http"); return r.blob(); })
+    .then((blob) => new Promise((resolve, reject) => {
+      const obj = URL.createObjectURL(blob);
+      const im = new Image();
+      im.onload = () => resolve({ im: im, obj: obj });
+      im.onerror = () => { URL.revokeObjectURL(obj); reject(new Error("img")); };
+      im.src = obj;
+    }));
+}
+
+function dilateMask(m, w, h, r) {
+  const t = new Uint8Array(w * h), o = new Uint8Array(w * h);
+  const pre = new Int32Array(Math.max(w, h) + 1);
+  let x, y;
+  for (y = 0; y < h; y++) {
+    for (x = 0; x < w; x++) pre[x + 1] = pre[x] + m[y * w + x];
+    for (x = 0; x < w; x++) { const lo = Math.max(0, x - r), hi = Math.min(w - 1, x + r); t[y * w + x] = pre[hi + 1] - pre[lo] > 0 ? 1 : 0; }
+  }
+  for (x = 0; x < w; x++) {
+    for (y = 0; y < h; y++) pre[y + 1] = pre[y] + t[y * w + x];
+    for (y = 0; y < h; y++) { const lo = Math.max(0, y - r), hi = Math.min(h - 1, y + r); o[y * w + x] = pre[hi + 1] - pre[lo] > 0 ? 1 : 0; }
+  }
+  return o;
+}
+
+// پس‌زمینه‌ی یکدست را پیدا می‌کند، «جزیره‌های» جدا از محصول (نوشته، نشان، پاورقی) را سفید می‌کند و دورِ محصول را می‌برد.
+function cleanProductImage(im) {
+  const MAX = 1400;
+  const sc = Math.min(1, MAX / Math.max(im.naturalWidth, im.naturalHeight));
+  const w = Math.max(2, Math.round(im.naturalWidth * sc)), h = Math.max(2, Math.round(im.naturalHeight * sc));
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = h;
+  const g = cv.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(im, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data;
+  const ring = [];
+  let x, y, p;
+  for (x = 0; x < w; x += 3) { ring.push(x, w * 1 + x, (h - 2) * w + x, (h - 1) * w + x); }
+  for (y = 0; y < h; y += 3) { ring.push(y * w, y * w + 1, y * w + w - 2, y * w + w - 1); }
+  const med = (k) => { const a = ring.map((q) => d[q * 4 + k]).sort((m, n) => m - n); return a[a.length >> 1]; };
+  const bgR = med(0), bgG = med(1), bgB = med(2);
+  const T = 16;
+  const dist = (i) => Math.max(Math.abs(d[i] - bgR), Math.abs(d[i + 1] - bgG), Math.abs(d[i + 2] - bgB));
+  let bad = 0;
+  for (let q = 0; q < ring.length; q++) if (dist(ring[q] * 4) > T) bad++;
+  if (bad / ring.length > 0.3) throw new Error("NONUNIFORM");
+  const mask = new Uint8Array(w * h);
+  for (p = 0; p < w * h; p++) mask[p] = dist(p * 4) > T ? 1 : 0;
+  const r = Math.max(2, Math.round(Math.max(w, h) * 0.006)); // کم نگه می‌داریم تا نوشته‌ی نزدیکِ محصول به آن نچسبد
+  const dil = dilateMask(mask, w, h, r);
+  const lab = new Int32Array(w * h), stack = new Int32Array(w * h);
+  const comps = [];
+  for (p = 0; p < w * h; p++) {
+    if (!dil[p] || lab[p]) continue;
+    const id = comps.length + 1;
+    const c = { id: id, fg: 0, x0: w, y0: h, x1: 0, y1: 0 };
+    let sp = 0;
+    stack[sp++] = p; lab[p] = id;
+    while (sp > 0) {
+      const q = stack[--sp];
+      const qx = q % w, qy = (q - qx) / w;
+      c.fg += mask[q];
+      if (qx < c.x0) c.x0 = qx; if (qx > c.x1) c.x1 = qx; if (qy < c.y0) c.y0 = qy; if (qy > c.y1) c.y1 = qy;
+      if (qx > 0 && dil[q - 1] && !lab[q - 1]) { lab[q - 1] = id; stack[sp++] = q - 1; }
+      if (qx < w - 1 && dil[q + 1] && !lab[q + 1]) { lab[q + 1] = id; stack[sp++] = q + 1; }
+      if (qy > 0 && dil[q - w] && !lab[q - w]) { lab[q - w] = id; stack[sp++] = q - w; }
+      if (qy < h - 1 && dil[q + w] && !lab[q + w]) { lab[q + w] = id; stack[sp++] = q + w; }
+    }
+    comps.push(c);
+  }
+  if (!comps.length) throw new Error("EMPTY");
+  const maxFg = comps.reduce((m, c) => Math.max(m, c.fg), 0);
+  const keep = new Uint8Array(comps.length + 1);
+  let removedFg = 0, bx0 = w, by0 = h, bx1 = 0, by1 = 0;
+  const main = comps.reduce((m, c) => (c.fg > m.fg ? c : m), comps[0]);
+  comps.forEach((c) => {
+    // قطعه‌های ریزِ چسبیده به بالا/پایینِ محصول (مثل سرِ پمپِ سفید) که وسطشان داخلِ پهنای محصول است هم نگه داشته می‌شوند
+    const cx = (c.x0 + c.x1) / 2;
+    const gapY = Math.max(0, c.y0 - main.y1, main.y0 - c.y1);
+    const attached = cx >= main.x0 && cx <= main.x1 && gapY <= Math.max(w, h) * 0.09 && c.fg >= 6;
+    if (c.fg >= maxFg * 0.3 || attached) { // فقط تکه‌های هم‌اندازه‌ی محصولِ اصلی (مثلاً ستِ چندتکه) نگه داشته می‌شوند
+      keep[c.id] = 1;
+      bx0 = Math.min(bx0, c.x0); by0 = Math.min(by0, c.y0); bx1 = Math.max(bx1, c.x1); by1 = Math.max(by1, c.y1);
+    } else removedFg += c.fg;
+  });
+  const bw = bx1 - bx0 + 1, bh = by1 - by0 + 1;
+  const pad = Math.round(Math.max(bw, bh) * 0.06);
+  const ow = bw + pad * 2, oh = bh + pad * 2;
+  const out = document.createElement("canvas");
+  out.width = ow; out.height = oh;
+  const og = out.getContext("2d");
+  og.fillStyle = "#fff"; og.fillRect(0, 0, ow, oh);
+  const src = g.getImageData(0, 0, w, h).data;
+  const od = og.getImageData(0, 0, ow, oh);
+  for (y = by0; y <= by1; y++) {
+    for (x = bx0; x <= bx1; x++) {
+      const q = y * w + x;
+      if (!keep[lab[q]]) continue;
+      const o = ((y - by0 + pad) * ow + (x - bx0 + pad)) * 4;
+      od.data[o] = src[q * 4]; od.data[o + 1] = src[q * 4 + 1]; od.data[o + 2] = src[q * 4 + 2]; od.data[o + 3] = 255;
+    }
+  }
+  og.putImageData(od, 0, 0);
+  return { canvas: out, changed: removedFg > 25 || bw < w * 0.9 || bh < h * 0.9, removedFg: removedFg };
+}
+
+function ImageCropModal({ src, onCancel, onApply }) {
+  const [c, setC] = useState({ t: 0, b: 0, l: 0, r: 0 });
+  const imgRef = useRef(null);
+  const set = (k) => (e) => {
+    const v = Number(e.target.value);
+    setC((o) => {
+      const n = { ...o, [k]: v };
+      if (n.t + n.b > 90) { if (k === "t") n.t = 90 - n.b; else n.b = 90 - n.t; }
+      if (n.l + n.r > 90) { if (k === "l") n.l = 90 - n.r; else n.r = 90 - n.l; }
+      return n;
+    });
+  };
+  function apply() {
+    const im = imgRef.current;
+    if (!im || !im.naturalWidth) return;
+    const nw = im.naturalWidth, nh = im.naturalHeight;
+    const sx = Math.round((c.l / 100) * nw), sy = Math.round((c.t / 100) * nh);
+    const sw = Math.max(4, Math.round(nw - sx - (c.r / 100) * nw)), sh = Math.max(4, Math.round(nh - sy - (c.b / 100) * nh));
+    const k = Math.min(1, 1400 / Math.max(sw, sh));
+    const cv = document.createElement("canvas");
+    cv.width = Math.max(2, Math.round(sw * k)); cv.height = Math.max(2, Math.round(sh * k));
+    const g = cv.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height);
+    g.drawImage(im, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+    onApply(cv);
+  }
+  const rows = [["t", "از بالا"], ["b", "از پایین"], ["l", "از چپ"], ["r", "از راست"]];
+  return (
+    <div className="fixed inset-0 flex items-center justify-center p-3" style={{ zIndex: 80, background: "rgba(20,16,40,0.7)" }} onClick={onCancel}>
+      <div className="bg-panel-2 rounded-lg p-4 border border-hair" style={{ width: "100%", maxWidth: 420, maxHeight: "92vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+        <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>برش دستی عکس</p>
+        <div style={{ position: "relative", background: "#fff", border: "1px solid rgba(123,92,246,0.3)", borderRadius: 8, overflow: "hidden", lineHeight: 0 }}>
+          <img ref={imgRef} src={src} alt="" style={{ width: "100%", maxHeight: "50vh", objectFit: "contain", display: "block" }} />
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: c.t + "%", background: "rgba(36,30,61,0.55)" }} />
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: c.b + "%", background: "rgba(36,30,61,0.55)" }} />
+            <div style={{ position: "absolute", left: 0, top: c.t + "%", bottom: c.b + "%", width: c.l + "%", background: "rgba(36,30,61,0.55)" }} />
+            <div style={{ position: "absolute", right: 0, top: c.t + "%", bottom: c.b + "%", width: c.r + "%", background: "rgba(36,30,61,0.55)" }} />
+            <div style={{ position: "absolute", left: c.l + "%", right: c.r + "%", top: c.t + "%", bottom: c.b + "%", border: "2px solid #FF3E8E", boxSizing: "border-box" }} />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 mt-3">
+          {rows.map((rw) => (
+            <div key={rw[0]} className="flex items-center gap-2">
+              <span className="text-muted" style={{ fontSize: 11, minWidth: 54 }}>{rw[1]}</span>
+              <input type="range" min="0" max="60" step="0.5" value={c[rw[0]]} onChange={set(rw[0])} style={{ flex: 1 }} />
+              <span className="text-muted" style={{ fontSize: 11, minWidth: 34, textAlign: "left" }} dir="ltr">{c[rw[0]].toFixed(1)}%</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button type="button" onClick={apply} className="btn-gold rounded px-4 py-2 text-sm">اعمال برش</button>
+          <button type="button" onClick={() => setC({ t: 0, b: 0, l: 0, r: 0 })} className="btn-ghost rounded px-3 py-2 text-xs">بازنشانی</button>
+          <button type="button" onClick={onCancel} className="btn-ghost rounded px-3 py-2 text-xs">انصراف</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImageCleanTool({ imageUrl, onUploadImage, onResult }) {
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
+  const [preview, setPreview] = useState(null); // { canvas, url }
+  const [crop, setCrop] = useState(null); // { obj }
+  const [prevUrl, setPrevUrl] = useState("");
+  const origUrlRef = useRef(imageUrl);
+
+  const fail = (e) => {
+    if (e && e.message === "NONUNIFORM") setMsg("پس‌زمینه‌ی این عکس یکدست نیست (طرح یا سایه دارد)، پاک‌سازی خودکار قابل اعتماد نیست. از «برش دستی» استفاده کن.");
+    else if (e && e.message === "EMPTY") setMsg("محصولی در عکس پیدا نشد.");
+    else setMsg("خواندن این عکس ممکن نشد (احتمالاً لینک از سایت دیگری است). اول عکس را با «انتخاب از گالری» آپلود کن، بعد دوباره امتحان کن.");
+    setBusy("");
+  };
+
+  async function autoClean() {
+    setMsg(""); setPreview(null); setBusy("در حال بررسی عکس...");
+    try {
+      const { im, obj } = await loadImageViaBlob(imageUrl);
+      const res = cleanProductImage(im);
+      URL.revokeObjectURL(obj);
+      if (!res.changed) { setMsg("نوشته یا نشانِ جداگانه‌ای پیدا نشد. اگر چیزی به محصول چسبیده، از «برش دستی» استفاده کن."); setBusy(""); return; }
+      setPreview({ canvas: res.canvas, url: res.canvas.toDataURL("image/jpeg", 0.9) });
+      setBusy("");
+    } catch (e) { fail(e); }
+  }
+
+  async function openCrop() {
+    setMsg(""); setPreview(null); setBusy("در حال بارگذاری عکس...");
+    try {
+      const { obj } = await loadImageViaBlob(imageUrl);
+      setCrop({ obj: obj });
+      setBusy("");
+    } catch (e) { fail(e); }
+  }
+
+  async function commit(canvas) {
+    setBusy("در حال آپلود عکس ویرایش‌شده...");
+    try {
+      const url = await onUploadImage(canvas.toDataURL("image/jpeg", 0.92), false);
+      setPrevUrl(imageUrl);
+      onResult(url);
+      setPreview(null);
+      setMsg("عکس ویرایش‌شده جایگزین شد. اگر نتیجه را نپسندیدی، «بازگرداندن عکس قبلی» را بزن.");
+    } catch (e) {
+      setMsg((e && e.message) || "آپلود عکس ناموفق بود");
+    }
+    setBusy("");
+  }
+
+  const closeCrop = () => { if (crop) URL.revokeObjectURL(crop.obj); setCrop(null); };
+
+  return (
+    <div className="bg-panel-2 border border-hair rounded-lg p-3 mt-2 flex flex-col gap-2" style={{ maxWidth: 380 }}>
+      <span className="text-muted" style={{ fontSize: 11 }}>پاک‌کردن نوشته‌های پس‌زمینه و برش عکس</span>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" disabled={!!busy} onClick={autoClean} className="btn-ghost rounded px-3 py-2 text-xs flex items-center gap-2" style={{ opacity: busy ? 0.6 : 1 }}>
+          <Sparkles size={14} /> پاک‌سازی خودکار نوشته‌ها
+        </button>
+        <button type="button" disabled={!!busy} onClick={openCrop} className="btn-ghost rounded px-3 py-2 text-xs" style={{ opacity: busy ? 0.6 : 1 }}>
+          ✂ برش دستی
+        </button>
+        {prevUrl && !busy && (
+          <button type="button" onClick={() => { onResult(prevUrl); setPrevUrl(""); setMsg("عکس قبلی برگردانده شد."); }} className="btn-ghost rounded px-3 py-2 text-xs">
+            بازگرداندن عکس قبلی
+          </button>
+        )}
+      </div>
+      {busy && <p className="text-muted" style={{ fontSize: 11 }}>{busy}</p>}
+      {msg && !busy && <p className="text-muted" style={{ fontSize: 11, lineHeight: 1.7 }}>{msg}</p>}
+      {preview && !busy && (
+        <div className="flex flex-col gap-2">
+          <p className="text-muted" style={{ fontSize: 11 }}>پیش‌نمایشِ عکسِ پاک‌شده (نوشته‌ها و نشان‌های جدا از محصول حذف شد):</p>
+          <div style={{ background: "#fff", border: "1px solid rgba(123,92,246,0.3)", borderRadius: 10, padding: 6, display: "flex", justifyContent: "center" }}>
+            <img src={preview.url} alt="پیش‌نمایش" style={{ maxWidth: "100%", maxHeight: 240, objectFit: "contain" }} />
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => commit(preview.canvas)} className="btn-gold rounded px-4 py-2 text-xs">جایگزین کردن عکس محصول</button>
+            <button type="button" onClick={() => setPreview(null)} className="btn-ghost rounded px-3 py-2 text-xs">لغو</button>
+          </div>
+        </div>
+      )}
+      {crop && (
+        <ImageCropModal
+          src={crop.obj}
+          onCancel={closeCrop}
+          onApply={(cv) => { closeCrop(); setPreview({ canvas: cv, url: cv.toDataURL("image/jpeg", 0.9) }); setMsg(""); }}
+        />
+      )}
+    </div>
+  );
+}
+
 function AdminPanel({ products, onAdd, onUpdate, onRemove, onUploadImage, storageError, heroBanners, onUpdateHeroBanners, globalDiscountPercent, onUpdateGlobalDiscount, categoryBanners, onUpdateCategoryBanners, categoryTileMedia, onUpdateCategoryTileMedia, onExtractProductInfo, onLookupBarcode, onSearchProductImage, onSearchProductVideo, onExtractImagesFromUrl, onExtractVideosFromUrl, onExtractVariantsFromUrl, onExtractVariantsFromImage,  onImportProductFromUrl, onMirrorImage,  onAnalyzePerfumeImage, onBrowseApi, onSearchPerfume,onGetPerfumeDetails, onTranslatePerfumeText }) {
   const [bannerDrafts, setBannerDrafts] = useState((heroBanners || []).map(normalizeBanner));
   const [heroUploading, setHeroUploading] = useState(false);
@@ -8609,6 +8872,12 @@ const [variantImageSourceUrl, setVariantImageSourceUrl] = useState("");
               <p className="text-muted" style={{ fontSize: 10.5 }}>
                 برش و پس‌زمینه‌ی سفید به‌صورت خودکار روی عکس اعمال می‌شود (فقط برای عکس‌های آپلودشده از گالری یا شناسایی‌شده از بارکد — نه لینک‌های خارجیِ دستی).
               </p>
+
+              <ImageCleanTool
+                imageUrl={form.image}
+                onUploadImage={onUploadImage}
+                onResult={(url) => setForm((f) => ({ ...f, image: url, imageFit: "contain", imagePosX: 50, imagePosY: 50, imageZoom: 1 }))}
+              />
 
               <div className="bg-panel-2 border border-hair rounded-lg p-3 mt-2 flex flex-col gap-3" style={{ maxWidth: 380 }}>
                 <div className="flex items-center justify-between">
